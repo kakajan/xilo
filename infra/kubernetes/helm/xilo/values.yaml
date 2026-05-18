@@ -1,0 +1,102 @@
+replicaCount: 3
+
+image:
+  repository: xilo-platform/api-gateway
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    - host: xilo.local
+      paths:
+        - path: /
+          pathType: Prefix
+          backendService: api-gateway
+          backendPort: 8000
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 128Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+env:
+  PORT: "8000"
+  DATABASE_URL: "postgres://xilo:xilo@postgresql:5432/xilo?sslmode=disable"
+  REDIS_URL: "redis:6379"
+  NATS_URL: "nats://nats:4222"
+  MEILISEARCH_URL: "http://meilisearch:7700"
+  MEILISEARCH_KEY: "xilo-meili-key"
+  STORAGE_DRIVER: "minio"
+  STORAGE_ENDPOINT: "minio:9000"
+  STORAGE_ACCESS_KEY: "minioadmin"
+  STORAGE_SECRET_KEY: "minioadmin"
+  STORAGE_BUCKET: "xilo-media"
+  STORAGE_USE_SSL: "false"
+  JWT_ISSUER: "xilo"
+  SMS_DRIVER: "ippanel"
+  SMS_IPPANEL_API_KEY: ""
+  SMS_FROM_NUMBER: "+983000505"
+
+postgresql:
+  enabled: true
+  auth:
+    username: xilo
+    password: xilo
+    database: xilo
+  primary:
+    persistence:
+      size: 20Gi
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+
+nats:
+  enabled: true
+
+meilisearch:
+  enabled: true
+  environment:
+    MEILI_MASTER_KEY: xilo-meili-key
+
+minio:
+  enabled: true
+  mode: standalone
+  auth:
+    rootUser: minioadmin
+    rootPassword: minioadmin
+  persistence:
+    size: 50Gi
+
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      size: 10Gi
+
+grafana:
+  enabled: true
+  adminPassword: admin
+  persistence:
+    size: 2Gi
+
+loki:
+  enabled: true
+  persistence:
+    size: 10Gi

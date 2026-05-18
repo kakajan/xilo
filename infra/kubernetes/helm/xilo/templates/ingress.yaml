@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+  - hosts:
+    {{- range .Values.ingress.hosts }}
+    - {{ .host }}
+    {{- end }}
+    secretName: xilo-tls
+  rules:
+  {{- range .Values.ingress.hosts }}
+  - host: {{ .host }}
+    http:
+      paths:
+      {{- range .paths }}
+      - path: {{ .path }}
+        pathType: {{ .pathType }}
+        backend:
+          service:
+            name: {{ $.Release.Name }}-{{ .backendService }}
+            port:
+              number: {{ .backendPort }}
+      {{- end }}
+  {{- end }}

@@ -1,0 +1,43 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: xilo-https
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`xilo.local`) && PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: xilo-api-gateway
+          port: 8000
+      middlewares:
+        - name: cors-headers
+        - name: rate-limit
+    - match: Host(`xilo.local`)
+      kind: Rule
+      services:
+        - name: xilo-web-frontend
+          port: 3000
+  tls:
+    certResolver: letsencrypt
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: cors-headers
+spec:
+  headers:
+    accessControlAllowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"]
+    accessControlAllowOriginList: ["http://localhost:3000"]
+    accessControlAllowHeaders: ["Origin", "Content-Type", "Accept", "Authorization"]
+    accessControlMaxAge: 100
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+spec:
+  rateLimit:
+    average: 100
+    burst: 50

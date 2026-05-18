@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentry
+  labels:
+    app: sentry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sentry
+  template:
+    metadata:
+      labels:
+        app: sentry
+    spec:
+      containers:
+        - name: sentry
+          image: sentry:latest
+          ports:
+            - containerPort: 9000
+          env:
+            - name: SENTRY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sentry-secret
+                  key: secret-key
+            - name: SENTRY_POSTGRES_HOST
+              value: postgresql
+            - name: SENTRY_REDIS_HOST
+              value: redis
+            - name: SENTRY_DB_USER
+              value: xilo
+            - name: SENTRY_DB_PASSWORD
+              value: xilo
+            - name: SENTRY_DB_NAME
+              value: sentry
+          volumeMounts:
+            - name: sentry-data
+              mountPath: /var/lib/sentry/files
+      volumes:
+        - name: sentry-data
+          persistentVolumeClaim:
+            claimName: sentry-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sentry-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: xilo-alerts
+spec:
+  groups:
+    - name: xilo.rules
+      rules:
+        - alert: HighErrorRate
+          expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.01
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Error rate exceeds 1%"
+        - alert: HighLatency
+          expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "P95 latency exceeds 500ms"
+        - alert: DatabaseDown
+          expr: pg_up == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PostgreSQL is down"

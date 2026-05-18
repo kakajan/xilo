@@ -1,0 +1,48 @@
+package factory
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/xilo-platform/xilo/pkg/storage"
+	"github.com/xilo-platform/xilo/pkg/storage/minio"
+	"github.com/xilo-platform/xilo/pkg/storage/s3"
+)
+
+func New() (storage.Driver, error) {
+	driver := os.Getenv("STORAGE_DRIVER")
+	if driver == "" {
+		driver = "minio"
+	}
+
+	endpoint := os.Getenv("STORAGE_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "localhost:9000"
+	}
+	accessKey := os.Getenv("STORAGE_ACCESS_KEY")
+	if accessKey == "" {
+		accessKey = "minioadmin"
+	}
+	secretKey := os.Getenv("STORAGE_SECRET_KEY")
+	if secretKey == "" {
+		secretKey = "minioadmin"
+	}
+	bucket := os.Getenv("STORAGE_BUCKET")
+	if bucket == "" {
+		bucket = "xilo-media"
+	}
+	useSSL := os.Getenv("STORAGE_USE_SSL") == "true"
+
+	switch driver {
+	case "minio":
+		return minio.New(endpoint, accessKey, secretKey, bucket, useSSL)
+	case "s3":
+		region := os.Getenv("STORAGE_REGION")
+		if region == "" {
+			region = "us-east-1"
+		}
+		return s3.New(region, endpoint, accessKey, secretKey, bucket, useSSL)
+	default:
+		return nil, fmt.Errorf("unknown storage driver: %s (valid: minio, s3)", driver)
+	}
+}

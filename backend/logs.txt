@@ -1,0 +1,12 @@
+2026/05/16 16:08:15 WARN sms driver not initialized, sms features disabled error="SMS_IPPANEL_API_KEY is required"
+2026/05/16 16:08:15 INFO api-gateway starting port=8000
+
+ ┌───────────────────────────────────────────────────┐ 
+ │                   Fiber v2.52.6                   │ 
+ │               http://127.0.0.1:8000               │ 
+ │       (bound on host 0.0.0.0 and port 8000)       │ 
+ │                                                   │ 
+ │ Handlers ........... 166  Processes ........... 1 │ 
+ │ Prefork ....... Disabled  PID ............. 38096 │ 
+ └───────────────────────────────────────────────────┘ 
+

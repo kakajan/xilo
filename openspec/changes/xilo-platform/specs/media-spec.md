@@ -1,7 +1,16 @@
 # Spec: Media & Storage System
 
 ## Overview
-MinIO-powered object storage for images, avatars, attachments, and videos. Automatic image resizing, WebP conversion, and CDN-friendly URLs.
+
+Pluggable object storage for images, avatars, attachments, and videos. Automatic image resizing, WebP conversion, and CDN-friendly URLs.
+
+The storage layer uses a **driver/interface pattern** — the system ships with a self-hosted MinIO driver by default, but any S3-compatible or cloud provider (AWS S3, Cloudflare R2, DigitalOcean Spaces) can be swapped in via configuration without code changes.
+
+```
+Storage Interface (pkg/storage/storage.go)
+├── MinIO Driver  (pkg/storage/minio/)   ← default, self-hosted
+└── S3 Driver     (pkg/storage/s3/)      ← AWS / cloud provider
+```
 
 ---
 
@@ -58,6 +67,32 @@ Media URLs are served via Traefik with:
 - `Cache-Control: public, max-age=31536000, immutable`
 - ETag-based conditional requests
 - Optional Cloudflare CDN in front
+
+### REQ-MDA-007: Storage Driver Abstraction
+
+**Given** the media service needs to store files  
+**When** it writes or reads a file  
+**Then** it MUST use the `StorageDriver` interface — never call MinIO/S3 directly.
+
+**Interface contract:**
+
+```go
+type StorageDriver interface {
+    Upload(ctx context.Context, key string, reader io.Reader, opts UploadOptions) (*UploadResult, error)
+    Download(ctx context.Context, key string) (io.ReadCloser, error)
+    Delete(ctx context.Context, key string) error
+    GetURL(key string) string
+    GetSignedURL(key string, duration time.Duration) (string, error)
+}
+```
+
+**Constraints:**
+- The driver MUST be selected via `STORAGE_DRIVER` environment variable (`minio` | `s3`)
+- The MinIO driver SHALL be the default when `STORAGE_DRIVER` is unset
+- Storage connection config SHALL come from environment variables (`STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`, `STORAGE_USE_SSL`)
+- Switching drivers SHALL NOT require code changes — only config change + restart
+- Each driver MUST implement the full `StorageDriver` interface
+- The media service SHALL ONLY depend on the interface, never on concrete driver types
 
 ---
 

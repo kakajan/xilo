@@ -1,0 +1,95 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: xilo-deny-all
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: auth-service
+      ports:
+        - port: 8010
+    - to:
+        - podSelector:
+            matchLabels:
+              app: post-service
+      ports:
+        - port: 8030
+    - to:
+        - podSelector:
+            matchLabels:
+              app: comment-service
+      ports:
+        - port: 8040
+    - to:
+        - podSelector:
+            matchLabels:
+              app: search-service
+      ports:
+        - port: 8060
+    - to:
+        - podSelector:
+            matchLabels:
+              app: media-service
+      ports:
+        - port: 8070
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: databases-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: backend
+      ports:
+        - port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-isolation
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgresql
+      ports:
+        - port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - port: 6379

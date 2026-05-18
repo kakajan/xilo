@@ -1,0 +1,122 @@
+{
+  "@@locale": "fa",
+  "app_title": "زیلو",
+  "sign_in": "ورود",
+  "sign_up": "ثبت‌نام",
+  "email": "ایمیل",
+  "password": "رمز عبور",
+  "username": "نام کاربری",
+  "required": "الزامی",
+  "min_characters": "حداقل {count} کاراکتر",
+  "@min_characters": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "signing_in": "در حال ورود...",
+  "dont_have_account": "حساب کاربری ندارید؟ ثبت‌نام",
+  "already_have_account": "حساب کاربری دارید؟ ورود",
+  "creating_account": "در حال ایجاد...",
+  "create_account": "ایجاد حساب",
+  "search": "جستجو",
+  "search_posts_placeholder": "جستجو در نوشته‌ها...",
+  "type_to_search": "برای جستجو تایپ کنید",
+  "xilo": "زیلو",
+  "failed_to_load": "خطا در بارگذاری {item}. دوباره تلاش کنید.",
+  "@failed_to_load": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "no_posts_yet": "هنوز نوشته‌ای وجود ندارد",
+  "check_back_later": "بعداً برای محتوای جدید سر بزنید",
+  "premium": "ویژه",
+  "unknown": "نامشخص",
+  "min_read": "{minutes} دقیقه مطالعه",
+  "@min_read": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "just_now": "همین الان",
+  "minutes_ago": "{m} دقیقه پیش",
+  "@minutes_ago": {
+    "placeholders": {
+      "m": { "type": "int" }
+    }
+  },
+  "hours_ago": "{h} ساعت پیش",
+  "@hours_ago": {
+    "placeholders": {
+      "h": { "type": "int" }
+    }
+  },
+  "days_ago": "{d} روز پیش",
+  "@days_ago": {
+    "placeholders": {
+      "d": { "type": "int" }
+    }
+  },
+  "retry": "تلاش مجدد",
+  "failed_to_load_post": "خطا در بارگذاری نوشته",
+  "comments": "نظرات",
+  "no_comments_yet": "هنوز نظری نبوده، می‌خوای اولین نفر باشی؟",
+  "write": "نوشتن",
+  "post_title_hint": "عنوان نوشته",
+  "tell_story_hint": "داستان خود را بنویسید...",
+  "publish": "انتشار",
+  "notifications": "اعلان‌ها",
+  "no_notifications_yet": "هنوز اعلانی ندارید",
+  "bookmarks": "نشان‌شده‌ها",
+  "no_bookmarks_yet": "هنوز نشان‌شده‌ای ندارید",
+  "settings": "تنظیمات",
+  "profile": "پروفایل",
+  "billing_subscription": "صورتحساب و اشتراک",
+  "appearance": "ظاهر",
+  "language": "زبان",
+  "select_language": "انتخاب زبان",
+  "about": "درباره",
+  "follow": "دنبال کردن",
+  "unfollow": "لغو دنبال کردن",
+  "display_name": "نام نمایشی",
+  "bio_placeholder": "بیوگرافی اینجا قرار می‌گیرد",
+  "nav_home": "خانه",
+  "nav_search": "جستجو",
+  "nav_write": "نوشتن",
+  "nav_notifications": "اعلان‌ها",
+  "nav_profile": "پروفایل",
+  "image_not_supported": "تصویر پشتیبانی نمی‌شود",
+  "subscription_plans": "طرح‌های اشتراک",
+  "manage": "مدیریت",
+  "active_subscription": "اشتراک فعال",
+  "choose_plan": "یک طرح انتخاب کنید",
+  "free": "رایگان",
+  "per_month": "/ ماهانه",
+  "per_year": "/ سالانه",
+  "current_plan": "طرح فعلی",
+  "get_started_free": "شروع رایگان",
+  "subscribe": "اشتراک",
+  "payment_success": "پرداخت موفق! اشتراک شما فعال شد.",
+  "payment_failed": "پرداخت لغو یا ناموفق بود.",
+  "error_prefix": "خطا:",
+  "my_subscription": "اشتراک من",
+  "cancel_subscription_title": "لغو اشتراک",
+  "cancel_subscription_msg": "اشتراک شما تا پایان دوره فعلی فعال می‌ماند. مطمئنید؟",
+  "no": "خیر",
+  "cancel_subscription_btn": "لغو اشتراک",
+  "subscription_cancelled": "اشتراک لغو شد.",
+  "cancel_failed": "خطا در لغو اشتراک.",
+  "active_plan": "طرح فعال",
+  "expires": "انقضا",
+  "no_active_subscription": "اشتراک فعالی ندارید",
+  "choose_plan_get_started": "برای شروع یک طرح انتخاب کنید",
+  "view_plans": "مشاهده طرح‌ها",
+  "billing_history": "تاریخچه صورتحساب",
+  "no_invoices_yet": "هنوز فاکتوری وجود ندارد",
+  "paid": "پرداخت‌شده",
+  "pending": "در انتظار",
+  "zarinpal_payment": "پرداخت زرین‌پال",
+  "comments_title": "نظرات",
+  "send": "ارسال",
+  "write_comment_hint": "نظر خود را بنویسید..."
+}

@@ -1,0 +1,28 @@
+apiVersion: v2
+name: xilo
+description: Xilo — self-hosted blogging platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+dependencies:
+  - name: postgresql
+    version: 16.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 20.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: nats
+    version: 1.x
+    repository: https://nats-io.github.io/k8s/helm/charts
+    condition: nats.enabled
+  - name: meilisearch
+    version: 0.3.x
+    repository: https://meilisearch.github.io/meilisearch-kubernetes
+    condition: meilisearch.enabled
+  - name: minio
+    version: 14.x
+    repository: https://charts.min.io
+    condition: minio.enabled

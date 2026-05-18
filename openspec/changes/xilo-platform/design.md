@@ -551,7 +551,46 @@ sl.registerLazySingleton(() => CreatePostUseCase(sl()));
    b. Return 401 — force re-login
 ```
 
-## 8. Caching Strategy
+## 8. Storage Abstraction
+
+The storage layer uses a driver/interface pattern so the underlying provider can be swapped without code changes.
+
+```
+Storage Interface (pkg/storage/storage.go)
+├── MinIO Driver  (pkg/storage/minio/)   ← default, self-hosted
+└── S3 Driver     (pkg/storage/s3/)      ← AWS / cloud provider
+```
+
+### Driver Selection
+
+Configured via environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STORAGE_DRIVER` | Driver to use (`minio` or `s3`) | `minio` |
+| `STORAGE_ENDPOINT` | Object storage endpoint | `localhost:9000` |
+| `STORAGE_ACCESS_KEY` | Access key | `minioadmin` |
+| `STORAGE_SECRET_KEY` | Secret key | `minioadmin` |
+| `STORAGE_BUCKET` | Bucket name | `xilo-media` |
+| `STORAGE_USE_SSL` | Use SSL/TLS | `false` |
+| `STORAGE_REGION` | Region (S3 driver only) | `us-east-1` |
+
+### Interface Contract
+
+```go
+type StorageDriver interface {
+    Upload(ctx context.Context, key string, reader io.Reader, size int64, contentType string) (*UploadResult, error)
+    Download(ctx context.Context, key string) (io.ReadCloser, error)
+    Delete(ctx context.Context, key string) error
+    GetURL(key string) string
+}
+```
+
+All media operations go through this interface. The concrete driver is created at startup based on `STORAGE_DRIVER`.
+
+---
+
+## 9. Caching Strategy
 
 ```
 Layer 1: Browser Cache
@@ -577,7 +616,7 @@ Layer 5: PostgreSQL (source of truth)
   - No caching; use appropriate indexes
 ```
 
-## 9. Directory Structure (Repository)
+## 10. Directory Structure (Repository)
 
 ```
 xilo/
@@ -607,7 +646,8 @@ xilo/
 │   │   ├── validator/
 │   │   ├── pagination/
 │   │   ├── nats/
-│   │   └── redis/
+│   │   ├── redis/
+│   │   └── storage/       — Storage interface + drivers
 │   ├── proto/           — gRPC protobuf definitions
 │   ├── migrations/      — SQL migration files
 │   ├── go.mod

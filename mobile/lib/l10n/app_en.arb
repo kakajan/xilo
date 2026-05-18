@@ -1,0 +1,122 @@
+{
+  "@@locale": "en",
+  "app_title": "Xilo",
+  "sign_in": "Sign In",
+  "sign_up": "Sign Up",
+  "email": "Email",
+  "password": "Password",
+  "username": "Username",
+  "required": "Required",
+  "min_characters": "Min {count} characters",
+  "@min_characters": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "signing_in": "Signing in...",
+  "dont_have_account": "Don't have an account? Sign Up",
+  "already_have_account": "Already have an account? Sign In",
+  "creating_account": "Creating...",
+  "create_account": "Create Account",
+  "search": "Search",
+  "search_posts_placeholder": "Search posts...",
+  "type_to_search": "Type to search",
+  "xilo": "Xilo",
+  "failed_to_load": "Failed to load {item}. Please try again.",
+  "@failed_to_load": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "no_posts_yet": "No posts yet",
+  "check_back_later": "Check back later for new content",
+  "premium": "Premium",
+  "unknown": "Unknown",
+  "min_read": "{minutes} min read",
+  "@min_read": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "just_now": "Just now",
+  "minutes_ago": "{m}m ago",
+  "@minutes_ago": {
+    "placeholders": {
+      "m": { "type": "int" }
+    }
+  },
+  "hours_ago": "{h}h ago",
+  "@hours_ago": {
+    "placeholders": {
+      "h": { "type": "int" }
+    }
+  },
+  "days_ago": "{d}d ago",
+  "@days_ago": {
+    "placeholders": {
+      "d": { "type": "int" }
+    }
+  },
+  "retry": "Retry",
+  "failed_to_load_post": "Failed to load post",
+  "comments": "Comments",
+  "no_comments_yet": "No comments yet. Be the first!",
+  "write": "Write",
+  "post_title_hint": "Post title",
+  "tell_story_hint": "Tell your story...",
+  "publish": "Publish",
+  "notifications": "Notifications",
+  "no_notifications_yet": "No notifications yet",
+  "bookmarks": "Bookmarks",
+  "no_bookmarks_yet": "No bookmarks yet",
+  "settings": "Settings",
+  "profile": "Profile",
+  "billing_subscription": "Billing & Subscription",
+  "appearance": "Appearance",
+  "language": "Language",
+  "select_language": "Select Language",
+  "about": "About",
+  "follow": "Follow",
+  "unfollow": "Unfollow",
+  "display_name": "Display Name",
+  "bio_placeholder": "Bio goes here",
+  "nav_home": "Home",
+  "nav_search": "Search",
+  "nav_write": "Write",
+  "nav_notifications": "Notifications",
+  "nav_profile": "Profile",
+  "image_not_supported": "Image not supported",
+  "subscription_plans": "Subscription Plans",
+  "manage": "Manage",
+  "active_subscription": "Active Subscription",
+  "choose_plan": "Choose a Plan",
+  "free": "Free",
+  "per_month": "/ month",
+  "per_year": "/ year",
+  "current_plan": "Current Plan",
+  "get_started_free": "Get Started Free",
+  "subscribe": "Subscribe",
+  "payment_success": "Payment successful! Your subscription is now active.",
+  "payment_failed": "Payment was cancelled or failed.",
+  "error_prefix": "Error:",
+  "my_subscription": "My Subscription",
+  "cancel_subscription_title": "Cancel Subscription",
+  "cancel_subscription_msg": "Your subscription will remain active until the end of the current billing period. Are you sure?",
+  "no": "No",
+  "cancel_subscription_btn": "Cancel Subscription",
+  "subscription_cancelled": "Subscription cancelled.",
+  "cancel_failed": "Failed to cancel subscription.",
+  "active_plan": "Active Plan",
+  "expires": "Expires",
+  "no_active_subscription": "No Active Subscription",
+  "choose_plan_get_started": "Choose a plan to get started",
+  "view_plans": "View Plans",
+  "billing_history": "Billing History",
+  "no_invoices_yet": "No invoices yet",
+  "paid": "Paid",
+  "pending": "Pending",
+  "zarinpal_payment": "Zarinpal Payment",
+  "comments_title": "Comments",
+  "send": "Send",
+  "write_comment_hint": "Write a comment..."
+}
