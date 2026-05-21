@@ -19,6 +19,8 @@ type User struct {
 	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 	DeletedAt     *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+
+	IsVerified bool `json:"is_verified" db:"-"`
 }
 
 type RefreshToken struct {

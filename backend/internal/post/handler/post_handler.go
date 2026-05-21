@@ -148,6 +148,8 @@ func (h *PostHandler) List(c *fiber.Ctx) error {
 	author := c.Query("author")
 	language := c.Query("language")
 
+	viewerID, _ := c.Locals("userID").(string)
+
 	posts, nextCursor, err := h.svc.List(c.UserContext(), model.PostListParams{
 		Cursor:   cursor,
 		Limit:    limit,
@@ -155,6 +157,7 @@ func (h *PostHandler) List(c *fiber.Ctx) error {
 		Tag:      tag,
 		Author:   author,
 		Language: language,
+		ViewerID: viewerID,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

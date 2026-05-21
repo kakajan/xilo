@@ -288,4 +288,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get write_comment_hint => 'Write a comment...';
+
+  @override
+  String get tab_posts => 'Posts';
+
+  @override
+  String get tab_replies => 'Replies';
+
+  @override
+  String get tab_media => 'Media';
+
+  @override
+  String get tab_likes => 'Likes';
+
+  @override
+  String get tab_followers => 'Followers';
+
+  @override
+  String get tab_following => 'Following';
+
+  @override
+  String get message => 'Message';
+
+  @override
+  String get share_profile => 'Share';
+
+  @override
+  String get message_coming_soon => 'Messaging is coming soon';
 }

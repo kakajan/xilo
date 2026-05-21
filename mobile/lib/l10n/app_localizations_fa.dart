@@ -287,4 +287,31 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get write_comment_hint => 'نظر خود را بنویسید...';
+
+  @override
+  String get tab_posts => 'پست‌ها';
+
+  @override
+  String get tab_replies => 'پاسخ‌ها';
+
+  @override
+  String get tab_media => 'رسانه';
+
+  @override
+  String get tab_likes => 'پسندیده‌ها';
+
+  @override
+  String get tab_followers => 'دنبال‌کنندگان';
+
+  @override
+  String get tab_following => 'دنبال‌شده‌ها';
+
+  @override
+  String get message => 'پیام';
+
+  @override
+  String get share_profile => 'اشتراک';
+
+  @override
+  String get message_coming_soon => 'پیام‌رسانی به‌زودی فعال می‌شود';
 }

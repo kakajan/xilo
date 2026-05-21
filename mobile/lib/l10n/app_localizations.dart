@@ -637,6 +637,16 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Write a comment...'**
   String get write_comment_hint;
+
+  String get tab_posts;
+  String get tab_replies;
+  String get tab_media;
+  String get tab_likes;
+  String get tab_followers;
+  String get tab_following;
+  String get message;
+  String get share_profile;
+  String get message_coming_soon;
 }
 
 class _AppLocalizationsDelegate

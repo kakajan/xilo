@@ -118,5 +118,14 @@
   "zarinpal_payment": "دفع زرین‌بال",
   "comments_title": "التعليقات",
   "send": "إرسال",
-  "write_comment_hint": "اكتب تعليقاً..."
+  "write_comment_hint": "اكتب تعليقاً...",
+  "tab_posts": "منشورات",
+  "tab_replies": "ردود",
+  "tab_media": "وسائط",
+  "tab_likes": "إعجابات",
+  "tab_followers": "متابعون",
+  "tab_following": "يتابع",
+  "message": "رسالة",
+  "share_profile": "مشاركة",
+  "message_coming_soon": "المراسلة قريباً"
 }

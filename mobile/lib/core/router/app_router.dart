@@ -9,7 +9,7 @@ import '../../features/notifications/notifications_screen.dart';
 import '../../features/bookmarks/bookmarks_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/presentation/screens/language_selection_screen.dart';
-import '../../features/profile/profile_screen.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/post/post_detail_screen.dart';
 import '../../features/billing/plans_screen.dart';
 import '../../features/billing/subscription_screen.dart';

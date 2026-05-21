@@ -13,6 +13,7 @@ import (
 	"github.com/lib/pq"
 	authmodel "github.com/xilo-platform/xilo/internal/auth/model"
 	"github.com/xilo-platform/xilo/internal/post/model"
+	userutil "github.com/xilo-platform/xilo/internal/user/util"
 )
 
 var ErrPostNotFound = errors.New("post not found")
@@ -82,6 +83,7 @@ func (r *PostRepo) GetBySlug(ctx context.Context, slug string) (*model.Post, err
 		slog.Warn("failed to load post author", "author_id", post.AuthorID, "error", err)
 	} else {
 		slog.Info("loaded author for post", "post_id", post.ID, "author_id", post.AuthorID, "username", user.Username)
+		user.IsVerified = userutil.IsVerifiedWriter(user.Role)
 		post.Author = &user
 	}
 
@@ -212,6 +214,9 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 		args = append(args, params.Language)
 		argIdx++
 	}
+	if params.MediaOnly {
+		query += " AND p.cover_image_url IS NOT NULL AND p.cover_image_url != ''"
+	}
 	if params.Cursor != "" {
 		query += ` AND p.published_at <= (SELECT published_at FROM posts WHERE id = $` + fmt.Sprint(argIdx) + `)`
 		args = append(args, params.Cursor)
@@ -249,13 +254,14 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 			ids = append(ids, id)
 		}
 
-		query := `SELECT id, username, display_name, avatar_url, bio FROM users WHERE id = ANY($1)`
+		query := `SELECT id, username, display_name, avatar_url, bio, role FROM users WHERE id = ANY($1)`
 		var users []struct {
 			ID          string  `db:"id"`
 			Username    string  `db:"username"`
 			DisplayName string  `db:"display_name"`
 			AvatarURL   *string `db:"avatar_url"`
 			Bio         *string `db:"bio"`
+			Role        string  `db:"role"`
 		}
 		err := r.db.SelectContext(ctx, &users, query, pq.Array(ids))
 		if err == nil {
@@ -272,6 +278,8 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 				if u.Bio != nil {
 					author.Bio = *u.Bio
 				}
+				author.Role = u.Role
+				author.IsVerified = userutil.IsVerifiedWriter(u.Role)
 				authorMap[u.ID] = author
 			}
 			for _, post := range posts {
@@ -280,6 +288,10 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 				}
 			}
 		}
+	}
+
+	if err := r.EnrichPosts(ctx, posts, params.ViewerID); err != nil {
+		return nil, "", err
 	}
 
 	return posts, nextCursor, nil

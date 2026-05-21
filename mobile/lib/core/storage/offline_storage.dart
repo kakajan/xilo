@@ -5,12 +5,14 @@ class OfflineStorage {
   static const _feedBox = 'feed';
   static const _draftsBox = 'drafts';
   static const _settingsBox = 'settings';
+  static const _userBox = 'user';
 
   Future<void> init() async {
     await Hive.initFlutter();
     await Hive.openBox(_feedBox);
     await Hive.openBox(_draftsBox);
     await Hive.openBox(_settingsBox);
+    await Hive.openBox(_userBox);
   }
 
   Future<void> cachePosts(List<Map<String, dynamic>> posts) async {

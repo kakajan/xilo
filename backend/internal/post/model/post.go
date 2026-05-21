@@ -29,7 +29,11 @@ type Post struct {
 	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
 	DeletedAt    *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 
-	Author      *authmodel.User      `json:"author,omitempty" db:"-"`
+	Author           *authmodel.User   `json:"author,omitempty" db:"-"`
+	CommentCount     int               `json:"comment_count" db:"-"`
+	Reactions        map[string]int    `json:"reactions,omitempty" db:"-"`
+	ViewerReactions  []string          `json:"viewer_reactions,omitempty" db:"-"`
+	IsBookmarked     bool              `json:"is_bookmarked" db:"-"`
 }
 
 type PostVersion struct {
@@ -77,7 +81,9 @@ type PostListParams struct {
 	Limit    int
 	Category string
 	Tag      string
-	Author   string
-	Status   string
-	Language string
+	Author    string
+	Status    string
+	Language  string
+	MediaOnly bool
+	ViewerID  string
 }

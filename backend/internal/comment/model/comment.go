@@ -25,6 +25,7 @@ type Comment struct {
 	Author   *authmodel.User      `json:"author,omitempty" db:"-"`
 	Replies  []*Comment          `json:"replies,omitempty" db:"-"`
 	Reactions map[string]int     `json:"reactions,omitempty" db:"-"`
+	Post     *PostRef            `json:"post,omitempty" db:"-"`
 }
 
 type CreateCommentRequest struct {

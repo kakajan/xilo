@@ -118,5 +118,14 @@
   "zarinpal_payment": "پرداخت زرین‌پال",
   "comments_title": "نظرات",
   "send": "ارسال",
-  "write_comment_hint": "نظر خود را بنویسید..."
+  "write_comment_hint": "نظر خود را بنویسید...",
+  "tab_posts": "پست‌ها",
+  "tab_replies": "پاسخ‌ها",
+  "tab_media": "رسانه",
+  "tab_likes": "پسندیده‌ها",
+  "tab_followers": "دنبال‌کنندگان",
+  "tab_following": "دنبال‌شده‌ها",
+  "message": "پیام",
+  "share_profile": "اشتراک",
+  "message_coming_soon": "پیام‌رسانی به‌زودی فعال می‌شود"
 }

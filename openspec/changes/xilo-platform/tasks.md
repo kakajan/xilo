@@ -25,17 +25,17 @@
 
 ### 1.7 Visual Design System
 
-- [ ] **T1.7.1** Implement color palette (light/dark) with design tokens
+- [x] **T1.7.1** Implement color palette (light/dark) with design tokens
   - Acceptance: All colors match ui-ux-spec (§2) — primary, backgrounds, text, semantic, bubble colors
-- [ ] **T1.7.2** Configure typography (Inter + Vazirmatn fonts)
+- [x] **T1.7.2** Configure typography (Inter + Vazirmatn fonts)
   - Acceptance: Fonts load correctly; type scale matches spec (§3); RTL text renders properly
-- [ ] **T1.7.3** Implement spacing scale and border radius tokens
+- [x] **T1.7.3** Implement spacing scale and border radius tokens
   - Acceptance: 4px grid spacing (§4); border radius tokens (§5) available in Tailwind config
 - [ ] **T1.7.4** Configure shadow tokens
   - Acceptance: All shadow levels (§6) available as utility classes
 - [ ] **T1.7.5** Set up responsive breakpoints
   - Acceptance: Breakpoints (§7) configured; layout behavior matches spec per breakpoint
-- [ ] **T1.7.6** Implement dark mode with system preference detection
+- [x] **T1.7.6** Implement dark mode with system preference detection
   - Acceptance: Respects `prefers-color-scheme`; manual toggle persists; smooth 200ms transition
 - [ ] **T1.7.7** Create skeleton loading components
   - Acceptance: Shimmer animation (§8.9) works for avatar, post, comment, stats skeletons
@@ -53,11 +53,11 @@
   - Acceptance: Duration/easing tokens (§9.1-9.2); bubble entrance, like, thread expand animations work
 - [ ] **T1.7.14** Implement focus states and accessibility
   - Acceptance: All interactive elements have visible focus (§11.2); color contrast passes AA (§11.1)
-- [ ] **T1.7.15** Create profile header component (web + mobile)
+- [x] **T1.7.15** Create profile header component (web + mobile)
   - Acceptance: Matches X-style spec (§8.14) — avatar, stats, action buttons, tabs
-- [ ] **T1.7.16** Create post card component (web + mobile)
+- [x] **T1.7.16** Create post card component (web + mobile)
   - Acceptance: Matches X-style spec (§8.4) — header, content, media, action row
-- [ ] **T1.7.17** Create button component variants
+- [x] **T1.7.17** Create button component variants
   - Acceptance: Primary, secondary, ghost, danger (§8.1) with correct states
 - [ ] **T1.7.18** Create input field component
   - Acceptance: Default, focused, error, disabled states (§8.2); 44px touch-friendly height

@@ -134,6 +134,7 @@ func main() {
 	smsH := notifhandler.NewSMSNotificationHandler(db, smsDriver)
 
 	socialH := userhandler.NewSocialHandler(db)
+	profileH := userhandler.NewProfileHandler(db, rdb, postRepo, commentRepo)
 	analyticsDH := analyticshandler.NewDashboardHandler(db)
 	adH := analyticshandler.NewAdHandler(db)
 	donationH := analyticshandler.NewDonationHandler(db)
@@ -184,7 +185,7 @@ func main() {
 	auth.Post("/otp/verify-register", applyAuthRateLimit, authH.VerifyOTPRegister)
 
 	posts := app.Group("/api/posts")
-	posts.Get("/", applyPublicRateLimit, postH.List)
+	posts.Get("/", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.List)
 	posts.Get("/:slug", postH.GetBySlug)
 	posts.Post("/", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin"), postH.Create)
 	posts.Patch("/:id", authmw.AuthRequired(jwtMgr), postH.Update)
@@ -223,6 +224,10 @@ func main() {
 	social.Post("/posts/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleBookmark)
 	social.Delete("/posts/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleBookmark)
 	social.Get("/bookmarks", authmw.AuthRequired(jwtMgr), socialH.ListBookmarks)
+	social.Get("/users/:username", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.GetPublicProfile)
+	social.Get("/users/:username/posts", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.ListUserPosts)
+	social.Get("/users/:username/replies", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.ListUserReplies)
+	social.Get("/users/:username/likes", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.ListUserLikes)
 	social.Post("/users/:username/follow", authmw.AuthRequired(jwtMgr), socialH.ToggleFollow)
 	social.Delete("/users/:username/follow", authmw.AuthRequired(jwtMgr), socialH.ToggleFollow)
 

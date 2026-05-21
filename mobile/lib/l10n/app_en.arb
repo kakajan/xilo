@@ -118,5 +118,14 @@
   "zarinpal_payment": "Zarinpal Payment",
   "comments_title": "Comments",
   "send": "Send",
-  "write_comment_hint": "Write a comment..."
+  "write_comment_hint": "Write a comment...",
+  "tab_posts": "Posts",
+  "tab_replies": "Replies",
+  "tab_media": "Media",
+  "tab_likes": "Likes",
+  "tab_followers": "Followers",
+  "tab_following": "Following",
+  "message": "Message",
+  "share_profile": "Share",
+  "message_coming_soon": "Messaging is coming soon"
 }

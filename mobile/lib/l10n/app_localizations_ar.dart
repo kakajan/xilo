@@ -287,4 +287,31 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get write_comment_hint => 'اكتب تعليقاً...';
+
+  @override
+  String get tab_posts => 'منشورات';
+
+  @override
+  String get tab_replies => 'ردود';
+
+  @override
+  String get tab_media => 'وسائط';
+
+  @override
+  String get tab_likes => 'إعجابات';
+
+  @override
+  String get tab_followers => 'متابعون';
+
+  @override
+  String get tab_following => 'يتابع';
+
+  @override
+  String get message => 'رسالة';
+
+  @override
+  String get share_profile => 'مشاركة';
+
+  @override
+  String get message_coming_soon => 'المراسلة قريباً';
 }

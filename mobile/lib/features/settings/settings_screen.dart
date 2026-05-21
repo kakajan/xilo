@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/locales.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../api/api_providers.dart';
 import 'presentation/providers/locale_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -22,7 +23,19 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.person_outline),
             title: Text(l10n.profile),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () async {
+              try {
+                final me = await ref.read(authApiProvider).me();
+                final username = me['username'] as String?;
+                if (username != null && context.mounted) {
+                  context.push('/profile/$username');
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  context.push('/login');
+                }
+              }
+            },
           ),
           ListTile(
             leading: const Icon(Icons.payment_outlined),

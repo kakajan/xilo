@@ -78,6 +78,14 @@ func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor stri
 		return nil, "", err
 	}
 
+	flatIDs := make([]string, len(allComments))
+	for i, c := range allComments {
+		flatIDs[i] = c.ID
+	}
+	if err := r.attachReactionCounts(ctx, allComments, flatIDs); err != nil {
+		return nil, "", err
+	}
+
 	commentMap := make(map[string]*model.Comment)
 	var roots []*model.Comment
 

@@ -71,9 +71,71 @@ class SearchApi {
   }
 }
 
+final profileApiProvider = Provider<ProfileApi>((ref) {
+  return ProfileApi(ref.read(dioProvider));
+});
+
 final billingApiProvider = Provider<BillingApi>((ref) {
   return BillingApi(ref.read(dioProvider));
 });
+
+class ProfileApi {
+  final Dio _dio;
+  ProfileApi(this._dio);
+
+  Future<Map<String, dynamic>> getProfile(String username) async {
+    final res = await _dio.get('/api/users/$username');
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getUserPosts(
+    String username, {
+    String tab = 'posts',
+    String? cursor,
+  }) async {
+    final res = await _dio.get(
+      '/api/users/$username/posts',
+      queryParameters: {
+        'tab': tab,
+        if (cursor != null) 'cursor': cursor,
+        'limit': 20,
+      },
+    );
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getUserReplies(String username, {String? cursor}) async {
+    final res = await _dio.get(
+      '/api/users/$username/replies',
+      queryParameters: {
+        if (cursor != null) 'cursor': cursor,
+        'limit': 20,
+      },
+    );
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getUserLikes(String username, {String? cursor}) async {
+    final res = await _dio.get(
+      '/api/users/$username/likes',
+      queryParameters: {
+        if (cursor != null) 'cursor': cursor,
+        'limit': 20,
+      },
+    );
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> follow(String username) async {
+    final res = await _dio.post('/api/users/$username/follow');
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> unfollow(String username) async {
+    final res = await _dio.delete('/api/users/$username/follow');
+    return res.data as Map<String, dynamic>;
+  }
+}
 
 class BillingApi {
   final Dio _dio;
