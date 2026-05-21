@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:math';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+import '../network/api_host.dart';
 
 class WebSocketManager {
   WebSocketChannel? _channel;
@@ -20,7 +23,7 @@ class WebSocketManager {
 
     try {
       _channel = WebSocketChannel.connect(
-        Uri.parse('ws://127.0.0.1:8000/ws?token=$token'),
+        Uri.parse('$wsBaseUrl/ws?token=$token'),
       );
 
       _channel!.stream.listen(

@@ -638,14 +638,58 @@ abstract class AppLocalizations {
   /// **'Write a comment...'**
   String get write_comment_hint;
 
+  /// No description provided for @tab_posts.
+  ///
+  /// In en, this message translates to:
+  /// **'Posts'**
   String get tab_posts;
+
+  /// No description provided for @tab_replies.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies'**
   String get tab_replies;
+
+  /// No description provided for @tab_media.
+  ///
+  /// In en, this message translates to:
+  /// **'Media'**
   String get tab_media;
+
+  /// No description provided for @tab_likes.
+  ///
+  /// In en, this message translates to:
+  /// **'Likes'**
   String get tab_likes;
+
+  /// No description provided for @tab_followers.
+  ///
+  /// In en, this message translates to:
+  /// **'Followers'**
   String get tab_followers;
+
+  /// No description provided for @tab_following.
+  ///
+  /// In en, this message translates to:
+  /// **'Following'**
   String get tab_following;
+
+  /// No description provided for @message.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
   String get message;
+
+  /// No description provided for @share_profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Profile'**
   String get share_profile;
+
+  /// No description provided for @message_coming_soon.
+  ///
+  /// In en, this message translates to:
+  /// **'Messaging is coming soon'**
   String get message_coming_soon;
 }
 

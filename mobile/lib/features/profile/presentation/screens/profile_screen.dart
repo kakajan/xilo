@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/xilo_theme_extension.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -7,13 +8,13 @@ import '../../../../shared/widgets/comment_bubble_card.dart';
 import '../../../../shared/widgets/shimmer_list.dart';
 import '../../../../shared/widgets/states.dart';
 import '../../../../shared/widgets/xilo_post_card.dart';
-import '../../../api/api_providers.dart';
 import '../../../post/domain/entities/post.dart';
 import '../../domain/entities/user_profile.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/profile_action_bar.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_stats_row.dart';
+import '../widgets/profile_tab_bar.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, required this.username});
@@ -74,7 +75,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               surfaceTintColor: Colors.transparent,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: () => context.pop(),
               ),
               title: Text(
                 l10n.xilo,
@@ -116,21 +117,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 ],
               ),
             ),
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _TabBarDelegate(
-                TabBar(
-                  controller: _tabController,
-                  onTap: (_) => setState(() {}),
-                  tabs: [
-                    Tab(text: l10n.tab_posts),
-                    Tab(text: l10n.tab_replies),
-                    Tab(text: l10n.tab_media),
-                    Tab(text: l10n.tab_likes),
-                  ],
-                ),
-                colors.background,
-                colors.border,
+            SliverToBoxAdapter(
+              child: ProfileTabBar(
+                controller: _tabController,
+                onTap: (_) => setState(() {}),
+                tabs: [
+                  Tab(text: l10n.tab_posts),
+                  Tab(text: l10n.tab_replies),
+                  Tab(text: l10n.tab_media),
+                  Tab(text: l10n.tab_likes),
+                ],
               ),
             ),
           ],
@@ -197,7 +193,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.failed_to_load('follow')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.failed_to_load('follow')),
+          ),
         );
       }
     } finally {
@@ -206,29 +204,3 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 }
 
-class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  _TabBarDelegate(this.tabBar, this.background, this.borderColor);
-
-  final TabBar tabBar;
-  final Color background;
-  final Color borderColor;
-
-  @override
-  double get minExtent => AppSpacing.tabBarHeight;
-  @override
-  double get maxExtent => AppSpacing.tabBarHeight;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      decoration: BoxDecoration(
-        color: background,
-        border: Border(bottom: BorderSide(color: borderColor)),
-      ),
-      child: tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _TabBarDelegate oldDelegate) => false;
-}

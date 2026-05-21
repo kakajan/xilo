@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/locales.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../api/api_providers.dart';
+import '../api/api_providers.dart';
 import 'presentation/providers/locale_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {

@@ -42,15 +42,20 @@ class UserProfile {
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    final createdRaw = json['created_at'];
     return UserProfile(
-      id: json['id'] as String,
+      id: json['id']?.toString() ?? '',
       username: json['username'] as String,
       displayName: json['display_name'] as String? ?? json['username'] as String,
       avatarUrl: json['avatar_url'] as String? ?? '',
       bio: json['bio'] as String? ?? '',
       isVerified: json['is_verified'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      stats: ProfileStats.fromJson(json['stats'] as Map<String, dynamic>? ?? {}),
+      createdAt: createdRaw is String
+          ? DateTime.parse(createdRaw)
+          : DateTime.fromMillisecondsSinceEpoch(0),
+      stats: ProfileStats.fromJson(
+        (json['stats'] as Map<String, dynamic>?) ?? const {},
+      ),
       isFollowing: json['is_following'] as bool? ?? false,
     );
   }

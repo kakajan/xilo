@@ -11,7 +11,23 @@ class ProfileRemoteDataSource {
 
   Future<UserProfile> fetchProfile(String username) async {
     final data = await _api.getProfile(username);
+    _ensureUserPayload(data, username);
     return UserProfile.fromJson(data);
+  }
+
+  void _ensureUserPayload(Map<String, dynamic> data, String username) {
+    if (data.containsKey('error')) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/api/users/$username'),
+        message: data['error']?.toString() ?? 'profile unavailable',
+      );
+    }
+    if (!data.containsKey('id') || !data.containsKey('username')) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/api/users/$username'),
+        message: 'invalid profile response',
+      );
+    }
   }
 
   Future<List<Post>> fetchPosts(String username, {String tab = 'posts', String? cursor}) async {

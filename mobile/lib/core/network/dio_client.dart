@@ -1,10 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'api_host.dart';
 
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(
-    baseUrl: 'http://127.0.0.1:8888',
+    baseUrl: apiBaseUrl,
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
   ));
@@ -32,7 +33,7 @@ final authInterceptorProvider = Provider<Interceptor>((ref) {
         final refresh = await storage.read(key: 'refresh_token');
         if (refresh != null) {
           try {
-            final dio = Dio(BaseOptions(baseUrl: 'http://127.0.0.1:8888'));
+            final dio = Dio(BaseOptions(baseUrl: apiBaseUrl));
             final res = await dio.post('/api/auth/refresh', data: {
               'refresh_token': refresh,
             });

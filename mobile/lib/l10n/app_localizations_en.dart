@@ -311,7 +311,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get message => 'Message';
 
   @override
-  String get share_profile => 'Share';
+  String get share_profile => 'Share Profile';
 
   @override
   String get message_coming_soon => 'Messaging is coming soon';
