@@ -1,7 +1,7 @@
 # Spec: Comment System
 
 ## Overview
-Hybrid Twitter + Telegram-style comment system with nested threading (max depth 4), emoji reactions, @mentions, real-time updates via WebSocket, and markdown support.
+Hybrid Twitter + Telegram-style comment system with nested threading (max depth 4), emoji reactions, @mentions, real-time updates via WebSocket, and markdown support. Comments display as Telegram-style chat bubbles with smooth animations.
 
 ---
 
@@ -79,6 +79,44 @@ Readers can sort comments by:
 - **Oldest**
 - **Most reacted**
 - **Most replied** (hot)
+
+### REQ-CMT-009: Telegram-Style Bubble Design
+
+**Given** a comment rendered on screen  
+**When** displayed  
+**Then** it appears as a chat bubble with:
+
+**Visual properties:**
+- Bubble background: `#E3F2FD` (own) / `#F5F5F5` (others) in light mode
+- Bubble border-radius: 14-16px
+- Padding: 12-14px
+- Author avatar (32px mobile, 40px desktop) beside bubble
+- Username + timestamp above bubble
+- Engagement bar (likes, replies, share) below bubble
+
+**Thread visualization:**
+- Indentation: 24px per nesting level
+- Thread lines connecting parent-child
+- Max visible depth: 3 levels
+- "View N more replies" for collapsed threads
+
+**Animations:**
+- Entrance: `opacity 0→1, translateY 16px→0, 250ms`
+- Like: heart scale `1→1.25→1, 300ms`
+- Thread expand: height transition `200-250ms`
+
+### REQ-CMT-010: Discover Feed Eligibility
+
+**Given** a comment  
+**When** it meets the Discover criteria (REQ-DIS-004)  
+**Then** it becomes eligible for the Discover Feed.
+
+**Discover card format:**
+- Comment text (truncated to 280 chars)
+- Author info
+- Engagement counts
+- Link to parent post
+- Clicking navigates to full thread
 
 ---
 

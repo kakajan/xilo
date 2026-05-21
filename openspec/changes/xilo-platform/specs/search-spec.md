@@ -64,13 +64,26 @@ Suggestions include: post titles, author names, popular tags.
 
 ## Meilisearch Index Schema
 
+### Posts Index
 ```json
 {
   "uid": "posts",
   "primaryKey": "id",
   "searchableAttributes": ["title", "excerpt", "content", "tags", "author_name"],
-  "filterableAttributes": ["category", "tags", "author_id", "published_at", "reading_time"],
+  "filterableAttributes": ["category", "tags", "author_id", "published_at", "reading_time", "_language"],
   "sortableAttributes": ["published_at", "reactions_count", "comments_count"],
   "rankingRules": ["words", "typo", "proximity", "attribute", "sort", "exactness"]
+}
+```
+
+### Comments Index (for Discover search)
+```json
+{
+  "uid": "comments",
+  "primaryKey": "id",
+  "searchableAttributes": ["content", "author_name"],
+  "filterableAttributes": ["post_id", "author_id", "created_at", "likes_count", "topic", "_language"],
+  "sortableAttributes": ["created_at", "likes_count", "replies_count", "discover_score"],
+  "rankingRules": ["discover_score", "words", "typo", "proximity", "sort"]
 }
 ```

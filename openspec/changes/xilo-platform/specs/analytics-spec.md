@@ -30,6 +30,10 @@ The following custom events are tracked:
 | `search_performed` | User executes a search | query, result_count |
 | `subscription_started` | User subscribes | plan, amount |
 | `subscription_cancelled` | User cancels | plan, reason |
+| `chat_opened` | User opens a chat conversation | chat_id, chat_type |
+| `message_sent` | User sends a chat message | chat_id, message_type, has_media |
+| `discover_viewed` | User views Discover feed | topic_filter, scroll_depth |
+| `discover_comment_clicked` | User clicks a Discover card | comment_id, post_id |
 
 ### REQ-ALY-003: Author Dashboard
 

@@ -3,55 +3,55 @@
 ## 1. High-Level Architecture
 
 ```
-                        ┌──────────────────────┐
-                        │    CDN (Cloudflare)   │
-                        └──────────┬───────────┘
-                                   │
-                        ┌──────────▼───────────┐
-                        │  Reverse Proxy        │
-                        │  (Traefik / NGINX)    │
-                        └──────────┬───────────┘
-                                   │
-                    ┌──────────────▼──────────────┐
-                    │       API Gateway (Go)       │
-                    │   Routing, Auth, Rate Limit  │
-                    └──────────────┬──────────────┘
-                                   │
-          ┌────────────────────────┼────────────────────────┐
-          │                        │                        │
-  ┌───────▼───────┐       ┌───────▼───────┐       ┌───────▼───────┐
-  │  Auth Service  │       │  Post Service  │       │Comment Service│
-  │   (Go/Fiber)   │       │   (Go/Fiber)   │       │  (Go/Fiber)   │
-  └───────┬───────┘       └───────┬───────┘       └───────┬───────┘
-          │                        │                        │
-  ┌───────▼───────┐       ┌───────▼───────┐       ┌───────▼───────┐
-  │  User Service  │       │ Search Service │       │  Media Service │
-  │   (Go/Fiber)   │       │   (Go/Fiber)   │       │  (Go/Fiber)   │
-  └───────┬───────┘       └───────┬───────┘       └───────┬───────┘
-          │                        │                        │
-  ┌───────▼───────┐       ┌───────▼───────┐
-  │  Notif. Svc   │       │ Analytics Svc  │
-  │   (Go/Fiber)   │       │  (Go/Fiber)   │
-  └───────┬───────┘       └───────┬───────┘
-          │                        │
-          └───────────┬────────────┘
-                      │
-              ┌───────▼───────┐
-              │     NATS       │
-              │  (Event Bus)   │
-              └───────┬───────┘
-                      │
-      ┌───────────────┼───────────────┐
-      │               │               │
-┌─────▼─────┐  ┌──────▼──────┐  ┌────▼─────┐
-│ PostgreSQL │  │    Redis     │  │Meilisearch│
-│  (16+)    │  │  (Cache/Pub) │  │ (Search)  │
-└───────────┘  └─────────────┘  └──────────┘
-      │
-┌─────▼─────┐
-│   MinIO    │
-│ (Storage)  │
-└───────────┘
+                         ┌──────────────────────┐
+                         │    CDN (Cloudflare)   │
+                         └──────────┬───────────┘
+                                    │
+                         ┌──────────▼───────────┐
+                         │  Reverse Proxy        │
+                         │  (Traefik / NGINX)    │
+                         └──────────┬───────────┘
+                                    │
+                     ┌──────────────▼──────────────┐
+                     │       API Gateway (Go)       │
+                     │   Routing, Auth, Rate Limit  │
+                     └──────────────┬──────────────┘
+                                    │
+           ┌────────────────────────┼────────────────────────┐
+           │                        │                        │
+   ┌───────▼───────┐       ┌───────▼───────┐       ┌───────▼───────┐
+   │  Auth Service  │       │  Post Service  │       │Comment Service│
+   │   (Go/Fiber)   │       │   (Go/Fiber)   │       │  (Go/Fiber)   │
+   └───────┬───────┘       └───────┬───────┘       └───────┬───────┘
+           │                        │                        │
+   ┌───────▼───────┐       ┌───────▼───────┐       ┌───────▼───────┐
+   │  User Service  │       │ Search Service │       │  Media Service │
+   │   (Go/Fiber)   │       │   (Go/Fiber)   │       │  (Go/Fiber)   │
+   └───────┬───────┘       └───────┬───────┘       └───────┬───────┘
+           │                        │                        │
+   ┌───────▼───────┐       ┌───────▼───────┐       ┌───────▼───────┐
+   │  Notif. Svc   │       │ Analytics Svc  │       │  Chat Service  │
+   │   (Go/Fiber)   │       │  (Go/Fiber)   │       │  (Go/Fiber)   │
+   └───────┬───────┘       └───────┬───────┘       └───────┬───────┘
+           │                        │                        │
+           └───────────┬────────────┘                        │
+                       │                                     │
+               ┌───────▼───────┐                             │
+               │     NATS       │                             │
+               │  (Event Bus)   │                             │
+               └───────┬───────┘                             │
+                       │                                     │
+       ┌───────────────┼───────────────┐                     │
+       │               │               │                     │
+ ┌─────▼─────┐  ┌──────▼──────┐  ┌────▼─────┐               │
+ │ PostgreSQL │  │    Redis     │  │Meilisearch│               │
+ │  (16+)    │  │  (Cache/Pub) │  │ (Search)  │               │
+ └───────────┘  └─────────────┘  └───────────┘               │
+       │                                                      │
+ ┌─────▼─────┐                                                │
+ │   MinIO    │                                                │
+ │ (Storage)  │                                                │
+ └───────────┘                                                │
 ```
 
 ## 2. Database Schema (PostgreSQL)
@@ -304,14 +304,16 @@ CREATE INDEX idx_analytics_user ON analytics_events(user_id, created_at DESC);
 | `post.published` | Post Service | Search (index), Notification (followers), Analytics | `{ post_id, author_id, title, tags, category }` |
 | `post.updated` | Post Service | Search (reindex), Analytics | `{ post_id, author_id }` |
 | `post.deleted` | Post Service | Search (deindex), Analytics | `{ post_id }` |
-| `comment.created` | Comment Service | Notification (@mentions, reply), Analytics, WebSocket broadcast | `{ comment_id, post_id, author_id, parent_id }` |
-| `comment.deleted` | Comment Service | WebSocket broadcast | `{ comment_id, post_id }` |
+| `comment.created` | Comment Service | Notification (@mentions, reply), Analytics, WebSocket broadcast, Discover (scoring) | `{ comment_id, post_id, author_id, parent_id }` |
+| `comment.deleted` | Comment Service | WebSocket broadcast, Discover (remove) | `{ comment_id, post_id }` |
 | `reaction.added` | Reaction handler | WebSocket broadcast, Analytics | `{ target_type, target_id, user_id, reaction }` |
 | `follow.created` | User Service | Notification, Analytics | `{ follower_id, following_id }` |
 | `notification.created` | Notification Service | WebSocket/SSE delivery | `{ user_id, notification }` |
 | `analytics.event` | Analytics Service | Analytics Service (ingest) | `{ event_type, user_id, properties }` |
 | `subscription.created` | Billing Service | Notification, Analytics | `{ user_id, plan_id }` |
 | `search.reindex` | Search Service | Search Service (internal) | `{ post_id }` |
+| `message.sent` | Chat Service | WebSocket broadcast, Notification (if muted) | `{ message_id, chat_id, sender_id }` |
+| `chat.created` | Chat Service | Notification (invited members) | `{ chat_id, creator_id, member_ids }` |
 
 ## 4. API Gateway Design
 
@@ -342,6 +344,7 @@ Services communicate internally via:
 | Search Service | 8060, 8061 |
 | Media Service | 8070, 8071 |
 | Analytics Service | 8080, 8081 |
+| Chat Service | 8090, 8091 |
 
 ## 5. Web Frontend Architecture
 
@@ -616,7 +619,403 @@ Layer 5: PostgreSQL (source of truth)
   - No caching; use appropriate indexes
 ```
 
-## 10. Directory Structure (Repository)
+## 11. Discover Feed Architecture
+
+The Discover Feed surfaces high-quality comments as standalone tweet-like cards, enabling content discovery beyond the post context.
+
+### 11.1 Content Sources
+
+```typescript
+enum DiscoverSource {
+  TRENDING = 'trending',       // High-engagement recent comments
+  RECOMMENDED = 'recommended', // Personalized based on user history
+  TOPICS = 'topics'            // Topic/category-based filtering
+}
+```
+
+### 11.2 Discover Card Layout
+
+```
+┌──────────────────────────────────┐
+│ 👤 @alice                        │
+│ ┌────────────────────────────┐   │
+│ │ AI will replace most       │   │
+│ │ junior dev jobs in 5 yrs.  │   │
+│ └────────────────────────────┘   │
+│ ❤️ 120   💬 34                   │
+│                                  │
+│ ↳ on post: "Future of AI devs"   │
+│ by @john                         │
+└──────────────────────────────────┘
+```
+
+### 11.3 Discover Scoring Algorithm
+
+```
+DiscoverScore = w₁R + w₂E + w₃Q + w₄P + w₅A
+
+Where:
+  R = Recency (exponential decay, λ=0.08)
+  E = Engagement rate (likes + 2×replies + 3×shares) / (views + 1)
+  Q = Quality score (text length, media presence, author reputation)
+  P = Personalization (topic match, author affinity)
+  A = Account age factor (anti-spam)
+
+Weights:
+  w₁ = 0.30 (recency)
+  w₂ = 0.30 (engagement)
+  w₃ = 0.15 (quality)
+  w₄ = 0.15 (personalization)
+  w₅ = 0.10 (account age)
+```
+
+### 11.4 Discover Pipeline
+
+```
+Comments DB
+   │
+   ▼
+Candidate Generation (recent + trending + recommended)
+   │
+   ▼
+Filtering (spam / low engagement / min likes threshold)
+   │
+   ▼
+Feature Extraction (recency, engagement, quality, personalization)
+   │
+   ▼
+Score Calculation (DiscoverScore)
+   │
+   ▼
+Ranking + Diversity (max 2 consecutive from same author)
+   │
+   ▼
+Redis Cache (precomputed every 2-5 minutes)
+   │
+   ▼
+API Response (cursor-based pagination)
+```
+
+### 11.5 Anti-Spam Controls
+
+- Minimum engagement threshold (X likes or replies) to enter Discover
+- Account age factor in scoring
+- Rate limiting on comment creation
+- Duplicate text detection
+- Shadow ban for spam accounts
+
+---
+
+## 12. Chat & Messaging Architecture
+
+Real-time private messaging between users with Telegram-like UX.
+
+### 12.1 Database Schema
+
+```sql
+-- Chats
+CREATE TABLE chats (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type            VARCHAR(10) NOT NULL DEFAULT 'direct', -- 'direct' or 'group'
+    name            VARCHAR(100),                           -- group name only
+    avatar_url      VARCHAR(500),
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW(),
+    last_message_at TIMESTAMPTZ
+);
+
+-- Chat Members
+CREATE TABLE chat_members (
+    chat_id         UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role            VARCHAR(10) DEFAULT 'member', -- 'admin', 'member'
+    joined_at       TIMESTAMPTZ DEFAULT NOW(),
+    last_read_at    TIMESTAMPTZ,
+    is_muted        BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY(chat_id, user_id)
+);
+
+-- Messages
+CREATE TABLE messages (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chat_id         UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    sender_id       UUID NOT NULL REFERENCES users(id),
+    content         TEXT,
+    media_url       VARCHAR(500),
+    reply_to_id     UUID REFERENCES messages(id),
+    is_edited       BOOLEAN DEFAULT FALSE,
+    is_deleted      BOOLEAN DEFAULT FALSE,
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at      TIMESTAMPTZ
+);
+
+CREATE INDEX idx_messages_chat ON messages(chat_id, created_at DESC);
+CREATE INDEX idx_messages_sender ON messages(sender_id);
+
+-- Message Read Status
+CREATE TABLE message_reads (
+    message_id      UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    read_at         TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY(message_id, user_id)
+);
+
+-- Message Reactions
+CREATE TABLE message_reactions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id      UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id),
+    reaction        VARCHAR(10) NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(message_id, user_id, reaction)
+);
+```
+
+### 12.2 WebSocket Events
+
+| Event | Direction | Payload |
+|-------|-----------|---------|
+| `chat.join` | Client→Server | `{ chatId }` |
+| `chat.leave` | Client→Server | `{ chatId }` |
+| `message.send` | Client→Server | `{ chatId, content, mediaUrl?, replyToId? }` |
+| `message.receive` | Server→Client | `{ message }` |
+| `message.edit` | Client→Server | `{ messageId, content }` |
+| `message.delete` | Client→Server | `{ messageId }` |
+| `message.read` | Client→Server | `{ messageId }` |
+| `message.reaction` | Client→Server | `{ messageId, reaction }` |
+| `user.typing` | Client→Server | `{ chatId }` |
+| `user.typing` | Server→Client | `{ chatId, userId }` |
+| `user.online` | Server→Client | `{ userId }` |
+| `user.offline` | Server→Client | `{ userId }` |
+
+### 12.3 API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/chats` | Reader+ | List user's chats |
+| POST | `/api/chats` | Reader+ | Create new chat |
+| GET | `/api/chats/:id` | Member | Chat details |
+| DELETE | `/api/chats/:id` | Member | Leave/delete chat |
+| GET | `/api/chats/:id/messages` | Member | Message history |
+| POST | `/api/chats/:id/messages` | Member | Send message |
+| PATCH | `/api/messages/:id` | Sender | Edit message |
+| DELETE | `/api/messages/:id` | Sender | Delete message |
+| POST | `/api/messages/:id/read` | Member | Mark as read |
+| POST | `/api/messages/:id/reactions` | Member | Toggle reaction |
+
+---
+
+## 13. Home Feed Algorithm
+
+### 13.1 Content Sources
+
+| Source | Weight | Description |
+|--------|--------|-------------|
+| Following | 60% | Posts from followed verified writers |
+| Recommended | 25% | Posts from similar authors/topics |
+| Trending | 15% | High-engagement posts in last 24h |
+
+### 13.2 Scoring Formula
+
+```
+FeedScore = w₁R + w₂E + w₃A + w₄P + w₅F
+
+Where:
+  R = Recency (e^(-λt), λ=0.08, t=hours since publish)
+  E = Engagement rate (likes + 2×comments + 3×shares) / (views + 1)
+  A = Author authority (0.4×log(followers) + 0.4×avg_engagement + 0.2×verified_bonus)
+  P = Personalization (+0.5 if liked author before, +0.3 if topic match, +0.2 if similar cluster)
+  F = Following boost (1 if following author, 0 otherwise)
+
+Weights:
+  w₁ = 0.35 (recency)
+  w₂ = 0.25 (engagement)
+  w₃ = 0.15 (author authority)
+  w₄ = 0.15 (personalization)
+  w₅ = 0.10 (following boost)
+```
+
+### 13.3 Fanout Strategy
+
+Hybrid approach:
+- **Small accounts** (< 10K followers): fanout-on-write — push to followers' Redis feed on publish
+- **Large accounts** (≥ 10K followers): fanout-on-read — fetch from author's post list at request time
+
+```
+Redis keys:
+  feed:user:{userId}          — precomputed feed (small accounts)
+  feed:author:{authorId}      — author's posts (large accounts)
+  feed:trending               — trending posts (24h window)
+```
+
+### 13.4 Deduplication & Diversity
+
+- Max 2 consecutive posts from same author
+- Remove already-seen posts
+- Respect muted authors/topics
+- Cursor-based pagination: `GET /api/feed/home?cursor=post_8921&limit=20`
+
+---
+
+## 14. Visual Design System
+
+Based on X/Twitter + Telegram hybrid aesthetic.
+
+### 14.1 Color Palette
+
+```typescript
+// Light Mode
+const colors = {
+  primary: '#1D9BF0',         // X blue
+  background: '#FFFFFF',
+  surface: '#F7F9FA',
+  textPrimary: '#0F1419',
+  textSecondary: '#536471',
+  border: '#EFF3F4',
+  error: '#F4212E',
+  success: '#00BA7C',
+  
+  // Comment bubbles
+  bubbleOwn: '#E3F2FD',       // Light blue (own comments)
+  bubbleOthers: '#F5F5F5',    // Light gray (others)
+  bubbleHighlighted: '#FFF9C4' // Yellow (mentioned)
+};
+
+// Dark Mode
+const colorsDark = {
+  primary: '#1D9BF0',
+  background: '#15202B',
+  surface: '#192734',
+  textPrimary: '#E7E9EA',
+  textSecondary: '#71767B',
+  border: '#38444D',
+  error: '#F4212E',
+  success: '#00BA7C',
+  
+  bubbleOwn: '#1E3A5F',
+  bubbleOthers: '#2C2C2E',
+  bubbleHighlighted: '#3E3A2F'
+};
+```
+
+### 14.2 Typography
+
+| Element | Size | Weight | Font |
+|---------|------|--------|------|
+| H1 | 24px | 700 | Inter / Vazirmatn |
+| H2 | 20px | 700 | Inter / Vazirmatn |
+| Body | 15px | 400 | Inter / Vazirmatn |
+| Caption | 13px | 400 | Inter / Vazirmatn |
+| Small | 11px | 400 | Inter / Vazirmatn |
+
+### 14.3 Spacing Scale
+
+| Token | Value |
+|-------|-------|
+| xs | 4px |
+| sm | 8px |
+| md | 16px |
+| lg | 24px |
+| xl | 32px |
+| 2xl | 48px |
+
+### 14.4 Border Radius
+
+| Element | Radius |
+|---------|--------|
+| Buttons/Inputs | 4px |
+| Cards/Modals | 8px |
+| Images/Media | 12-16px |
+| Avatars/Pills | 50% (full) |
+| Comment Bubbles | 14-16px |
+
+### 14.5 Shadows
+
+| Level | Value |
+|-------|-------|
+| Small | `0 1px 3px rgba(0,0,0,0.12)` |
+| Medium | `0 4px 6px rgba(0,0,0,0.1)` |
+| Large | `0 10px 20px rgba(0,0,0,0.15)` |
+
+### 14.6 Animations
+
+| Type | Duration | Easing |
+|------|----------|--------|
+| Fast | 200ms | cubic-bezier(0.4, 0, 0.2, 1) |
+| Normal | 300ms | cubic-bezier(0.4, 0, 0.2, 1) |
+| Slow | 500ms | cubic-bezier(0.4, 0, 0.2, 1) |
+
+### 14.7 Profile Header Design
+
+```
+┌─────────────────────────────────────┐
+│  ← [Logo] Xilo                  ⋯  │
+│                                     │
+│         ┌─────────────┐             │
+│         │   Avatar    │             │
+│         │   (120px)   │             │
+│         └─────────────┘             │
+│                                     │
+│      Alex Morgan ✓                  │
+│      @alexmorgan                    │
+│                                     │
+│  Building the future at the         │
+│  intersection of technology…      │
+│                                     │
+│  1,248      256K       1,023        │
+│  Posts    Followers   Following     │
+│                                     │
+│ [Follow] [Message] [Share Profile]  │
+│                                     │
+│ Posts | Replies | Media | Likes     │
+└─────────────────────────────────────┘
+```
+
+### 14.8 Post Card Design
+
+```
+┌─────────────────────────────────────┐
+│ 👤 Alex Morgan ✓  @alexmorgan · 2h │
+│                                 ⋯   │
+│ The best ideas come from            │
+│ curiosity. Keep questioning,        │
+│ keep building. 🚀                   │
+│                                     │
+│ ┌─────────────────────────────┐     │
+│ │     [Image: Mountain]       │     │
+│ │                             │     │
+│ └─────────────────────────────┘     │
+│                                     │
+│ 💬 128  🔁 256  ❤️ 1.8K  ↗  📊     │
+└─────────────────────────────────────┘
+```
+
+### 14.9 Comment Bubble Design (Telegram-Style)
+
+```
+┌─────────────────────────────────────┐
+│ 👤 Sophia Lee ✓  @sophialee · 1h   │
+│                                     │
+│ ┌─────────────────────────────┐     │
+│ │ Absolutely! Curiosity is    │     │
+│ │ the fuel.                   │     │
+│ └─────────────────────────────┘     │
+│                                     │
+│ 🔥 12   💯 3            9:15 AM     │
+└─────────────────────────────────────┘
+```
+
+Thread visualization:
+- Max depth: 3 levels (replies beyond depth 3 attach to root)
+- Indentation: 24px per level
+- Thread lines for parent-child relationship
+- Collapse/expand for long threads
+- "View N more replies" for threads > 3 replies
+
+---
+
+## 15. Directory Structure (Repository)
 
 ```
 xilo/
@@ -630,7 +1029,8 @@ xilo/
 │   │   ├── notification-service/main.go
 │   │   ├── search-service/main.go
 │   │   ├── media-service/main.go
-│   │   └── analytics-service/main.go
+│   │   ├── analytics-service/main.go
+│   │   └── chat-service/main.go
 │   ├── internal/
 │   │   ├── auth/
 │   │   ├── user/
@@ -639,7 +1039,8 @@ xilo/
 │   │   ├── notification/
 │   │   ├── search/
 │   │   ├── media/
-│   │   └── analytics/
+│   │   ├── analytics/
+│   │   └── chat/
 │   ├── pkg/
 │   │   ├── jwt/
 │   │   ├── hash/

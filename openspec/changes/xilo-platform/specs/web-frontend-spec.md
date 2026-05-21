@@ -11,6 +11,7 @@ Next.js 15+ App Router web application with SSR/SSG/ISR, Tailwind CSS 4, shadcn/
 
 ```
 /                          Homepage (feed of latest posts)
+/discover                  Discover feed (comments as tweets)
 /search                    Search page
 /category/[slug]           Posts by category
 /tag/[slug]                Posts by tag
@@ -26,6 +27,8 @@ Next.js 15+ App Router web application with SSR/SSG/ISR, Tailwind CSS 4, shadcn/
 /notifications              Notification center
 /bookmarks                  Bookmarked posts
 /settings                   Profile settings
+/chat                      Chat list
+/chat/[id]                 Chat conversation
 /about                      About page
 /login                      Login page
 /register                   Register page
@@ -34,10 +37,10 @@ Next.js 15+ App Router web application with SSR/SSG/ISR, Tailwind CSS 4, shadcn/
 ### REQ-WEB-002: Layout Shell
 
 Global layout includes:
-- **Top navbar**: Logo, search icon, write button, notifications bell, user avatar dropdown
+- **Top navbar**: Logo, search icon, write button, notifications bell, chat icon, user avatar dropdown
 - **Sidebar** (desktop): Categories, popular tags, trending posts
 - **Footer**: Links, social, copyright
-- **Mobile bottom nav**: Home, Search, Write, Notifications, Profile
+- **Mobile bottom nav**: Home, Discover, Write, Chat, Notifications, Profile
 
 ### REQ-WEB-003: Homepage Feed
 
@@ -58,10 +61,36 @@ Global layout includes:
 - Title, author info, published date, reading time
 - Rich content rendered from Tiptap JSON
 - Reaction bar (sticky on mobile)
-- Comment section at bottom
+- Comment section at bottom (Telegram-style bubbles)
 - Share buttons (copy link, Twitter, Telegram, WhatsApp)
 - Author card at bottom
 - Related posts (3-5)
+
+### REQ-WEB-004B: Discover Page
+
+**Given** a user on the Discover page  
+**When** the page loads  
+**Then** they see:
+- Infinite-scroll feed of comment cards
+- Each card: author avatar+name, comment text, engagement counts, link to parent post
+- Topic filter bar at top
+- Skeleton loading placeholders during fetch
+- Empty state with "No comments yet" message
+
+### REQ-WEB-004C: Chat Page
+
+**Given** a user on the Chat page  
+**When** the page loads  
+**Then** they see:
+- **Chat list view**: List of conversations sorted by last message time
+  - Each item: avatar, name, last message preview, unread badge, timestamp
+  - Search bar to filter chats
+- **Chat conversation view**: Telegram-style message bubbles
+  - Own messages: blue bubble, right-aligned
+  - Others' messages: gray bubble, left-aligned
+  - Message input bar with emoji picker, file attachment, send button
+  - Typing indicator, online status
+  - Message reactions displayed below bubbles
 
 ### REQ-WEB-005: Rich Text Editor (Tiptap)
 
@@ -137,9 +166,12 @@ All data-dependent components show:
 
 Pages:
   HomePage → <Hero /> <PostFeed /> <TrendingSidebar />
+  DiscoverPage → <TopicFilterBar /> <DiscoverFeed /> <DiscoverCard />
   PostPage → <PostHeader /> <PostContent /> <ReactionBar /> <CommentSection /> <AuthorCard /> <RelatedPosts />
   EditorPage → <EditorNav /> <TiptapEditor /> <MetadataSidebar /> <PublishDialog />
   SearchPage → <SearchInput /> <FilterBar /> <SearchResults />
+  ChatListPage → <ChatSearch /> <ChatList /> <ChatListItem />
+  ChatPage → <ChatHeader /> <MessageList /> <MessageBubble /> <MessageComposer />
   Dashboard → <StatsCards /> <PostList /> <Charts />
 ```
 
@@ -151,4 +183,38 @@ useAuthStore        — user, tokens, login/logout actions
 useUIStore          — sidebar open, mobile nav, theme
 useEditorStore      — draft content, metadata, auto-save
 useNotificationStore — unread count, notification list
+useChatStore        — active chat, typing users, online status
 ```
+
+## Visual Design Tokens
+
+### Color Palette (Light Mode)
+```typescript
+const colors = {
+  primary: '#1D9BF0',
+  background: '#FFFFFF',
+  surface: '#F7F9FA',
+  textPrimary: '#0F1419',
+  textSecondary: '#536471',
+  border: '#EFF3F4',
+  bubbleOwn: '#E3F2FD',
+  bubbleOthers: '#F5F5F5'
+};
+```
+
+### Typography
+- Font family: Inter (English), Vazirmatn (Persian)
+- Body: 15px / 400
+- Heading 1: 24px / 700
+- Heading 2: 20px / 700
+- Caption: 13px / 400
+
+### Spacing Scale
+- xs: 4px, sm: 8px, md: 16px, lg: 24px, xl: 32px, 2xl: 48px
+
+### Border Radius
+- Buttons/Inputs: 4px
+- Cards: 8px
+- Images/Media: 12-16px
+- Comment Bubbles: 14-16px
+- Avatars: 50%

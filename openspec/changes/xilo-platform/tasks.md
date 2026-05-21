@@ -23,6 +23,45 @@
 - [x] **T1.6.5** Create mobile search screen with autocomplete dropdown
   - Acceptance: Matches web search behavior
 
+### 1.7 Visual Design System
+
+- [ ] **T1.7.1** Implement color palette (light/dark) with design tokens
+  - Acceptance: All colors match ui-ux-spec (§2) — primary, backgrounds, text, semantic, bubble colors
+- [ ] **T1.7.2** Configure typography (Inter + Vazirmatn fonts)
+  - Acceptance: Fonts load correctly; type scale matches spec (§3); RTL text renders properly
+- [ ] **T1.7.3** Implement spacing scale and border radius tokens
+  - Acceptance: 4px grid spacing (§4); border radius tokens (§5) available in Tailwind config
+- [ ] **T1.7.4** Configure shadow tokens
+  - Acceptance: All shadow levels (§6) available as utility classes
+- [ ] **T1.7.5** Set up responsive breakpoints
+  - Acceptance: Breakpoints (§7) configured; layout behavior matches spec per breakpoint
+- [ ] **T1.7.6** Implement dark mode with system preference detection
+  - Acceptance: Respects `prefers-color-scheme`; manual toggle persists; smooth 200ms transition
+- [ ] **T1.7.7** Create skeleton loading components
+  - Acceptance: Shimmer animation (§8.9) works for avatar, post, comment, stats skeletons
+- [ ] **T1.7.8** Create empty state components
+  - Acceptance: Illustration + title + description + CTA pattern (§8.10) reusable
+- [ ] **T1.7.9** Create error state components
+  - Acceptance: Error icon + message + retry pattern (§8.11) reusable
+- [ ] **T1.7.10** Create toast/snackbar component
+  - Acceptance: 4 types (success, error, warning, info); correct position per device (§8.12)
+- [ ] **T1.7.11** Create modal/dialog component
+  - Acceptance: Bottom sheet (mobile), center modal (desktop); correct animations (§8.13)
+- [ ] **T1.7.12** Create dropdown/popover component
+  - Acceptance: Fade + scale animation; keyboard accessible (§8.14)
+- [ ] **T1.7.13** Implement animation system (CSS + Framer Motion)
+  - Acceptance: Duration/easing tokens (§9.1-9.2); bubble entrance, like, thread expand animations work
+- [ ] **T1.7.14** Implement focus states and accessibility
+  - Acceptance: All interactive elements have visible focus (§11.2); color contrast passes AA (§11.1)
+- [ ] **T1.7.15** Create profile header component (web + mobile)
+  - Acceptance: Matches X-style spec (§8.14) — avatar, stats, action buttons, tabs
+- [ ] **T1.7.16** Create post card component (web + mobile)
+  - Acceptance: Matches X-style spec (§8.4) — header, content, media, action row
+- [ ] **T1.7.17** Create button component variants
+  - Acceptance: Primary, secondary, ghost, danger (§8.1) with correct states
+- [ ] **T1.7.18** Create input field component
+  - Acceptance: Default, focused, error, disabled states (§8.2); 44px touch-friendly height
+
 ---
 
 ## Phase 2 — Real-time & Engagement (Weeks 9–14)
@@ -44,6 +83,16 @@
   - Acceptance: New comment appears on all connected clients within 500ms
 - [x] **T2.2.2** Update comment section to consume WebSocket events
   - Acceptance: Comments update live without page refresh; optimistic insertion
+- [ ] **T2.2.3** Implement Telegram-style comment bubble UI (web)
+  - Acceptance: Bubbles with correct colors (own: #E8F5FE, others: #F7F9FA), 14-16px radius, entrance animation (§8.5)
+- [ ] **T2.2.4** Implement Telegram-style comment bubble UI (mobile)
+  - Acceptance: Matches web; swipe to reply/like; long-press menu (§10.1)
+- [ ] **T2.2.5** Implement thread visualization with indentation and collapse
+  - Acceptance: 24px indent per level; "View N more replies" for collapsed threads; max 3 visible levels
+- [ ] **T2.2.6** Implement comment composer with mentions/hashtags autocomplete
+  - Acceptance: @username and #hashtag suggestions while typing; image attachment; draft autosave
+- [ ] **T2.2.7** Implement comment sorting UI (newest, oldest, most reacted, most replied)
+  - Acceptance: Sort dropdown works; selection persists per session
 
 ### 2.3 Reactions
 
@@ -91,6 +140,52 @@
 - [x] **T2.6.3** Implement mobile notification with local push when in-app
   - Acceptance: In-app notification banner when new notification arrives
 
+### 2.7 Discover Feed
+
+- [ ] **T2.7.1** Implement Discover scoring algorithm backend service
+  - Acceptance: Comments scored correctly with recency, engagement, quality, personalization, account age
+- [ ] **T2.7.2** Implement Discover candidate generation pipeline
+  - Acceptance: Candidates sourced from trending, recent, recommended with correct ratios
+- [ ] **T2.7.3** Implement anti-spam filtering for Discover
+  - Acceptance: Spam comments excluded; account age, duplicate detection, min engagement enforced
+- [ ] **T2.7.4** Implement Redis precomputed caching for Discover
+  - Acceptance: Trending comments cached every 2-5 minutes; API reads from Redis
+- [ ] **T2.7.5** Create Discover page in web (comment cards, topic filters, infinite scroll)
+  - Acceptance: Page renders comment cards per spec (§8.4); topic filter works; pagination loads more
+- [ ] **T2.7.6** Create Discover screen in mobile
+  - Acceptance: Matches web behavior; pull-to-refresh; topic filter chips; empty state
+- [ ] **T2.7.7** Implement Discover API endpoints
+  - Acceptance: GET /api/discover, /discover/trending, /discover/recommended, /discover/topics, /discover/topic/:slug
+- [ ] **T2.7.8** Implement Discover card click → thread navigation
+  - Acceptance: Clicking card navigates to full comment thread in post context
+
+### 2.8 Chat & Messaging
+
+- [ ] **T2.8.1** Implement chat database schema (chats, chat_members, messages, message_reads, message_reactions)
+  - Acceptance: Migrations run; foreign keys and indexes correct
+- [ ] **T2.8.2** Implement chat CRUD endpoints
+  - Acceptance: Create, list, get, update, delete chats work correctly
+- [ ] **T2.8.3** Implement message CRUD endpoints
+  - Acceptance: Send, edit, delete, mark-as-read messages work
+- [ ] **T2.8.4** Implement WebSocket events for chat (send, receive, edit, delete, typing, presence)
+  - Acceptance: Real-time message delivery; typing indicators; online status
+- [ ] **T2.8.5** Create chat list page in web
+  - Acceptance: Shows conversations sorted by last_message_at; unread badges; search; matches spec (§8.7)
+- [ ] **T2.8.6** Create chat conversation page in web (Telegram-style bubbles)
+  - Acceptance: Messages display as bubbles per spec (§8.6); composer works; reactions visible
+- [ ] **T2.8.7** Create chat list screen in mobile
+  - Acceptance: Matches web; swipe actions (archive, delete); unread badges
+- [ ] **T2.8.8** Create chat conversation screen in mobile
+  - Acceptance: Telegram-style bubbles; swipe to reply/like; long-press menu; matches spec (§8.6, §10.1)
+- [ ] **T2.8.9** Implement read receipts and typing indicators
+  - Acceptance: ✓/✓✓/blue indicators work; typing shows/hides correctly
+- [ ] **T2.8.10** Implement group chat functionality
+  - Acceptance: Create group, add/remove members, admin controls
+- [ ] **T2.8.11** Implement message composer with emoji picker and attachments
+  - Acceptance: Text input, emoji picker, file attachment, send button; auto-expand to 120px
+- [ ] **T2.8.12** Implement chat keyboard shortcuts (web)
+  - Acceptance: R=reply, L=like, C=copy, ↑=edit own message
+
 ---
 
 ## Phase 3 — Scale & Microservices (Weeks 15–20)
@@ -103,7 +198,7 @@
   - Acceptance: Post CRUD works via gRPC
 - [x] **T3.1.3** Extract Comment Service with gRPC interface
   - Acceptance: Comments work via gRPC
-- [x] **T3.1.4** Extract remaining services (Search, Media, Notification, Analytics)
+- [x] **T3.1.4** Extract remaining services (Search, Media, Notification, Analytics, Chat)
   - Acceptance: All services independently deployable
 
 ### 3.2 NATS Integration
@@ -127,6 +222,12 @@
   - Acceptance: New post pushed to followers' feed caches in Redis
 - [x] **T3.3.4** Implement ISR on-demand revalidation for post pages
   - Acceptance: Post update triggers Next.js revalidation; next request gets fresh SSR
+- [ ] **T3.3.5** Implement hybrid fanout strategy (small accounts: fanout-on-write, large: fanout-on-read)
+  - Acceptance: Accounts <10K followers use fanout-on-write; ≥10K use fanout-on-read
+- [ ] **T3.3.6** Implement Home Feed scoring algorithm
+  - Acceptance: Posts scored with recency (λ=0.08), engagement, author authority, personalization, following boost
+- [ ] **T3.3.7** Implement feed deduplication and diversity rules
+  - Acceptance: Max 2 consecutive from same author; seen posts excluded; muted filtered
 
 ### 3.4 Database Optimization
 
@@ -203,18 +304,49 @@
 - [x] **T4.5.4** Configure alerting rules (error rate >1%, latency P95 >500ms, DB down)
   - Acceptance: Alerts fire to Slack/email/Discord
 
+### 4.4 CI/CD & Quality
+
+- [ ] **T4.4.1** Add translation validation to CI (check for missing keys)
+  - Acceptance: CI fails if any locale is missing translation keys present in others
+- [ ] **T4.4.2** Add design token validation to CI
+  - Acceptance: CI fails if color contrast falls below AA threshold
+- [ ] **T4.4.3** Add Lighthouse CI checks
+  - Acceptance: PR blocked if Performance < 95, Accessibility < 100, SEO < 100
+
+### 4.5 Onboarding & First-Run Experience
+
+- [ ] **T4.5.5** Implement mobile onboarding flow (5 screens)
+  - Acceptance: Welcome → Sign Up → Interests → Follow Suggestions → Home Feed per ui-ux-spec (§14)
+- [ ] **T4.5.6** Implement web onboarding tooltips
+  - Acceptance: First-visit tooltips on write button, discover tab, chat icon, profile
+- [ ] **T4.5.7** Implement interest selection and follow suggestions
+  - Acceptance: User selects interests; suggested writers shown; follow state persists
+
+### 4.6 Accessibility & Polish
+
+- [ ] **T4.6.1** Audit color contrast across all components
+  - Acceptance: All text combinations pass WCAG AA (4.5:1 normal, 3:1 large)
+- [ ] **T4.6.2** Implement keyboard navigation (web)
+  - Acceptance: Tab navigation, focus states, keyboard shortcuts (§10.2) all work
+- [ ] **T4.6.3** Implement gesture interactions (mobile)
+  - Acceptance: All gestures from spec (§10.1) work — swipe, long-press, double-tap, pull-to-refresh
+- [ ] **T4.6.4** Audit screen reader support
+  - Acceptance: ARIA labels on icon buttons; live regions for real-time updates; semantic HTML
+- [ ] **T4.6.5** Audit touch target sizes (mobile)
+  - Acceptance: All interactive elements ≥ 44×44px; 8px spacing between targets
+
 ---
 
 ## Phase 5 — Future (Post-Launch)
 
-- [x] **T5.1** AI-powered content recommendations (collaborative filtering)
-- [x] **T5.2** Collaborative editing (CRDT-based, Yjs + Tiptap)
-- [x] **T5.3** Newsletter system (email subscriptions, automated digests)
-- [x] **T5.4** Community features (groups, forums)
-- [x] **T5.5** Native desktop app (Tauri or Flutter desktop)
-- [x] **T5.6** Multi-language/i18n support (RTL, translations)
-- [x] **T5.7** White-label / custom domain support for authors
-- [x] **T5.8** API for third-party integrations (OAuth2 provider)
+- [ ] **T5.1** AI-powered content recommendations (collaborative filtering)
+- [ ] **T5.2** Collaborative editing (CRDT-based, Yjs + Tiptap)
+- [ ] **T5.3** Newsletter system (email subscriptions, automated digests)
+- [ ] **T5.4** Community features (groups, forums)
+- [ ] **T5.5** Native desktop app (Tauri or Flutter desktop)
+- [ ] **T5.6** Multi-language/i18n support (RTL, translations)
+- [ ] **T5.7** White-label / custom domain support for authors
+- [ ] **T5.8** API for third-party integrations (OAuth2 provider)
 
 ---
 
@@ -222,9 +354,9 @@
 
 | Phase | Weeks | Tasks | Focus |
 |-------|-------|-------|-------|
-| Phase 1 | 1–8 | 38 | Core MVP: auth, posts, comments, search, media |
-| Phase 2 | 9–14 | 18 | Real-time: WebSocket, live comments, reactions, notifications |
-| Phase 3 | 15–20 | 17 | Scale: microservices, NATS, caching, K8s |
-| Phase 4 | 21–28 | 24 | Growth: SEO, monetization, analytics, polish |
+| Phase 1 | 1–8 | 25 | Core MVP: auth, posts, comments, search, media, visual design system |
+| Phase 2 | 9–14 | 48 | Real-time: WebSocket, live comments, reactions, notifications, discover, chat |
+| Phase 3 | 15–20 | 19 | Scale: microservices, NATS, caching, K8s, feed algorithm |
+| Phase 4 | 21–28 | 37 | Growth: SEO, monetization, analytics, onboarding, accessibility, CI/CD |
 | Phase 5 | 29+ | 8 | Future: AI, collab, desktop, i18n |
-| **Total** | | **105** | |
+| **Total** | | **137** | |

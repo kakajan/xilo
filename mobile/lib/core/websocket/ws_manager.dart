@@ -20,7 +20,7 @@ class WebSocketManager {
 
     try {
       _channel = WebSocketChannel.connect(
-        Uri.parse('ws://10.0.2.2:8000/ws?token=$token'),
+        Uri.parse('ws://127.0.0.1:8000/ws?token=$token'),
       );
 
       _channel!.stream.listen(

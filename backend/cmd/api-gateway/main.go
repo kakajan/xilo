@@ -157,8 +157,8 @@ func main() {
 
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:3000",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowOriginsFunc: func(origin string) bool { return true },
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 	}))
 
 	app.Get("/api/languages", func(c *fiber.Ctx) error {

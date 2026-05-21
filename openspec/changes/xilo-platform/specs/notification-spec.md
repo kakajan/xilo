@@ -21,6 +21,8 @@ The system supports these notification types:
 | `system_announcement` | Admin broadcast | WS + Email |
 | `moderation_action` | Your comment/post was moderated | WS + Email |
 | `subscription_expiry` | Subscription ending soon | Email |
+| `new_message` | Someone sends you a chat message | WS + Push (if muted: skip) |
+| `chat_mention` | Someone @mentions you in group chat | WS + Push |
 
 ### REQ-NTF-002: Real-time Delivery
 

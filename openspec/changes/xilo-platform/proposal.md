@@ -28,18 +28,29 @@ Build **Xilo** — a modern, Telegram-inspired blogging platform with a web fron
 
 | Domain | Deliverables |
 |--------|-------------|
-| **Backend** | Go/Fiber microservices: API Gateway, Auth, User, Post, Comment, Notification, Search, Media, Analytics |
+| **Backend** | Go/Fiber microservices: API Gateway, Auth, User, Post, Comment, Notification, Search, Media, Analytics, Chat |
 | **Database** | PostgreSQL 16+ (primary), Redis (cache/pub/sub), Meilisearch (search), MinIO (object storage) |
 | **Message Queue** | NATS for event-driven inter-service communication |
 | **Web Frontend** | Next.js 15+ App Router, Tailwind CSS 4, shadcn/ui, Zustand, TanStack Query, Tiptap editor, Framer Motion |
 | **Mobile App** | Flutter 3+ with Clean Architecture, Riverpod, Dio, Hive |
-| **Real-time** | WebSocket with Redis Pub/Sub clustering for live comments, reactions, notifications |
+| **Real-time** | WebSocket with Redis Pub/Sub clustering for live comments, reactions, notifications, chat |
 | **Auth** | JWT + Refresh Tokens, Argon2 hashing, OAuth2 (optional) |
 | **SEO** | SSR/SSG/ISR, JSON-LD structured data, dynamic sitemap, Core Web Vitals targets |
 | **Analytics** | Self-hosted (PostHog/Umami) with custom event tracking |
 | **Monetization** | Subscriptions, premium posts, donations, ads, sponsored content, affiliate links |
 | **DevOps** | Docker, Kubernetes, Traefik, Prometheus + Grafana + Loki, Sentry (self-hosted) |
-| **Comment System** | Nested threading (max depth 4), emoji reactions, @mentions, real-time updates, markdown |
+| **Comment System** | Telegram-style chat bubbles, nested threading (max depth 4), emoji reactions, @mentions, real-time updates, markdown |
+| **Discover Feed** | Comments displayed as tweet-like cards with ranking algorithm, trending, recommended, topic-based filtering |
+| **Chat/Messaging** | Private real-time chat between users, typing indicators, read receipts, online presence, media sharing |
+| **Feed System** | Home feed with hybrid fanout strategy, scoring algorithm (recency, engagement, author authority, personalization, following boost), Redis caching |
+
+### User Roles
+
+| Role | Permissions |
+|------|-------------|
+| **Admin** | Full platform control, user management, content moderation, system settings |
+| **Verified Writer** | Create/publish posts, access analytics, manage own content, receive payments |
+| **Regular User** | Read posts, comment, react, follow, chat, bookmark, discover |
 
 ### Out of Scope (Future)
 

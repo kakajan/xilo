@@ -14,10 +14,12 @@ The mobile app mirrors all web features:
 | Feature | Web | Mobile |
 |---------|-----|--------|
 | Browse feed | Yes | Yes |
+| Discover feed | Yes | Yes |
 | Read posts | Yes | Yes |
 | Search | Yes | Yes |
 | Write/Edit posts | Yes (Tiptap) | Yes (custom editor) |
 | Comments + reactions | Yes | Yes |
+| Chat/Messaging | Yes | Yes |
 | Notifications | Yes (WS) | Yes (WS + Push) |
 | Bookmarks | Yes | Yes |
 | User profiles | Yes | Yes |
@@ -46,10 +48,12 @@ lib/
 │   │   ├── domain/      — Entities, use cases
 │   │   └── presentation/ — Pages, providers, widgets
 │   ├── feed/
+│   ├── discover/
 │   ├── post/
 │   ├── search/
 │   ├── editor/
 │   ├── comments/
+│   ├── chat/
 │   ├── notifications/
 │   ├── profile/
 │   └── settings/
@@ -64,10 +68,13 @@ lib/
 | Route | Screen |
 |-------|--------|
 | `/` | Feed (Home) |
+| `/discover` | Discover Feed |
 | `/post/:slug` | Post Detail |
 | `/search` | Search |
 | `/editor` | Post Editor |
 | `/editor/:id` | Edit Post |
+| `/chat` | Chat List |
+| `/chat/:id` | Chat Conversation |
 | `/notifications` | Notifications |
 | `/profile/:username` | User Profile |
 | `/bookmarks` | Bookmarks |
@@ -84,15 +91,21 @@ lib/
 **Then** they can:
 - Read previously cached posts (last 50)
 - View cached feed
+- View cached discover feed
 - Write drafts (synced when online)
 - See cached profile info
+- Read cached chat messages (last 100 per chat)
+- Queue outgoing chat messages (synced when online)
 
 **Hive boxes:**
 - `posts` — cached post data
 - `feed` — cached feed items
+- `discover` — cached discover items
 - `drafts` — local drafts
 - `user` — cached profile
 - `settings` — preferences
+- `chats` — cached chat list
+- `messages` — cached messages per chat
 
 ### REQ-MOB-005: Push Notifications
 
@@ -106,9 +119,37 @@ lib/
 - **Page transitions**: Slide left/right (iOS-style) or fade
 - **Shimmer loading**: Skeleton placeholders for all lists
 - **Pull to refresh**: All scrollable lists
-- **Infinite scroll**: Feed, comments, search results
+- **Infinite scroll**: Feed, comments, discover, search results, chat messages
 - **Haptic feedback**: Reactions, button taps
 - **Staggered list animations**: Feed items appear in sequence
+- **Bubble entrance**: Comment/chat bubbles slide in with opacity + translateY animation
+
+### REQ-MOB-008: Discover Screen
+
+**Given** a user on the Discover tab  
+**When** the screen loads  
+**Then** they see:
+- Infinite-scroll list of comment cards
+- Each card: author avatar, name, comment text, engagement counts, parent post link
+- Topic filter chips at top
+- Pull-to-refresh support
+- Empty state with illustration
+
+### REQ-MOB-009: Chat Screen
+
+**Given** a user on the Chat tab  
+**When** the screen loads  
+**Then** they see:
+- **Chat list**: Conversations sorted by last message time
+  - Avatar, name, last message preview, unread badge, timestamp
+  - Swipe actions: archive, delete
+- **Chat conversation**: Telegram-style message bubbles
+  - Own messages: right-aligned, blue bubble
+  - Others: left-aligned, gray bubble
+  - Message composer with emoji picker, attachment, send
+  - Typing indicator, online status
+  - Long-press message for: reply, copy, forward, delete, react
+  - Swipe right to reply, swipe left to like
 
 ### REQ-MOB-007: Performance Targets
 
@@ -139,6 +180,7 @@ dependencies:
   firebase_messaging        # Push notifications (or self-hosted)
   image_picker              # Media selection
   share_plus                # Share sheet
+  flutter_slidable          # Swipe actions (chat list)
   
 dev_dependencies:
   build_runner              # Code generation
