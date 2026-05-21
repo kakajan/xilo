@@ -44,3 +44,6 @@ coverage/
 
 infra/docker-compose.override.yml
 infra/docker-compose.prod.yml
+
+
+Docs/*
