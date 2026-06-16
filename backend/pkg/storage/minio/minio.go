@@ -19,8 +19,9 @@ type Driver struct {
 
 func New(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*Driver, error) {
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  minioCreds.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
+		Creds:        minioCreds.NewStaticV4(accessKey, secretKey, ""),
+		Secure:       useSSL,
+		BucketLookup: minio.BucketLookupPath,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("minio: create client: %w", err)

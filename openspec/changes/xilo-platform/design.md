@@ -510,6 +510,35 @@ sl.registerLazySingleton(() => GetFeedUseCase(sl()));
 sl.registerLazySingleton(() => CreatePostUseCase(sl()));
 ```
 
+### 6.2 Native Android App Architecture (Kotlin)
+
+The native Android application follows the same Clean Architecture layout but maps dependencies to Android platform utilities:
+
+```
+┌─────────────────────────────────┐
+│      Presentation Layer          │
+│  Compose UI, ViewModels          │
+│  (StateFlow, Jetpack Compose)    │
+├─────────────────────────────────┤
+│        Domain Layer              │
+│  Entities, Use Cases             │
+│  (Pure Kotlin business logic)    │
+├─────────────────────────────────┤
+│         Data Layer               │
+│  Room DB, Retrofit API, WS       │
+│  (TokenManager, OkHttp WS)       │
+└─────────────────────────────────┘
+```
+
+#### Tech Stack:
+- **Dependency Injection**: Dagger Hilt (`@HiltAndroidApp`, `@AndroidEntryPoint`, `@Inject`)
+- **Local DB**: Room Database (`XiloDatabase`, DAOs, Entities)
+- **Networking**: Retrofit + OkHttp + kotlinx.serialization
+- **WebSocket**: OkHttp WebSockets via `WebSocketManager`
+- **UI State**: Compose StateFlow collection via `collectAsStateWithLifecycle()`
+
+---
+
 ## 7. Security Architecture
 
 ```

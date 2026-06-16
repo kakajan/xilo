@@ -1,12 +1,12 @@
 @echo off
 cd /d %~dp0
-set DATABASE_URL=postgres://xilo:xilo@localhost:5432/xilo?sslmode=disable
-set REDIS_URL=localhost:6379
-set NATS_URL=nats://localhost:4222
-set MEILISEARCH_URL=http://localhost:7700
+set DATABASE_URL=postgres://xilo:xilo@127.0.0.1:5432/xilo?sslmode=disable
+set REDIS_URL=127.0.0.1:6379
+set NATS_URL=nats://127.0.0.1:4222
+set MEILISEARCH_URL=http://127.0.0.1:7700
 set MEILISEARCH_KEY=xilo-meili-key
 set STORAGE_DRIVER=minio
-set STORAGE_ENDPOINT=localhost:9000
+set STORAGE_ENDPOINT=127.0.0.1:9010
 set STORAGE_ACCESS_KEY=minioadmin
 set STORAGE_SECRET_KEY=minioadmin
 set STORAGE_BUCKET=xilo-media

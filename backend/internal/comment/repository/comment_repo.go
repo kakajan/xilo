@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
+	authmodel "github.com/xilo-platform/xilo/internal/auth/model"
 	"github.com/xilo-platform/xilo/internal/comment/model"
 )
 
@@ -49,12 +51,31 @@ func (r *CommentRepo) Create(ctx context.Context, postID, authorID string, req *
 }
 
 func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, error) {
-	var comment model.Comment
-	err := r.db.GetContext(ctx, &comment, `
+	var row struct {
+		ID           string    `db:"id"`
+		PostID       string    `db:"post_id"`
+		AuthorID     string    `db:"author_id"`
+		ParentID     *string   `db:"parent_id"`
+		RootID       *string   `db:"root_id"`
+		Depth        int       `db:"depth"`
+		Content      string    `db:"content"`
+		ContentHTML  string    `db:"content_html"`
+		MediaURL     string    `db:"media_url"`
+		IsPinned     bool      `db:"is_pinned"`
+		IsSpam       bool      `db:"is_spam"`
+		CreatedAt    time.Time `db:"created_at"`
+		UpdatedAt    time.Time `db:"updated_at"`
+		UserID       string    `db:"user_id"`
+		Username     string    `db:"username"`
+		DisplayName  string    `db:"display_name"`
+		AvatarURL    string    `db:"avatar_url"`
+	}
+
+	err := r.db.GetContext(ctx, &row, `
 		SELECT c.id, c.post_id, c.author_id, c.parent_id, c.root_id, c.depth,
 		       c.content, c.content_html, c.media_url, c.is_pinned, c.is_spam,
 		       c.created_at, c.updated_at,
-		       u.id, u.username, u.display_name, u.avatar_url
+		       u.id AS user_id, u.username, u.display_name, u.avatar_url
 		FROM comments c
 		JOIN users u ON c.author_id = u.id
 		WHERE c.id = $1 AND c.deleted_at IS NULL
@@ -65,7 +86,29 @@ func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, e
 		}
 		return nil, fmt.Errorf("get comment by id: %w", err)
 	}
-	return &comment, nil
+
+	comment := &model.Comment{
+		ID:          row.ID,
+		PostID:      row.PostID,
+		AuthorID:    row.AuthorID,
+		ParentID:    row.ParentID,
+		RootID:      row.RootID,
+		Depth:       row.Depth,
+		Content:     row.Content,
+		ContentHTML: row.ContentHTML,
+		MediaURL:    row.MediaURL,
+		IsPinned:    row.IsPinned,
+		IsSpam:      row.IsSpam,
+		CreatedAt:   row.CreatedAt,
+		UpdatedAt:   row.UpdatedAt,
+		Author: &authmodel.User{
+			ID:          row.UserID,
+			Username:    row.Username,
+			DisplayName: row.DisplayName,
+			AvatarURL:   row.AvatarURL,
+		},
+	}
+	return comment, nil
 }
 
 func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor string, limit int, sort string) ([]*model.Comment, string, error) {
@@ -133,12 +176,31 @@ func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor stri
 }
 
 func (r *CommentRepo) getAllComments(ctx context.Context, postID string) ([]*model.Comment, error) {
-	var comments []*model.Comment
-	err := r.db.SelectContext(ctx, &comments, `
+	var rows []struct {
+		ID           string    `db:"id"`
+		PostID       string    `db:"post_id"`
+		AuthorID     string    `db:"author_id"`
+		ParentID     *string   `db:"parent_id"`
+		RootID       *string   `db:"root_id"`
+		Depth        int       `db:"depth"`
+		Content      string    `db:"content"`
+		ContentHTML  string    `db:"content_html"`
+		MediaURL     string    `db:"media_url"`
+		IsPinned     bool      `db:"is_pinned"`
+		IsSpam       bool      `db:"is_spam"`
+		CreatedAt    time.Time `db:"created_at"`
+		UpdatedAt    time.Time `db:"updated_at"`
+		UserID       string    `db:"user_id"`
+		Username     string    `db:"username"`
+		DisplayName  string    `db:"display_name"`
+		AvatarURL    string    `db:"avatar_url"`
+	}
+
+	err := r.db.SelectContext(ctx, &rows, `
 		SELECT c.id, c.post_id, c.author_id, c.parent_id, c.root_id, c.depth,
 		       c.content, c.content_html, c.media_url, c.is_pinned, c.is_spam,
 		       c.created_at, c.updated_at,
-		       u.id, u.username, u.display_name, u.avatar_url
+		       u.id AS user_id, u.username, u.display_name, u.avatar_url
 		FROM comments c
 		JOIN users u ON c.author_id = u.id
 		WHERE c.post_id = $1 AND c.deleted_at IS NULL
@@ -147,6 +209,31 @@ func (r *CommentRepo) getAllComments(ctx context.Context, postID string) ([]*mod
 	`, postID)
 	if err != nil {
 		return nil, fmt.Errorf("get all comments: %w", err)
+	}
+
+	comments := make([]*model.Comment, len(rows))
+	for i, r := range rows {
+		comments[i] = &model.Comment{
+			ID:          r.ID,
+			PostID:      r.PostID,
+			AuthorID:    r.AuthorID,
+			ParentID:    r.ParentID,
+			RootID:      r.RootID,
+			Depth:       r.Depth,
+			Content:     r.Content,
+			ContentHTML: r.ContentHTML,
+			MediaURL:    r.MediaURL,
+			IsPinned:    r.IsPinned,
+			IsSpam:      r.IsSpam,
+			CreatedAt:   r.CreatedAt,
+			UpdatedAt:   r.UpdatedAt,
+			Author: &authmodel.User{
+				ID:          r.UserID,
+				Username:    r.Username,
+				DisplayName: r.DisplayName,
+				AvatarURL:   r.AvatarURL,
+			},
+		}
 	}
 	return comments, nil
 }
