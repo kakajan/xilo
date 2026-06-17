@@ -191,4 +191,6 @@ class ChatRepository @Inject constructor(
     fun stopWebSocketConnection() {
         webSocketManager.disconnect()
     }
+
+    suspend fun getChatById(chatId: String): ChatEntity? = chatDao.getChatById(chatId)
 }

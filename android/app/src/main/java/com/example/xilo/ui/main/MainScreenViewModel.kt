@@ -6,10 +6,10 @@ import com.example.xilo.data.NetworkMonitor
 import com.example.xilo.data.remote.websocket.WebSocketManager
 import com.example.xilo.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,8 +21,7 @@ class MainScreenViewModel @Inject constructor(
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
-    private val _isAuthenticated = MutableStateFlow(authRepository.isAuthenticated())
-    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
+    val isAuthenticated: StateFlow<Boolean> = authRepository.isAuthenticatedFlow
 
     private val _currentUsername = MutableStateFlow(authRepository.getUsername())
     val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
@@ -37,12 +36,18 @@ class MainScreenViewModel @Inject constructor(
     }
 
     fun updateAuthStatus() {
-        _isAuthenticated.value = authRepository.isAuthenticated()
         _currentUsername.value = authRepository.getUsername()
-        if (_isAuthenticated.value) {
+        if (authRepository.isAuthenticated()) {
             connectRealtime()
         } else {
             webSocketManager.disconnect()
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            authRepository.logout()
+            updateAuthStatus()
         }
     }
 

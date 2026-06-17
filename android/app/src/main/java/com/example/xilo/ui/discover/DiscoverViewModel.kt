@@ -2,6 +2,7 @@ package com.example.xilo.ui.discover
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.xilo.R
 import com.example.xilo.data.NetworkMonitor
 import com.example.xilo.data.local.entity.CommentEntity
 import com.example.xilo.data.local.entity.PostEntity
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import com.example.xilo.util.ErrorMessageResolver
 import javax.inject.Inject
 
 @HiltViewModel
@@ -21,6 +23,7 @@ class DiscoverViewModel @Inject constructor(
     private val commentRepository: CommentRepository,
     private val postRepository: PostRepository,
     private val json: Json,
+    private val errorMessageResolver: ErrorMessageResolver,
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
@@ -35,6 +38,9 @@ class DiscoverViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -58,8 +64,13 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
+        _errorMessage.value = null
         if (query.isNotBlank()) {
             performSearch(query)
         } else {
@@ -104,8 +115,9 @@ class DiscoverViewModel @Inject constructor(
                 } else {
                     _searchResults.value = emptyList()
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 _searchResults.value = emptyList()
+                _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_search)
             }
             _isSearching.value = false
         }

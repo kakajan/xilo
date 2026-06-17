@@ -14,9 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,8 +27,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.xilo.data.local.entity.CommentEntity
 import com.example.xilo.theme.XiloBlue
+import com.example.xilo.theme.XiloSpacing
 import com.example.xilo.theme.XiloTheme
 import com.example.xilo.ui.components.LocalChromeVisibility
+import com.example.xilo.ui.components.XiloIcon
+import com.example.xilo.ui.components.XiloIcons
+import com.example.xilo.ui.components.XiloTextField
 import com.example.xilo.ui.components.XiloAvatar
 import com.example.xilo.ui.components.trackChromeVisibility
 import com.example.xilo.ui.feed.PostCard
@@ -50,13 +51,27 @@ fun DiscoverScreen(
     val recentComments by viewModel.recentComments.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     var isSearchActive by remember { mutableStateOf(false) }
     val chromeState = LocalChromeVisibility.current
     val discoverListState = rememberLazyListState()
     val searchListState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+
+    Scaffold(
+        modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         AnimatedVisibility(
             visible = chromeState?.isVisible != false,
             enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
@@ -65,16 +80,17 @@ fun DiscoverScreen(
             if (isSearchActive) {
                 TopAppBar(
                     title = {
-                        OutlinedTextField(
+                        XiloTextField(
                             value = searchQuery,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            placeholder = { Text("جستجو در موضوعات، پست‌ها...") },
+                            placeholder = "جستجو در موضوعات، پست‌ها...",
                             modifier = Modifier.fillMaxWidth().height(50.dp),
-                            singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent
-                            )
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            ),
                         )
                     },
                     navigationIcon = {
@@ -82,7 +98,7 @@ fun DiscoverScreen(
                             isSearchActive = false
                             viewModel.updateSearchQuery("")
                         }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close Search")
+                            XiloIcon(icon = XiloIcons.Close, contentDescription = "بستن جستجو")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -94,7 +110,7 @@ fun DiscoverScreen(
                     title = { Text("اکتشاف", fontWeight = FontWeight.Bold) },
                     actions = {
                         IconButton(onClick = { isSearchActive = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
+                            XiloIcon(icon = XiloIcons.Search, contentDescription = "جستجو")
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -132,7 +148,7 @@ fun DiscoverScreen(
                                         Modifier
                                     }
                                 ),
-                            contentPadding = PaddingValues(bottom = 112.dp)
+                            contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                         ) {
                             items(searchResults, key = { it.id }) { post ->
                                 PostCard(
@@ -178,7 +194,7 @@ fun DiscoverScreen(
                                             Modifier
                                         }
                                     ),
-                                contentPadding = PaddingValues(bottom = 112.dp, top = 8.dp)
+                                contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding, top = 8.dp)
                             ) {
                                 item {
                                     Text(
@@ -202,6 +218,7 @@ fun DiscoverScreen(
                 }
             }
         }
+    }
     }
 }
 

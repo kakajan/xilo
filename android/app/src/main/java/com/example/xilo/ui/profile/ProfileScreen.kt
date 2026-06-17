@@ -9,13 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PersonAddAlt1
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -36,11 +29,15 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.xilo.theme.XiloBlue
+import com.example.xilo.theme.XiloSpacing
 import com.example.xilo.ui.components.LocalChromeVisibility
 import com.example.xilo.ui.components.VerifiedBadge
 import com.example.xilo.ui.components.XiloAvatar
 import com.example.xilo.ui.components.XiloButton
 import com.example.xilo.ui.components.XiloButtonStyle
+import com.example.xilo.ui.components.XiloIcon
+import com.example.xilo.ui.components.XiloIcons
+import com.example.xilo.ui.components.ProfileSkeleton
 import com.example.xilo.ui.components.trackChromeVisibility
 import com.example.xilo.ui.feed.PostCard
 
@@ -52,6 +49,7 @@ fun ProfileScreen(
     username: String,
     onBackClick: () -> Unit,
     onPostClick: (String) -> Unit,
+    onSettingsClick: () -> Unit = {},
     onMessageClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel()
@@ -59,6 +57,15 @@ fun ProfileScreen(
     val userProfile by viewModel.userProfile.collectAsState()
     val userPosts by viewModel.userPosts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
 
     LaunchedEffect(username) {
         viewModel.loadProfile(username)
@@ -69,9 +76,12 @@ fun ProfileScreen(
     val listState = rememberLazyListState()
     val chromeState = LocalChromeVisibility.current
 
-    if (isLoading) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = XiloBlue)
+    if (isLoading && userProfile == null) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            modifier = modifier
+        ) {
+            ProfileSkeleton(modifier = Modifier.padding(it))
         }
         return
     }
@@ -96,7 +106,11 @@ fun ProfileScreen(
         label = "titleAlpha"
     )
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        modifier = modifier
+    ) { padding ->
+    Box(modifier = Modifier.fillMaxSize().padding(padding)) {
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -108,7 +122,7 @@ fun ProfileScreen(
                         Modifier
                     }
                 ),
-            contentPadding = PaddingValues(bottom = 112.dp)
+            contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
         ) {
             item {
                 Box(
@@ -220,7 +234,7 @@ fun ProfileScreen(
                             text = "دنبال کردن",
                             onClick = {},
                             leadingIcon = {
-                                Icon(Icons.Default.PersonAddAlt1, contentDescription = null, modifier = Modifier.size(16.dp))
+                                XiloIcon(icon = XiloIcons.UserAdd, contentDescription = null, modifier = Modifier.size(16.dp))
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -229,12 +243,12 @@ fun ProfileScreen(
                             onClick = { onMessageClick(displayUser?.username ?: username) },
                             style = XiloButtonStyle.Outline,
                             leadingIcon = {
-                                Icon(Icons.Default.MailOutline, contentDescription = null, modifier = Modifier.size(16.dp))
+                                XiloIcon(icon = XiloIcons.Sms, contentDescription = null, modifier = Modifier.size(16.dp))
                             },
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = {}, modifier = Modifier.size(44.dp)) {
-                            Icon(Icons.Default.Share, contentDescription = "Share")
+                            XiloIcon(icon = XiloIcons.Share, contentDescription = "اشتراک‌گذاری")
                         }
                     }
                 }
@@ -291,9 +305,9 @@ fun ProfileScreen(
                     .clip(CircleShape)
                     .background(Color.Black.copy(alpha = 0.35f * (1f - collapseFraction * 0.5f)))
             ) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = "Back",
+                XiloIcon(
+                    icon = XiloIcons.Back,
+                    contentDescription = "بازگشت",
                     tint = if (collapseFraction > 0.5f) MaterialTheme.colorScheme.onBackground else Color.White
                 )
             }
@@ -305,19 +319,20 @@ fun ProfileScreen(
             )
 
             IconButton(
-                onClick = {},
+                onClick = onSettingsClick,
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(Color.Black.copy(alpha = 0.35f * (1f - collapseFraction * 0.5f)))
             ) {
-                Icon(
-                    imageVector = if (collapseFraction > 0.5f) Icons.Default.Edit else Icons.Default.MoreVert,
-                    contentDescription = "More",
+                XiloIcon(
+                    icon = if (collapseFraction > 0.5f) XiloIcons.Settings else XiloIcons.More,
+                    contentDescription = "تنظیمات",
                     tint = if (collapseFraction > 0.5f) MaterialTheme.colorScheme.onBackground else Color.White
                 )
             }
         }
+    }
     }
 }
 

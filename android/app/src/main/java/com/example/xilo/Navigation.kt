@@ -14,8 +14,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import com.example.xilo.ui.chat.ChatConversationScreen
 import com.example.xilo.ui.chat.ChatViewModel
+import com.example.xilo.ui.contact.ContactDetailScreen
 import com.example.xilo.ui.main.MainScreen
+import com.example.xilo.ui.main.MainScreenViewModel
 import com.example.xilo.ui.postdetail.PostDetailScreen
+import com.example.xilo.ui.settings.SettingsScreen
 
 @Composable
 fun MainNavigation() {
@@ -27,7 +30,12 @@ fun MainNavigation() {
     entryProvider =
       entryProvider {
         entry<Main> {
-          MainScreen(onItemClick = { navKey -> backStack.add(navKey) }, modifier = Modifier.fillMaxSize())
+          val mainViewModel: MainScreenViewModel = hiltViewModel()
+          MainScreen(
+            onItemClick = { navKey -> backStack.add(navKey) },
+            modifier = Modifier.fillMaxSize(),
+            viewModel = mainViewModel
+          )
         }
         entry<PostDetailKey> { key ->
           PostDetailScreen(
@@ -37,11 +45,11 @@ fun MainNavigation() {
           )
         }
         entry<ChatConversationKey> { key ->
-          // Get shared ChatViewModel
           val chatViewModel: ChatViewModel = hiltViewModel()
           ChatConversationScreen(
             chatId = key.chatId,
             onBackClick = { backStack.removeLastOrNull() },
+            onContactClick = { backStack.add(ContactDetailKey(key.chatId)) },
             modifier = Modifier.fillMaxSize(),
             viewModel = chatViewModel
           )
@@ -50,6 +58,26 @@ fun MainNavigation() {
           com.example.xilo.ui.feed.CreatePostScreen(
             onBackClick = { backStack.removeLastOrNull() },
             onPostCreated = { backStack.removeLastOrNull() },
+            modifier = Modifier.fillMaxSize()
+          )
+        }
+        entry<SettingsKey> {
+          val mainViewModel: MainScreenViewModel = hiltViewModel()
+          SettingsScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onLogoutComplete = {
+              mainViewModel.updateAuthStatus()
+              while (backStack.size > 1) {
+                backStack.removeLastOrNull()
+              }
+            },
+            modifier = Modifier.fillMaxSize()
+          )
+        }
+        entry<ContactDetailKey> { key ->
+          ContactDetailScreen(
+            chatId = key.chatId,
+            onBackClick = { backStack.removeLastOrNull() },
             modifier = Modifier.fillMaxSize()
           )
         }
@@ -83,4 +111,3 @@ fun MainNavigation() {
       }
   )
 }
-

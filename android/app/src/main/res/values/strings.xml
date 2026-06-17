@@ -1,3 +1,58 @@
 <resources>
     <string name="app_name">Xilo</string>
+
+    <!-- Client-side validation -->
+    <string name="validation_empty_credentials">نام کاربری و رمز عبور نمی‌تواند خالی باشد</string>
+    <string name="validation_all_fields_required">لطفاً همه فیلدهای الزامی را پر کنید</string>
+    <string name="validation_post_empty">عنوان و متن پست نمی‌تواند خالی باشد</string>
+
+    <!-- General errors -->
+    <string name="error_unknown">خطای ناشناخته رخ داد. لطفاً دوباره تلاش کنید.</string>
+    <string name="error_network">اتصال اینترنت برقرار نیست. لطفاً شبکه را بررسی کنید.</string>
+    <string name="error_timeout">درخواست زمان‌بر شد. لطفاً دوباره تلاش کنید.</string>
+    <string name="error_server">خطای سرور. لطفاً بعداً تلاش کنید.</string>
+    <string name="error_unauthorized">لطفاً دوباره وارد حساب شوید.</string>
+    <string name="error_forbidden">شما اجازه انجام این کار را ندارید.</string>
+    <string name="error_not_found">مورد درخواستی پیدا نشد.</string>
+    <string name="error_bad_request">درخواست نامعتبر است. اطلاعات را بررسی کنید.</string>
+    <string name="error_too_many_requests">درخواست‌های زیادی ارسال شده. لطفاً کمی صبر کنید.</string>
+    <string name="error_load_feed">بارگذاری فید با خطا مواجه شد</string>
+    <string name="error_load_post">خطا در بارگذاری پست</string>
+    <string name="error_load_profile">بارگذاری پروفایل با خطا مواجه شد</string>
+    <string name="error_create_post">ایجاد پست انجام نشد</string>
+    <string name="error_logout">خطا در خروج از حساب. لطفاً دوباره تلاش کنید.</string>
+    <string name="error_search">جستجو با خطا مواجه شد</string>
+    <string name="error_login_failed">ورود انجام نشد</string>
+    <string name="error_registration_failed">ثبت‌نام انجام نشد</string>
+
+    <!-- API error codes -->
+    <string name="api_invalid_request_body">اطلاعات ارسالی نامعتبر است.</string>
+    <string name="api_registration_failed">ثبت‌نام انجام نشد. اطلاعات را بررسی کنید.</string>
+    <string name="api_invalid_credentials">ایمیل یا رمز عبور اشتباه است.</string>
+    <string name="api_email_exists">این ایمیل قبلاً ثبت شده است.</string>
+    <string name="api_username_exists">این نام کاربری قبلاً استفاده شده است.</string>
+    <string name="api_internal_server_error">خطای داخلی سرور. لطفاً بعداً تلاش کنید.</string>
+    <string name="api_unauthorized">دسترسی غیرمجاز. لطفاً وارد شوید.</string>
+    <string name="api_update_failed">به‌روزرسانی انجام نشد.</string>
+    <string name="api_too_many_requests">درخواست‌های زیادی ارسال شده. لطفاً کمی صبر کنید.</string>
+    <string name="api_user_not_found">کاربر پیدا نشد.</string>
+    <string name="api_failed">عملیات انجام نشد. لطفاً دوباره تلاش کنید.</string>
+
+    <!-- Backend validation messages -->
+    <string name="validation_email_required">ایمیل الزامی است.</string>
+    <string name="validation_email_too_long">ایمیل نباید بیش از ۲۵۴ کاراکتر باشد.</string>
+    <string name="validation_email_invalid">فرمت ایمیل نامعتبر است.</string>
+    <string name="validation_username_required">نام کاربری الزامی است.</string>
+    <string name="validation_username_length">نام کاربری باید بین ۳ تا ۳۲ کاراکتر باشد.</string>
+    <string name="validation_username_format">نام کاربری فقط می‌تواند شامل حروف انگلیسی، اعداد و زیرخط باشد.</string>
+    <string name="validation_password_min_length">رمز عبور باید حداقل ۸ کاراکتر باشد.</string>
+    <string name="validation_password_uppercase">رمز عبور باید حداقل یک حرف بزرگ داشته باشد.</string>
+    <string name="validation_password_number">رمز عبور باید حداقل یک عدد داشته باشد.</string>
+    <string name="validation_password_special">رمز عبور باید حداقل یک کاراکتر ویژه داشته باشد.</string>
+    <string name="validation_password_required">رمز عبور الزامی است.</string>
+    <string name="validation_content_required">متن پست نمی‌تواند خالی باشد.</string>
+    <string name="validation_title_required">عنوان الزامی است.</string>
+    <string name="validation_title_too_long">عنوان نباید بیش از ۲۰۰ کاراکتر باشد.</string>
+    <string name="validation_comment_required">متن نظر نمی‌تواند خالی باشد.</string>
+    <string name="validation_comment_too_long">نظر نباید بیش از ۵۰۰۰ کاراکتر باشد.</string>
 </resources>

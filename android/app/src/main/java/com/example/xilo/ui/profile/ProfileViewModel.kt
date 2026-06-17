@@ -3,7 +3,9 @@ package com.example.xilo.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.xilo.data.local.entity.PostEntity
+import com.example.xilo.R
 import com.example.xilo.data.remote.api.XiloApiService
+import com.example.xilo.util.ErrorMessageResolver
 import com.example.xilo.data.remote.dto.UserResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val apiService: XiloApiService
+    private val apiService: XiloApiService,
+    private val errorMessageResolver: ErrorMessageResolver,
 ) : ViewModel() {
 
     private val _userProfile = MutableStateFlow<UserResponse?>(null)
@@ -29,6 +32,10 @@ class ProfileViewModel @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    fun clearError() {
+        _error.value = null
+    }
 
     fun loadProfile(username: String) {
         viewModelScope.launch {
@@ -66,7 +73,7 @@ class ProfileViewModel @Inject constructor(
                     _userPosts.value = entities
                 }
             } catch (e: Exception) {
-                _error.value = e.message ?: "Failed to load profile"
+                _error.value = errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
             }
             _isLoading.value = false
         }

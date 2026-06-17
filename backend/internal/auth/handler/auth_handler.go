@@ -3,10 +3,12 @@ package handler
 import (
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/xilo-platform/xilo/internal/auth/model"
+	"github.com/xilo-platform/xilo/internal/auth/repository"
 	"github.com/xilo-platform/xilo/internal/auth/service"
 )
 
@@ -41,7 +43,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	resp, err := h.svc.Register(c.UserContext(), &req)
 	if err != nil {
 		slog.Warn("register failed", "error", err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "registration failed"})
+		return writeAuthError(c, fiber.StatusBadRequest, err)
 	}
 
 	setAuthCookies(c, resp.AccessToken, resp.RefreshToken, resp.ExpiresIn)
@@ -309,4 +311,21 @@ func clearAuthCookies(c *fiber.Ctx) {
 		Secure:   c.Secure(),
 		SameSite: "Strict",
 	})
+}
+
+func writeAuthError(c *fiber.Ctx, status int, err error) error {
+	switch {
+	case errors.Is(err, repository.ErrEmailExists):
+		return c.Status(status).JSON(fiber.Map{"error": "email already exists"})
+	case errors.Is(err, repository.ErrUsernameExists):
+		return c.Status(status).JSON(fiber.Map{"error": "username already exists"})
+	case errors.Is(err, service.ErrInvalidCredentials):
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid email or password"})
+	default:
+		msg := strings.TrimSpace(err.Error())
+		if msg != "" {
+			return c.Status(status).JSON(fiber.Map{"error": msg})
+		}
+		return c.Status(status).JSON(fiber.Map{"error": "registration failed"})
+	}
 }

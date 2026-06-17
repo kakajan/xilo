@@ -1,0 +1,36 @@
+---
+description: After every Android change, build, install, launch, and verify on the emulator
+globs: android/**/*
+alwaysApply: false
+---
+
+# Android — Build & Test on Emulator
+
+After **every** Android code or resource change (UI, theme, navigation, Gradle, strings, fonts, etc.), **always** build, install, launch, and verify on the emulator — unless the user explicitly says not to.
+
+Do not consider an Android task done until the emulator test passes.
+
+## Workflow (required after each change)
+
+1. Ensure a device/emulator is connected: `adb devices`
+2. Build and install: `./gradlew installDebug` (from `android/`)
+3. Launch the app: `adb shell am start -n com.example.xilo/.MainActivity`
+4. Verify the change visually:
+   - Take a screenshot: `adb exec-out screencap -p > android/emulator_test.png`
+   - Or dump UI if needed: `adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml android/ui_dump.xml`
+5. If the build fails or the app does not launch, fix before reporting done.
+
+Or use the helper script from repo root:
+
+```bash
+android/run-on-emulator.sh
+```
+
+## Environment (Windows / Git Bash)
+
+```bash
+export ANDROID_HOME="/c/Users/Usher/AppData/Local/Android/Sdk"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+```
+
+If no device is connected, start an available AVD before installing.

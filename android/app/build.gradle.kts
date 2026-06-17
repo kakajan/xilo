@@ -104,12 +104,32 @@ dependencies {
   implementation(libs.coil.compose)
   implementation(libs.paging.runtime)
   implementation(libs.paging.compose)
-  implementation(libs.androidx.compose.material.icons.extended)
+  implementation(libs.iconsax.android)
 }
 
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
+}
+
+tasks.register<Exec>("launchDebug") {
+    group = "install"
+    description = "Install debug APK and launch MainActivity on a connected device/emulator"
+    dependsOn("installDebug")
+
+    val adbExecutable = System.getenv("ANDROID_HOME")?.let { File(it, "platform-tools/adb") }
+        ?.takeIf { it.exists() }
+        ?.absolutePath
+        ?: "adb"
+
+    commandLine(
+        adbExecutable,
+        "shell",
+        "am",
+        "start",
+        "-n",
+        "com.example.xilo/.MainActivity"
+    )
 }
 

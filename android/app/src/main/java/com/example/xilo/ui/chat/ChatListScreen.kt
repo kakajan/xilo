@@ -14,11 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PinDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.xilo.data.local.entity.ChatEntity
 import com.example.xilo.theme.XiloBlue
+import com.example.xilo.theme.XiloSpacing
+import com.example.xilo.ui.components.ChatListSkeleton
 import com.example.xilo.ui.components.LocalChromeVisibility
+import com.example.xilo.ui.components.XiloIcon
+import com.example.xilo.ui.components.XiloIcons
+import com.example.xilo.ui.components.XiloTopAppBar
 import com.example.xilo.ui.components.XiloAvatar
 import com.example.xilo.ui.components.trackChromeVisibility
 import java.text.SimpleDateFormat
@@ -79,11 +79,9 @@ fun ChatListScreen(
                 enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
             ) {
-                CenterAlignedTopAppBar(
-                    title = { Text("پیام‌ها (Chats)", fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent
-                    )
+                XiloTopAppBar(
+                    title = "پیام‌ها",
+                    centered = true
                 )
             }
 
@@ -171,7 +169,6 @@ fun ChatListScreen(
 
             // 3. Chat List Items
             if (chats.isEmpty()) {
-                // Mock default items if DB is empty to showcase the design
                 val mockChats = listOf(
                     ChatEntity("saved", "direct", "پیام‌های ذخیره‌شده", null, "عکسی فرستادم.", System.currentTimeMillis() - 600000, 0, false),
                     ChatEntity("1", "direct", "امیر محمدی", null, "ساعت چند جلسه داریم؟", System.currentTimeMillis() - 3600000, 3, false),
@@ -189,9 +186,9 @@ fun ChatListScreen(
                                 Modifier
                             }
                         ),
-                    contentPadding = PaddingValues(bottom = 112.dp)
+                    contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                 ) {
-                    items(mockChats) { chat ->
+                    items(mockChats, key = { it.id }) { chat ->
                         ChatListItem(chat = chat, onClick = { onChatClick(chat.id) })
                     }
                 }
@@ -207,7 +204,7 @@ fun ChatListScreen(
                                 Modifier
                             }
                         ),
-                    contentPadding = PaddingValues(bottom = 112.dp)
+                    contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                 ) {
                     items(chats, key = { it.id }) { chat ->
                         ChatListItem(chat = chat, onClick = { onChatClick(chat.id) })
@@ -239,9 +236,9 @@ fun ChatListItem(
                     .background(XiloBlue),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Bookmark,
-                    contentDescription = "Saved Messages",
+                XiloIcon(
+                    icon = XiloIcons.BookmarkFilled,
+                    contentDescription = "پیام‌های ذخیره‌شده",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -312,9 +309,9 @@ fun ChatListItem(
                         )
                     }
                 } else if (chat.id != "saved") {
-                    Icon(
-                        imageVector = Icons.Default.DoneAll,
-                        contentDescription = "Read",
+                    XiloIcon(
+                        icon = XiloIcons.MessageTickBold,
+                        contentDescription = "خوانده شده",
                         tint = Color(0xFF00BA7C),
                         modifier = Modifier.size(16.dp)
                     )

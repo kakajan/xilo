@@ -1,0 +1,58 @@
+<resources>
+    <string name="app_name">Xilo</string>
+
+    <!-- Client-side validation -->
+    <string name="validation_empty_credentials">Username and password cannot be empty</string>
+    <string name="validation_all_fields_required">Please fill in all required fields</string>
+    <string name="validation_post_empty">Post title and content cannot be empty</string>
+
+    <!-- General errors -->
+    <string name="error_unknown">An unknown error occurred. Please try again.</string>
+    <string name="error_network">No internet connection. Please check your network.</string>
+    <string name="error_timeout">The request timed out. Please try again.</string>
+    <string name="error_server">Server error. Please try again later.</string>
+    <string name="error_unauthorized">Please sign in again.</string>
+    <string name="error_forbidden">You do not have permission to do this.</string>
+    <string name="error_not_found">The requested item was not found.</string>
+    <string name="error_bad_request">Invalid request. Please check your input.</string>
+    <string name="error_too_many_requests">Too many requests. Please wait a moment.</string>
+    <string name="error_load_feed">Failed to load feed</string>
+    <string name="error_load_post">Failed to load post</string>
+    <string name="error_load_profile">Failed to load profile</string>
+    <string name="error_create_post">Failed to create post</string>
+    <string name="error_logout">Failed to log out. Please try again.</string>
+    <string name="error_search">Search failed</string>
+    <string name="error_login_failed">Login failed</string>
+    <string name="error_registration_failed">Registration failed</string>
+
+    <!-- API error codes -->
+    <string name="api_invalid_request_body">The submitted data is invalid.</string>
+    <string name="api_registration_failed">Registration failed. Please check your details.</string>
+    <string name="api_invalid_credentials">Invalid email or password.</string>
+    <string name="api_email_exists">This email is already registered.</string>
+    <string name="api_username_exists">This username is already taken.</string>
+    <string name="api_internal_server_error">Internal server error. Please try again later.</string>
+    <string name="api_unauthorized">Unauthorized. Please sign in.</string>
+    <string name="api_update_failed">Update failed.</string>
+    <string name="api_too_many_requests">Too many requests. Please wait a moment.</string>
+    <string name="api_user_not_found">User not found.</string>
+    <string name="api_failed">Operation failed. Please try again.</string>
+
+    <!-- Backend validation messages -->
+    <string name="validation_email_required">Email is required.</string>
+    <string name="validation_email_too_long">Email must be at most 254 characters.</string>
+    <string name="validation_email_invalid">Invalid email format.</string>
+    <string name="validation_username_required">Username is required.</string>
+    <string name="validation_username_length">Username must be between 3 and 32 characters.</string>
+    <string name="validation_username_format">Username must contain only letters, numbers, and underscores.</string>
+    <string name="validation_password_min_length">Password must be at least 8 characters.</string>
+    <string name="validation_password_uppercase">Password must contain at least one uppercase letter.</string>
+    <string name="validation_password_number">Password must contain at least one number.</string>
+    <string name="validation_password_special">Password must contain at least one special character.</string>
+    <string name="validation_password_required">Password is required.</string>
+    <string name="validation_content_required">Post content cannot be empty.</string>
+    <string name="validation_title_required">Title is required.</string>
+    <string name="validation_title_too_long">Title must be at most 200 characters.</string>
+    <string name="validation_comment_required">Comment text is required.</string>
+    <string name="validation_comment_too_long">Comment must be at most 5000 characters.</string>
+</resources>

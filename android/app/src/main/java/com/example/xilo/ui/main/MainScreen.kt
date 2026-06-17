@@ -1,32 +1,28 @@
 package com.example.xilo.ui.main
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -37,16 +33,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation3.runtime.NavKey
 import com.example.xilo.ChatConversationKey
 import com.example.xilo.CreatePostKey
 import com.example.xilo.PostDetailKey
+import com.example.xilo.SettingsKey
 import com.example.xilo.theme.XiloBlue
+import com.example.xilo.theme.XiloSpacing
 import com.example.xilo.ui.auth.AuthScreen
 import com.example.xilo.ui.chat.ChatListScreen
 import com.example.xilo.ui.chat.ChatViewModel
@@ -54,6 +54,7 @@ import com.example.xilo.ui.components.FloatingBottomNavigation
 import com.example.xilo.ui.components.LocalChromeVisibility
 import com.example.xilo.ui.components.NavigationItem
 import com.example.xilo.ui.components.OfflineBanner
+import com.example.xilo.ui.components.XiloIcon
 import com.example.xilo.ui.components.XiloIcons
 import com.example.xilo.ui.components.rememberChromeVisibilityState
 import com.example.xilo.ui.discover.DiscoverScreen
@@ -87,12 +88,6 @@ fun MainScreen(
             NavigationItem("پروفایل", XiloIcons.ProfileSelected, XiloIcons.ProfileUnselected)
         )
 
-        val fabScale by animateFloatAsState(
-            targetValue = if (selectedTab == 0) 1f else 0f,
-            animationSpec = spring(stiffness = Spring.StiffnessMedium),
-            label = "fabScale"
-        )
-
         val chromeState = rememberChromeVisibilityState()
 
         LaunchedEffect(selectedTab) {
@@ -105,6 +100,30 @@ fun MainScreen(
                     OfflineBanner(isOffline = !isOnline)
                 },
                 bottomBar = {
+                    val showFab = selectedTab == 0 && chromeState.isVisible
+                    val chromeAnimSpec = tween<Float>(durationMillis = 300)
+                    val chromeAnimSpecDp = tween<Dp>(durationMillis = 300)
+
+                    val fabScale by animateFloatAsState(
+                        targetValue = if (showFab) 1f else 0f,
+                        animationSpec = chromeAnimSpec,
+                        label = "fabScale"
+                    )
+                    val fabAlpha by animateFloatAsState(
+                        targetValue = if (showFab) 1f else 0f,
+                        animationSpec = chromeAnimSpec,
+                        label = "fabAlpha"
+                    )
+                    val fabSectionHeight by animateDpAsState(
+                        targetValue = if (showFab) {
+                            XiloSpacing.fabSize + XiloSpacing.fabGapAboveNav
+                        } else {
+                            0.dp
+                        },
+                        animationSpec = chromeAnimSpecDp,
+                        label = "fabSectionHeight"
+                    )
+
                     AnimatedVisibility(
                         visible = chromeState.isVisible,
                         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -122,51 +141,68 @@ fun MainScreen(
                                         )
                                     )
                                 )
-                                .padding(top = 24.dp)
+                                .padding(top = XiloSpacing.bottomNavGradientTopPadding)
                         ) {
-                            FloatingBottomNavigation(
-                                selectedTab = selectedTab,
-                                onTabSelected = {
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(it)
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(fabSectionHeight)
+                                        .padding(horizontal = 24.dp),
+                                    contentAlignment = Alignment.BottomEnd
+                                ) {
+                                    if (fabScale > 0f) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(XiloSpacing.fabSize)
+                                                .graphicsLayer {
+                                                    scaleX = fabScale
+                                                    scaleY = fabScale
+                                                    alpha = fabAlpha
+                                                    transformOrigin = TransformOrigin(0.5f, 1f)
+                                                }
+                                        ) {
+                                            FloatingActionButton(
+                                                onClick = { onItemClick(CreatePostKey) },
+                                                shape = CircleShape,
+                                                containerColor = XiloBlue,
+                                                contentColor = Color.White,
+                                                elevation = FloatingActionButtonDefaults.elevation(
+                                                    defaultElevation = 0.dp,
+                                                    pressedElevation = 0.dp,
+                                                    focusedElevation = 0.dp,
+                                                    hoveredElevation = 0.dp
+                                                ),
+                                                modifier = Modifier.border(
+                                                    width = 1.dp,
+                                                    brush = Brush.linearGradient(
+                                                        colors = listOf(
+                                                            Color.White.copy(alpha = 0.7f),
+                                                            Color.White.copy(alpha = 0.1f)
+                                                        )
+                                                    ),
+                                                    shape = CircleShape
+                                                )
+                                            ) {
+                                                XiloIcon(
+                                                    icon = XiloIcons.Add,
+                                                    contentDescription = "ایجاد پست جدید",
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        }
                                     }
-                                },
-                                items = navItems
-                            )
-                        }
-                    }
-                },
-                floatingActionButton = {
-                    AnimatedVisibility(
-                        visible = selectedTab == 0 && chromeState.isVisible,
-                        enter = slideInVertically(initialOffsetY = { it }) + scaleIn() + fadeIn(),
-                        exit = slideOutVertically(targetOffsetY = { it }) + scaleOut() + fadeOut()
-                    ) {
-                        FloatingActionButton(
-                            onClick = { onItemClick(CreatePostKey) },
-                            shape = CircleShape,
-                            containerColor = XiloBlue,
-                            contentColor = Color.White,
-                            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 8.dp),
-                            modifier = Modifier
-                                .offset(y = 12.dp)
-                                .scale(fabScale)
-                                .border(
-                                    width = 1.dp,
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            Color.White.copy(alpha = 0.7f),
-                                            Color.White.copy(alpha = 0.1f)
-                                        )
-                                    ),
-                                    shape = CircleShape
+                                }
+                                FloatingBottomNavigation(
+                                    selectedTab = selectedTab,
+                                    onTabSelected = {
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(it)
+                                        }
+                                    },
+                                    items = navItems
                                 )
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Create Post",
-                                modifier = Modifier.size(24.dp)
-                            )
+                            }
                         }
                     }
                 },
@@ -179,11 +215,13 @@ fun MainScreen(
                 ) {
                     HorizontalPager(
                         state = pagerState,
+                        userScrollEnabled = false,
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         when (page) {
                             0 -> FeedScreen(
                                 onPostClick = { slug -> onItemClick(PostDetailKey(slug)) },
+                                onSettingsClick = { onItemClick(SettingsKey) },
                                 modifier = Modifier.fillMaxSize()
                             )
                             1 -> DiscoverScreen(
@@ -208,6 +246,7 @@ fun MainScreen(
                                                 pagerState.animateScrollToPage(0)
                                             }
                                         },
+                                        onSettingsClick = { onItemClick(SettingsKey) },
                                         onPostClick = { slug -> onItemClick(PostDetailKey(slug)) },
                                         modifier = Modifier.fillMaxSize()
                                     )

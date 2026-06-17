@@ -9,6 +9,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 
 private val DarkColorScheme = darkColorScheme(
     primary = XiloBlue,
@@ -66,7 +68,8 @@ fun XiloTheme(
     }
 
     CompositionLocalProvider(
-        LocalBubbleColors provides bubbleColors
+        LocalBubbleColors provides bubbleColors,
+        LocalLayoutDirection provides LayoutDirection.Rtl
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

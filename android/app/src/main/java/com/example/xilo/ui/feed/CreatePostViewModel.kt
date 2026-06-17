@@ -2,7 +2,10 @@ package com.example.xilo.ui.feed
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.xilo.R
 import com.example.xilo.data.repository.PostRepository
+import com.example.xilo.ui.components.PostField
+import com.example.xilo.util.ErrorMessageResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CreatePostViewModel @Inject constructor(
-    private val postRepository: PostRepository
+    private val postRepository: PostRepository,
+    private val errorMessageResolver: ErrorMessageResolver,
 ) : ViewModel() {
 
     private val _isSubmitting = MutableStateFlow(false)
@@ -21,29 +25,59 @@ class CreatePostViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _fieldErrors = MutableStateFlow<Map<String, String>>(emptyMap())
+    val fieldErrors: StateFlow<Map<String, String>> = _fieldErrors.asStateFlow()
+
     private val _success = MutableStateFlow(false)
     val success: StateFlow<Boolean> = _success.asStateFlow()
 
     fun createPost(title: String, content: String) {
-        if (title.isBlank() || content.isBlank()) {
-            _error.value = "عنوان و متن پست نمی‌تواند خالی باشد"
+        val errors = buildMap {
+            if (title.isBlank()) {
+                put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))
+            }
+            if (content.isBlank()) {
+                put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
+            }
+        }
+        if (errors.isNotEmpty()) {
+            _fieldErrors.value = errors
+            _error.value = null
             return
         }
+
         viewModelScope.launch {
             _isSubmitting.value = true
             _error.value = null
-            
+            _fieldErrors.value = emptyMap()
+
             postRepository.createPost(title, content)
                 .onSuccess {
                     _success.value = true
-                    // Invalidate feed after successful creation
                     postRepository.refreshFeed()
                 }
                 .onFailure { e ->
-                    _error.value = e.message ?: "Failed to create post"
+                    val parsed = errorMessageResolver.parseFormErrors(e, R.string.error_create_post)
+                    val mappedErrors = parsed.fieldErrors.toMutableMap()
+                    parsed.fieldErrors["text"]?.let { mappedErrors[PostField.Content] = it }
+                    _fieldErrors.value = mappedErrors
+                    _error.value = parsed.generalError?.takeIf { mappedErrors.isEmpty() }
                 }
-                
+
             _isSubmitting.value = false
         }
+    }
+
+    fun clearFieldError(field: String) {
+        val updated = _fieldErrors.value - field
+        _fieldErrors.value = updated
+        if (updated.isEmpty()) {
+            _error.value = null
+        }
+    }
+
+    fun clearErrors() {
+        _error.value = null
+        _fieldErrors.value = emptyMap()
     }
 }

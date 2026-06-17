@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.xilo.data.local.entity.CommentEntity
 import com.example.xilo.data.local.entity.PostEntity
+import com.example.xilo.R
 import com.example.xilo.data.repository.CommentRepository
 import com.example.xilo.data.repository.PostRepository
+import com.example.xilo.util.ErrorMessageResolver
 import com.example.xilo.data.remote.websocket.WebSocketManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -17,7 +19,8 @@ import javax.inject.Inject
 class PostDetailViewModel @Inject constructor(
     private val postRepository: PostRepository,
     private val commentRepository: CommentRepository,
-    private val webSocketManager: WebSocketManager
+    private val webSocketManager: WebSocketManager,
+    private val errorMessageResolver: ErrorMessageResolver,
 ) : ViewModel() {
 
     private val _post = MutableStateFlow<PostEntity?>(null)
@@ -29,12 +32,16 @@ class PostDetailViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     private var currentPostId: String? = null
     private var commentsJob: Job? = null
 
     fun loadPost(slug: String) {
         viewModelScope.launch {
             _isLoading.value = true
+            _errorMessage.value = null
             postRepository.getPostBySlug(slug)
                 .onSuccess { postEntity ->
                     _post.value = postEntity
@@ -50,8 +57,15 @@ class PostDetailViewModel @Inject constructor(
                         }
                     }
                 }
+                .onFailure { e ->
+                    _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_load_post)
+                }
             _isLoading.value = false
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 
     fun addComment(content: String, parentId: String? = null) {

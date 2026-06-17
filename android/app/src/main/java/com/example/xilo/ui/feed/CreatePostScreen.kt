@@ -1,18 +1,18 @@
 package com.example.xilo.ui.feed
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.xilo.theme.XiloBlue
-import com.example.xilo.ui.components.XiloButton
+import com.example.xilo.ui.components.PostField
+import com.example.xilo.ui.components.XiloIcon
+import com.example.xilo.ui.components.XiloIcons
+import com.example.xilo.ui.components.XiloTextArea
 import com.example.xilo.ui.components.XiloTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,11 +28,20 @@ fun CreatePostScreen(
 
     val isSubmitting by viewModel.isSubmitting.collectAsState()
     val error by viewModel.error.collectAsState()
+    val fieldErrors by viewModel.fieldErrors.collectAsState()
     val success by viewModel.success.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(success) {
         if (success) {
             onPostCreated()
+        }
+    }
+
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearErrors()
         }
     }
 
@@ -42,17 +51,17 @@ fun CreatePostScreen(
                 title = { Text("ایجاد پست جدید", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                        XiloIcon(icon = XiloIcons.Close, contentDescription = "بستن")
                     }
                 },
                 actions = {
                     Button(
                         onClick = { viewModel.createPost(title, content) },
-                        enabled = title.isNotBlank() && content.isNotBlank() && !isSubmitting,
+                        enabled = !isSubmitting,
                         colors = ButtonDefaults.buttonColors(containerColor = XiloBlue),
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
-                        Text("انتشار", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("انتشار", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -60,6 +69,7 @@ fun CreatePostScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -73,34 +83,34 @@ fun CreatePostScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            if (error != null) {
-                Text(
-                    text = error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
             XiloTextField(
                 value = title,
-                onValueChange = { title = it },
+                onValueChange = {
+                    title = it
+                    viewModel.clearFieldError(PostField.Title)
+                },
                 placeholder = "عنوان پست",
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                isError = fieldErrors.containsKey(PostField.Title),
+                errorText = fieldErrors[PostField.Title],
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
+            XiloTextArea(
                 value = content,
-                onValueChange = { content = it },
-                placeholder = { Text("چه خبر؟ بنویسید...") },
+                onValueChange = {
+                    content = it
+                    viewModel.clearFieldError(PostField.Content)
+                },
+                placeholder = "چه خبر؟ بنویسید...",
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent
-                )
+                minLines = 6,
+                isError = fieldErrors.containsKey(PostField.Content),
+                errorText = fieldErrors[PostField.Content],
+                transparentBorder = fieldErrors[PostField.Content] == null,
             )
         }
     }
