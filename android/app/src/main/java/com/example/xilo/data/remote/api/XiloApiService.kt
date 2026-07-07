@@ -19,6 +19,12 @@ interface XiloApiService {
     @GET("api/auth/me")
     suspend fun getMe(): UserResponse
 
+    @POST("api/auth/otp/request")
+    suspend fun requestOtp(@Body request: RequestOTPRequest): Map<String, String>
+
+    @POST("api/auth/otp/verify-login")
+    suspend fun verifyOtpLogin(@Body request: VerifyOTPLoginRequest): AuthResponse
+
     // ── Posts API ─────────────────────────────────────────────────────────
 
     @GET("api/posts")

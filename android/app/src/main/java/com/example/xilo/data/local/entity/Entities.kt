@@ -64,7 +64,8 @@ data class ChatEntity(
     val lastMessageContent: String?,
     val lastMessageTime: Long?,
     val unreadCount: Int = 0,
-    val isMuted: Boolean = false
+    val isMuted: Boolean = false,
+    val isArchived: Boolean = false
 )
 
 @Entity(tableName = "messages")

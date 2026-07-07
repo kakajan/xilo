@@ -48,3 +48,5 @@ infra/docker-compose.prod.yml
 
 Docs/*
 Fonts
+
+GoogleAndroid

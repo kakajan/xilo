@@ -26,10 +26,13 @@ fun AuthScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var isLoginMode by remember { mutableStateOf(true) }
+    var isOtpMode by remember { mutableStateOf(false) }
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var otpCode by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val fieldErrors = (state as? AuthUiState.Error)?.fieldErrors.orEmpty()
@@ -85,78 +88,96 @@ fun AuthScreen(
                         color = XiloBlue
                     )
                     Text(
-                        text = if (isLoginMode) "خوش آمدید" else "ثبت نام در پلتفرم",
+                        text = if (isOtpMode) "ورود با شماره موبایل" else if (isLoginMode) "خوش آمدید" else "ثبت نام در پلتفرم",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
                     )
 
-                    XiloTextField(
-                        value = username,
-                        onValueChange = {
-                            username = it
-                            viewModel.clearFieldError(AuthField.Username)
-                        },
-                        placeholder = if (isLoginMode) "نام کاربری یا ایمیل" else "نام کاربری",
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = fieldErrors.containsKey(AuthField.Username),
-                        errorText = fieldErrors[AuthField.Username],
-                    )
+                    if (isOtpMode) {
+                        if (state is AuthUiState.OtpSent) {
+                            XiloTextField(
+                                value = otpCode,
+                                onValueChange = { otpCode = it },
+                                placeholder = "کد تایید",
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            XiloTextField(
+                                value = phone,
+                                onValueChange = { phone = it },
+                                placeholder = "شماره موبایل",
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        XiloTextField(
+                            value = username,
+                            onValueChange = {
+                                username = it
+                                viewModel.clearFieldError(AuthField.Username)
+                            },
+                            placeholder = if (isLoginMode) "نام کاربری یا ایمیل" else "نام کاربری",
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = fieldErrors.containsKey(AuthField.Username),
+                            errorText = fieldErrors[AuthField.Username],
+                        )
 
-                    if (!isLoginMode) {
+                        if (!isLoginMode) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            XiloTextField(
+                                value = email,
+                                onValueChange = {
+                                    email = it
+                                    viewModel.clearFieldError(AuthField.Email)
+                                },
+                                placeholder = "نشانی ایمیل",
+                                modifier = Modifier.fillMaxWidth(),
+                                isError = fieldErrors.containsKey(AuthField.Email),
+                                errorText = fieldErrors[AuthField.Email],
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            XiloTextField(
+                                value = displayName,
+                                onValueChange = {
+                                    displayName = it
+                                    viewModel.clearFieldError(AuthField.DisplayName)
+                                },
+                                placeholder = "نام نمایشی (اختیاری)",
+                                modifier = Modifier.fillMaxWidth(),
+                                isError = fieldErrors.containsKey(AuthField.DisplayName),
+                                errorText = fieldErrors[AuthField.DisplayName],
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(12.dp))
                         XiloTextField(
-                            value = email,
+                            value = password,
                             onValueChange = {
-                                email = it
-                                viewModel.clearFieldError(AuthField.Email)
+                                password = it
+                                viewModel.clearFieldError(AuthField.Password)
                             },
-                            placeholder = "نشانی ایمیل",
+                            placeholder = "رمز عبور",
+                            visualTransformation = PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth(),
-                            isError = fieldErrors.containsKey(AuthField.Email),
-                            errorText = fieldErrors[AuthField.Email],
+                            isError = fieldErrors.containsKey(AuthField.Password),
+                            errorText = fieldErrors[AuthField.Password],
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        XiloTextField(
-                            value = displayName,
-                            onValueChange = {
-                                displayName = it
-                                viewModel.clearFieldError(AuthField.DisplayName)
-                            },
-                            placeholder = "نام نمایشی (اختیاری)",
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = fieldErrors.containsKey(AuthField.DisplayName),
-                            errorText = fieldErrors[AuthField.DisplayName],
-                        )
-                    }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-                    XiloTextField(
-                        value = password,
-                        onValueChange = {
-                            password = it
-                            viewModel.clearFieldError(AuthField.Password)
-                        },
-                        placeholder = "رمز عبور",
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = fieldErrors.containsKey(AuthField.Password),
-                        errorText = fieldErrors[AuthField.Password],
-                    )
-
-                    if (!isLoginMode) {
-                        Text(
-                            text = "رمز عبور باید حداقل ۸ کاراکتر و شامل حرف بزرگ انگلیسی، عدد و کاراکتر ویژه باشد.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                        Text(
-                            text = "نام کاربری فقط با حروف انگلیسی، عدد و زیرخط (۳ تا ۳۲ کاراکتر).",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
+                        if (!isLoginMode) {
+                            Text(
+                                text = "رمز عبور باید حداقل ۸ کاراکتر و شامل حرف بزرگ انگلیسی، عدد و کاراکتر ویژه باشد.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                            Text(
+                                text = "نام کاربری فقط با حروف انگلیسی، عدد و زیرخط (۳ تا ۳۲ کاراکتر).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -164,30 +185,68 @@ fun AuthScreen(
                     if (state is AuthUiState.Loading) {
                         CircularProgressIndicator(color = XiloBlue)
                     } else {
-                        XiloButton(
-                            text = if (isLoginMode) "ورود به حساب" else "ساخت حساب کاربری",
-                            onClick = {
-                                if (isLoginMode) {
-                                    viewModel.login(username, password)
-                                } else {
-                                    viewModel.register(username, email, password, displayName.takeIf { it.isNotBlank() })
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        if (isOtpMode) {
+                            if (state is AuthUiState.OtpSent) {
+                                XiloButton(
+                                    text = "ورود",
+                                    onClick = { viewModel.verifyOtpLogin(phone, otpCode) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            } else {
+                                XiloButton(
+                                    text = "ارسال کد",
+                                    onClick = { viewModel.requestOtp(phone) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        } else {
+                            XiloButton(
+                                text = if (isLoginMode) "ورود به حساب" else "ساخت حساب کاربری",
+                                onClick = {
+                                    if (isLoginMode) {
+                                        viewModel.login(username, password)
+                                    } else {
+                                        viewModel.register(username, email, password, displayName.takeIf { it.isNotBlank() })
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    XiloButton(
-                        text = if (isLoginMode) "حساب کاربری ندارید؟ ثبت نام" else "دارای حساب کاربری هستید؟ ورود",
-                        onClick = {
-                            isLoginMode = !isLoginMode
-                            viewModel.clearError()
-                        },
-                        style = XiloButtonStyle.Outline,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (!isOtpMode) {
+                        XiloButton(
+                            text = if (isLoginMode) "حساب کاربری ندارید؟ ثبت نام" else "دارای حساب کاربری هستید؟ ورود",
+                            onClick = {
+                                isLoginMode = !isLoginMode
+                                viewModel.clearError()
+                            },
+                            style = XiloButtonStyle.Outline,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        XiloButton(
+                            text = "ورود با پیامک (OTP)",
+                            onClick = {
+                                isOtpMode = true
+                                viewModel.clearError()
+                            },
+                            style = XiloButtonStyle.Secondary,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        XiloButton(
+                            text = "بازگشت به ورود با رمز عبور",
+                            onClick = {
+                                isOtpMode = false
+                                viewModel.clearError()
+                            },
+                            style = XiloButtonStyle.Secondary,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }

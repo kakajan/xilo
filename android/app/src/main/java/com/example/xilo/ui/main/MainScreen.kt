@@ -69,11 +69,17 @@ fun MainScreen(
     viewModel: MainScreenViewModel = hiltViewModel()
 ) {
     val isAuthenticated by viewModel.isAuthenticated.collectAsState()
+    val onboardingCompleted by viewModel.onboardingCompleted.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
 
     if (!isAuthenticated) {
         AuthScreen(
             onAuthSuccess = { viewModel.updateAuthStatus() },
+            modifier = modifier
+        )
+    } else if (!onboardingCompleted) {
+        com.example.xilo.ui.onboarding.OnboardingScreen(
+            onOnboardingComplete = { viewModel.completeOnboarding() },
             modifier = modifier
         )
     } else {

@@ -21,7 +21,7 @@ import com.example.xilo.data.local.entity.UserEntity
         ChatEntity::class,
         MessageEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class XiloDatabase : RoomDatabase() {

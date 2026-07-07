@@ -20,6 +20,18 @@ data class LoginRequest(
 )
 
 @Serializable
+data class RequestOTPRequest(
+    val phone: String,
+    val purpose: String = "auth"
+)
+
+@Serializable
+data class VerifyOTPLoginRequest(
+    val phone: String,
+    val code: String
+)
+
+@Serializable
 data class RefreshTokenRequest(
     val refreshToken: String
 )

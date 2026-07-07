@@ -70,11 +70,20 @@ interface ChatDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChat(chat: ChatEntity)
 
-    @Query("SELECT * FROM chats ORDER BY lastMessageTime DESC")
+    @Query("SELECT * FROM chats WHERE isArchived = 0 ORDER BY lastMessageTime DESC")
     fun getChatsFlow(): Flow<List<ChatEntity>>
+
+    @Query("SELECT * FROM chats WHERE isArchived = 1 ORDER BY lastMessageTime DESC")
+    fun getArchivedChatsFlow(): Flow<List<ChatEntity>>
 
     @Query("SELECT * FROM chats WHERE id = :id")
     suspend fun getChatById(id: String): ChatEntity?
+
+    @Query("UPDATE chats SET isArchived = :isArchived WHERE id = :chatId")
+    suspend fun updateArchivedStatus(chatId: String, isArchived: Boolean)
+
+    @Query("DELETE FROM chats WHERE id = :chatId")
+    suspend fun deleteChatById(chatId: String)
 }
 
 @Dao

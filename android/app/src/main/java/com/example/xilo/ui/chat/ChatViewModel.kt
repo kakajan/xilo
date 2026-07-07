@@ -63,6 +63,27 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    val archivedChats: StateFlow<List<ChatEntity>> = chatRepository.getArchivedChats()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun archiveChat(chatId: String) {
+        viewModelScope.launch {
+            chatRepository.archiveChat(chatId)
+        }
+    }
+
+    fun unarchiveChat(chatId: String) {
+        viewModelScope.launch {
+            chatRepository.unarchiveChat(chatId)
+        }
+    }
+
+    fun deleteChat(chatId: String) {
+        viewModelScope.launch {
+            chatRepository.deleteChat(chatId)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         messagesJob?.cancel()

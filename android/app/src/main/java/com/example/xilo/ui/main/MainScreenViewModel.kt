@@ -22,12 +22,17 @@ class MainScreenViewModel @Inject constructor(
 ) : ViewModel() {
 
     val isAuthenticated: StateFlow<Boolean> = authRepository.isAuthenticatedFlow
+    val onboardingCompleted: StateFlow<Boolean> = authRepository.onboardingCompletedFlow
 
     private val _currentUsername = MutableStateFlow(authRepository.getUsername())
     val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
 
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun completeOnboarding() {
+        authRepository.completeOnboarding()
+    }
 
     init {
         if (authRepository.isAuthenticated()) {

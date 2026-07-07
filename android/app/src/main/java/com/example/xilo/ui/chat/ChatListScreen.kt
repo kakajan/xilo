@@ -5,6 +5,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -45,8 +49,10 @@ fun ChatListScreen(
     viewModel: ChatViewModel
 ) {
     val chats by viewModel.chats.collectAsState()
+    val archivedChats by viewModel.archivedChats.collectAsState()
     val categories = listOf("همه گفتگوها", "جدید", "خانواده", "دوستان", "کاری")
     var selectedCategoryIndex by remember { mutableStateOf(0) }
+    var showArchived by remember { mutableStateOf(false) }
     val chromeState = LocalChromeVisibility.current
     val chatListState = rememberLazyListState()
 
@@ -80,8 +86,17 @@ fun ChatListScreen(
                 exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
             ) {
                 XiloTopAppBar(
-                    title = "پیام‌ها",
-                    centered = true
+                    title = if (showArchived) "گفتگوهای بایگانی شده" else "پیام‌ها",
+                    centered = true,
+                    actions = {
+                        IconButton(onClick = { showArchived = !showArchived }) {
+                            XiloIcon(
+                                icon = if (showArchived) XiloIcons.Folder else XiloIcons.Archive,
+                                contentDescription = "بایگانی",
+                                tint = XiloBlue
+                            )
+                        }
+                    }
                 )
             }
 
@@ -165,15 +180,21 @@ fun ChatListScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Divider(color = Color.Black.copy(alpha = 0.05f), thickness = 0.5.dp)
+            HorizontalDivider(color = Color.Black.copy(alpha = 0.05f), thickness = 0.5.dp)
 
             // 3. Chat List Items
-            if (chats.isEmpty()) {
-                val mockChats = listOf(
-                    ChatEntity("saved", "direct", "پیام‌های ذخیره‌شده", null, "عکسی فرستادم.", System.currentTimeMillis() - 600000, 0, false),
-                    ChatEntity("1", "direct", "امیر محمدی", null, "ساعت چند جلسه داریم؟", System.currentTimeMillis() - 3600000, 3, false),
-                    ChatEntity("2", "direct", "سارا کریمی", null, "پیش‌نویس نهایی شد 👍", System.currentTimeMillis() - 14400000, 0, false)
+            val displayChats = if (showArchived) archivedChats else chats
+
+            if (displayChats.isEmpty()) {
+                val activeMockChats = listOf(
+                    ChatEntity("saved", "direct", "پیام‌های ذخیره‌شده", null, "عکسی فرستادم.", System.currentTimeMillis() - 600000, 0, false, false),
+                    ChatEntity("1", "direct", "امیر محمدی", null, "ساعت چند جلسه داریم؟", System.currentTimeMillis() - 3600000, 3, false, false),
+                    ChatEntity("2", "direct", "سارا کریمی", null, "پیش‌نویس نهایی شد 👍", System.currentTimeMillis() - 14400000, 0, false, false)
                 )
+                val archivedMockChats = listOf(
+                    ChatEntity("3", "direct", "رضا علوی (بایگانی)", null, "فایل‌ها رو فرستادم کانال", System.currentTimeMillis() - 72000000, 0, false, true)
+                )
+                val mockList = if (showArchived) archivedMockChats else activeMockChats
 
                 LazyColumn(
                     state = chatListState,
@@ -188,8 +209,15 @@ fun ChatListScreen(
                         ),
                     contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                 ) {
-                    items(mockChats, key = { it.id }) { chat ->
-                        ChatListItem(chat = chat, onClick = { onChatClick(chat.id) })
+                    items(mockList, key = { it.id }) { chat ->
+                        ChatListItem(
+                            chat = chat,
+                            onClick = { onChatClick(chat.id) },
+                            onArchiveToggle = {
+                                if (chat.isArchived) viewModel.unarchiveChat(chat.id) else viewModel.archiveChat(chat.id)
+                            },
+                            onDelete = { viewModel.deleteChat(chat.id) }
+                        )
                     }
                 }
             } else {
@@ -206,8 +234,15 @@ fun ChatListScreen(
                         ),
                     contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                 ) {
-                    items(chats, key = { it.id }) { chat ->
-                        ChatListItem(chat = chat, onClick = { onChatClick(chat.id) })
+                    items(displayChats, key = { it.id }) { chat ->
+                        ChatListItem(
+                            chat = chat,
+                            onClick = { onChatClick(chat.id) },
+                            onArchiveToggle = {
+                                if (chat.isArchived) viewModel.unarchiveChat(chat.id) else viewModel.archiveChat(chat.id)
+                            },
+                            onDelete = { viewModel.deleteChat(chat.id) }
+                        )
                     }
                 }
             }
@@ -215,111 +250,196 @@ fun ChatListScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatListItem(
     chat: ChatEntity,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onArchiveToggle: () -> Unit,
+    onDelete: () -> Unit
 ) {
-    Row(
+    var isActionsVisible by remember { mutableStateOf(false) }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        // Avatar or specialized Saved Messages icon
-        if (chat.id == "saved") {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(XiloBlue),
-                contentAlignment = Alignment.Center
-            ) {
-                XiloIcon(
-                    icon = XiloIcons.BookmarkFilled,
-                    contentDescription = "پیام‌های ذخیره‌شده",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        } else {
-            XiloAvatar(imageUrl = chat.avatarUrl, size = 48.dp)
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Chat info
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = chat.name ?: "گفتگو",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                
-                val timeFormatted = chat.lastMessageTime?.let {
-                    SimpleDateFormat("h:mm a", Locale.US).format(java.util.Date(it))
-                } ?: ""
-                Text(
-                    text = timeFormatted,
-                    fontSize = 11.sp,
-                    color = Color.Gray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = chat.lastMessageContent ?: "",
-                    fontSize = 13.sp,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Indicators: Unread Badge or Double tick read receipt
-                if (chat.unreadCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
-                            .background(XiloBlue),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = chat.unreadCount.toString(),
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = {
+                        if (isActionsVisible) {
+                            isActionsVisible = false
+                        } else {
+                            onClick()
+                        }
+                    },
+                    onLongClick = {
+                        isActionsVisible = !isActionsVisible
                     }
-                } else if (chat.id != "saved") {
+                )
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar or specialized Saved Messages icon
+            if (chat.id == "saved") {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(XiloBlue),
+                    contentAlignment = Alignment.Center
+                ) {
                     XiloIcon(
-                        icon = XiloIcons.MessageTickBold,
-                        contentDescription = "خوانده شده",
-                        tint = Color(0xFF00BA7C),
-                        modifier = Modifier.size(16.dp)
+                        icon = XiloIcons.BookmarkFilled,
+                        contentDescription = "پیام‌های ذخیره‌شده",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
                     )
+                }
+            } else {
+                XiloAvatar(imageUrl = chat.avatarUrl, size = 48.dp)
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Chat info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = chat.name ?: "گفتگو",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    
+                    val timeFormatted = chat.lastMessageTime?.let {
+                        SimpleDateFormat("h:mm a", Locale.US).format(java.util.Date(it))
+                    } ?: ""
+                    Text(
+                        text = timeFormatted,
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = chat.lastMessageContent ?: "",
+                        fontSize = 13.sp,
+                        color = Color.Gray,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Indicators: Unread Badge or Double tick read receipt
+                        if (chat.unreadCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(XiloBlue),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = chat.unreadCount.toString(),
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        } else if (chat.id != "saved") {
+                            XiloIcon(
+                                icon = XiloIcons.MessageTickBold,
+                                contentDescription = "خوانده شده",
+                                tint = Color(0xFF00BA7C),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { isActionsVisible = !isActionsVisible },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            XiloIcon(
+                                icon = XiloIcons.MoreHorizontal,
+                                contentDescription = "بایگانی",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
+
+        AnimatedVisibility(
+            visible = isActionsVisible,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp, start = 76.dp, end = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = {
+                        onArchiveToggle()
+                        isActionsVisible = false
+                    }
+                ) {
+                    XiloIcon(
+                        icon = if (chat.isArchived) XiloIcons.Folder else XiloIcons.Archive,
+                        contentDescription = "بایگانی",
+                        tint = XiloBlue,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (chat.isArchived) "خروج از بایگانی" else "بایگانی", color = XiloBlue, fontSize = 12.sp)
+                }
+
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        isActionsVisible = false
+                    }
+                ) {
+                    XiloIcon(
+                        icon = XiloIcons.Close,
+                        contentDescription = "حذف",
+                        tint = Color.Red,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("حذف گفتگو", color = Color.Red, fontSize = 12.sp)
+                }
+            }
+        }
+        HorizontalDivider(color = Color.Black.copy(alpha = 0.04f), thickness = 0.5.dp, modifier = Modifier.padding(start = 76.dp))
     }
-    Divider(color = Color.Black.copy(alpha = 0.04f), thickness = 0.5.dp, modifier = Modifier.padding(start = 76.dp))
 }
 
 data class ActiveUserMock(

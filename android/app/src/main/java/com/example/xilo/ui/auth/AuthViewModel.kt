@@ -78,6 +78,40 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun requestOtp(phone: String) {
+        if (phone.isBlank()) {
+            _uiState.value = AuthUiState.Error(generalError = "شماره موبایل الزامی است")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            authRepository.requestOtp(phone)
+                .onSuccess {
+                    _uiState.value = AuthUiState.OtpSent
+                }
+                .onFailure { error ->
+                    _uiState.value = error.toAuthErrorState(R.string.error_login_failed)
+                }
+        }
+    }
+
+    fun verifyOtpLogin(phone: String, code: String) {
+        if (phone.isBlank() || code.isBlank()) {
+            _uiState.value = AuthUiState.Error(generalError = "شماره موبایل و کد تایید الزامی است")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            authRepository.verifyOtpLogin(phone, code)
+                .onSuccess {
+                    _uiState.value = AuthUiState.Success
+                }
+                .onFailure { error ->
+                    _uiState.value = error.toAuthErrorState(R.string.error_login_failed)
+                }
+        }
+    }
+
     fun clearError() {
         _uiState.value = AuthUiState.Idle
     }
@@ -107,6 +141,7 @@ sealed interface AuthUiState {
     object Idle : AuthUiState
     object Loading : AuthUiState
     object Success : AuthUiState
+    object OtpSent : AuthUiState
     data class Error(
         val fieldErrors: Map<AuthField, String> = emptyMap(),
         val generalError: String? = null,

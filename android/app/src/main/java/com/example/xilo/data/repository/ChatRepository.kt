@@ -44,6 +44,63 @@ class ChatRepository @Inject constructor(
                 handleIncomingWebSocketMessage(text)
             }
         }
+        // Prepopulate local SQLite DB with mock chats and messages for offline capability
+        scope.launch {
+            prepopulateMockData()
+        }
+    }
+
+    private suspend fun prepopulateMockData() {
+        if (chatDao.getChatById("saved") == null) {
+            val now = System.currentTimeMillis()
+            val mockChats = listOf(
+                ChatEntity(
+                    id = "saved",
+                    type = "direct",
+                    name = "پیام‌های ذخیره‌شده",
+                    avatarUrl = null,
+                    lastMessageContent = "یادآوری: بررسی طراحی دکمه‌های صفحه فید فردا صبح",
+                    lastMessageTime = now - 3600000,
+                    unreadCount = 0,
+                    isArchived = false
+                ),
+                ChatEntity(
+                    id = "1",
+                    type = "direct",
+                    name = "امیر محمدی",
+                    avatarUrl = null,
+                    lastMessageContent = "ساعت چند جلسه داریم؟",
+                    lastMessageTime = now - 1800000,
+                    unreadCount = 3,
+                    isArchived = false
+                ),
+                ChatEntity(
+                    id = "2",
+                    type = "direct",
+                    name = "سارا کریمی",
+                    avatarUrl = null,
+                    lastMessageContent = "پیش‌نویس نهایی شد 👍",
+                    lastMessageTime = now - 14400000,
+                    unreadCount = 0,
+                    isArchived = false
+                )
+            )
+            chatDao.insertChats(mockChats)
+
+            val mockMessages = listOf(
+                MessageEntity("m1", "saved", "system", "سیستم", null, "به پیام‌های ذخیره‌شده خود خوش آمدید. می‌توانید عکس‌ها، نوشته‌ها و فایل‌های خود را در اینجا نگهداری کنید.", null, null, false, true, now - 86400000),
+                MessageEntity("m2", "saved", "me", "من", null, "یادآوری: بررسی طراحی دکمه‌های صفحه فید فردا صبح", null, null, false, true, now - 3600000),
+
+                MessageEntity("m3", "1", "other", "امیر محمدی", null, "سلام! وضعیت توسعه پروژه چطور پیش میره؟", null, null, false, true, now - 7200000),
+                MessageEntity("m4", "1", "me", "من", null, "سلام امیر جان، بخش‌های فرانت‌اند و بک‌اند با موفقیت متصل شدند و نسخه آزمایشی اندروید هم آماده است.", null, null, false, true, now - 3600000),
+                MessageEntity("m5", "1", "other", "امیر محمدی", null, "ساعت چند جلسه داریم؟", null, null, false, true, now - 1800000),
+
+                MessageEntity("m6", "2", "other", "سارا کریمی", null, "سلام، خسته نباشید. طرح‌های نهایی رو برای بررسی فرستادم.", null, null, false, true, now - 28800000),
+                MessageEntity("m7", "2", "me", "من", null, "سلام سارا خانم، ممنون. بررسی می‌کنم و بازخورد میدم.", null, null, false, true, now - 21600000),
+                MessageEntity("m8", "2", "other", "سارا کریمی", null, "پیش‌نویس نهایی شد 👍", null, null, false, true, now - 14400000)
+            )
+            messageDao.insertMessages(mockMessages)
+        }
     }
 
     private suspend fun handleIncomingWebSocketMessage(text: String) {
@@ -193,4 +250,18 @@ class ChatRepository @Inject constructor(
     }
 
     suspend fun getChatById(chatId: String): ChatEntity? = chatDao.getChatById(chatId)
+
+    fun getArchivedChats(): Flow<List<ChatEntity>> = chatDao.getArchivedChatsFlow()
+
+    suspend fun archiveChat(chatId: String) {
+        chatDao.updateArchivedStatus(chatId, true)
+    }
+
+    suspend fun unarchiveChat(chatId: String) {
+        chatDao.updateArchivedStatus(chatId, false)
+    }
+
+    suspend fun deleteChat(chatId: String) {
+        chatDao.deleteChatById(chatId)
+    }
 }

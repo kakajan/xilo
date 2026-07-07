@@ -6,7 +6,9 @@ import com.example.xilo.data.local.prefs.TokenManager
 import com.example.xilo.data.remote.api.XiloApiService
 import com.example.xilo.data.remote.dto.LoginRequest
 import com.example.xilo.data.remote.dto.RegisterRequest
+import com.example.xilo.data.remote.dto.RequestOTPRequest
 import com.example.xilo.data.remote.dto.UserResponse
+import com.example.xilo.data.remote.dto.VerifyOTPLoginRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,8 +69,39 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun requestOtp(phone: String): Result<Unit> {
+        return try {
+            apiService.requestOtp(RequestOTPRequest(phone = phone))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun verifyOtpLogin(phone: String, code: String): Result<UserResponse> {
+        return try {
+            val authResp = apiService.verifyOtpLogin(VerifyOTPLoginRequest(phone = phone, code = code))
+            tokenManager.saveTokens(authResp.accessToken, authResp.refreshToken)
+            val userProfile = try {
+                apiService.getMe()
+            } catch (e: Exception) {
+                authResp.user ?: throw Exception("No user data in auth response")
+            }
+            saveUserLocal(userProfile)
+            refreshAuthState()
+            Result.success(userProfile)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private val _onboardingCompleted = MutableStateFlow(isOnboardingCompleted())
+    val onboardingCompletedFlow: StateFlow<Boolean> = _onboardingCompleted.asStateFlow()
+
     suspend fun logout() {
         tokenManager.clearTokens()
+        tokenManager.setOnboardingCompleted(false)
+        _onboardingCompleted.value = false
         refreshAuthState()
     }
 
@@ -76,6 +109,12 @@ class AuthRepository @Inject constructor(
     fun getUserId(): String? = tokenManager.getUserId()
     fun getUsername(): String? = tokenManager.getUsername()
     fun isAuthenticated(): Boolean = getAccessToken() != null
+    fun isOnboardingCompleted(): Boolean = tokenManager.isOnboardingCompleted()
+
+    fun completeOnboarding() {
+        tokenManager.setOnboardingCompleted(true)
+        _onboardingCompleted.value = true
+    }
 
     private suspend fun saveUserLocal(user: UserResponse) {
         tokenManager.saveUser(user.id, user.username)

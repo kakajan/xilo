@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"os"
 	"time"
 
 	"github.com/xilo-platform/xilo/internal/auth/model"
@@ -174,8 +175,13 @@ func (s *AuthService) RequestOTP(ctx context.Context, req *model.RequestOTPReque
 	}
 
 	if s.smsDriver != nil {
-		_, err := s.smsDriver.SendPattern(ctx, req.Phone, "", map[string]string{
-			"code": code,
+		patternCode := os.Getenv("SMS_OTP_PATTERN_CODE")
+		varName := os.Getenv("SMS_OTP_PATTERN_VAR")
+		if varName == "" {
+			varName = "code" // Default backward compatibility, or "verification-code"
+		}
+		_, err := s.smsDriver.SendPattern(ctx, req.Phone, patternCode, map[string]string{
+			varName: code,
 		})
 		if err != nil {
 			slog.Error("send otp sms failed", "error", err)

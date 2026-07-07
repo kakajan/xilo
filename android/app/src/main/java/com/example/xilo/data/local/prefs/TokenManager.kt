@@ -51,4 +51,12 @@ class TokenManager @Inject constructor(
     fun getUsername(): String? {
         return prefs.getString("username", null)
     }
+
+    fun isOnboardingCompleted(): Boolean {
+        return prefs.getBoolean("onboarding_completed", false)
+    }
+
+    fun setOnboardingCompleted(completed: Boolean) {
+        prefs.edit().putBoolean("onboarding_completed", completed).apply()
+    }
 }
