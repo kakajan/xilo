@@ -299,6 +299,45 @@ async function sync() {
   await composeUp({ build: true });
 }
 
+/** Upload a locally cross-compiled api-gateway binary and rebuild only that image + compose. */
+async function syncBinary() {
+  const remoteDir = process.env.REMOTE_DIR || "/opt/xilo";
+  const localBin = process.env.API_GATEWAY_BIN || join(REPO_ROOT, "backend", "api-gateway.linux");
+  if (!existsSync(localBin)) {
+    throw new Error(
+      `Missing ${localBin}. Build with: cd backend && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o api-gateway.linux ./cmd/api-gateway`
+    );
+  }
+  await syncCode();
+  scp(localBin, `${remoteDir}/backend/api-gateway`);
+  const tag = process.env.XILO_IMAGE_TAG || `deploy-${Date.now()}`;
+  ssh(`
+set -e
+cd ${remoteDir}
+docker build -f infra/docker/Dockerfile.api-gateway.runtime -t xilo/api-gateway:${tag} -t xilo/api-gateway:latest backend
+cd infra
+set -a
+. ./.compose.secrets.env
+set +a
+export XILO_IMAGE_TAG=${tag}
+docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env up -d --build --no-deps web
+docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env up -d --no-deps api-gateway
+bash ${remoteDir}/infra/server/apply-nginx-proxy.sh ${remoteDir}/infra/nginx || true
+# Apply brand + default-admin SQL (idempotent; host files piped into postgres)
+. ./.compose.secrets.env
+docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env exec -T postgres \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 \
+  < ${remoteDir}/backend/migrations/000017_platform_brand.up.sql || true
+docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env exec -T postgres \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 \
+  < ${remoteDir}/backend/migrations/000018_seed_default_admin.up.sql || true
+curl -sS -o /dev/null -w 'aile:%{http_code}\\n' https://aile.ir/ || true
+curl -sS -o /dev/null -w 'brain:%{http_code}\\n' https://brain.aile.ir/health || true
+echo ${tag} > .prev_tag
+echo CURRENT_TAG=${tag}
+`);
+}
+
 async function logs() {
   const remoteDir = process.env.REMOTE_DIR || "/opt/xilo";
   ssh(`cd ${remoteDir}/infra && docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env logs --tail=200`);
@@ -359,6 +398,7 @@ const commands = {
   doctor,
   up,
   sync,
+  "sync-binary": syncBinary,
   logs,
   prune,
   rollback,

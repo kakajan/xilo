@@ -2,13 +2,18 @@
 FROM golang:1.24-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache git ca-certificates
-# Iran-reachable module proxy (proxy.golang.org often 403)
-ENV GOPROXY=https://goproxy.io \
+# Iran-reachable mirrors (proxy.golang.org / goproxy.io are often broken here)
+ENV GOPROXY=https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct \
     GOSUMDB=off
 COPY go.mod go.sum ./
-RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /api-gateway ./cmd/api-gateway
+# Prefer vendored modules when present so builds work without module proxy.
+RUN if [ -d vendor ]; then \
+      CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=vendor go build -ldflags="-s -w" -o /api-gateway ./cmd/api-gateway; \
+    else \
+      go mod download && \
+      CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /api-gateway ./cmd/api-gateway; \
+    fi
 
 # Stage 2: Run (JWT keys mounted at runtime)
 FROM alpine:3.21

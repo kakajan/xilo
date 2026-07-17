@@ -22,6 +22,8 @@ Thumbs.db
 backend/tmp/
 backend/private.pem
 backend/public.pem
+backend/api-gateway
+backend/api-gateway.linux
 
 node_modules/
 .next/
@@ -56,4 +58,4 @@ infra/secrets/
 Docs/*
 Fonts
 
-GoogleAndroid
+GoogleAndroidbackend/vendor/
