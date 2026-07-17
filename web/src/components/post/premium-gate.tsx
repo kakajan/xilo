@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 
@@ -47,12 +48,12 @@ export function PremiumGate({
         <p className="text-muted-foreground mb-4">
           Subscribe to read this full article and support the author.
         </p>
-        <a
+        <Link
           href="/dashboard/billing"
-          className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground h-10 px-6 text-sm font-medium hover:bg-primary/90"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           Subscribe Now
-        </a>
+        </Link>
       </div>
     </div>
   );

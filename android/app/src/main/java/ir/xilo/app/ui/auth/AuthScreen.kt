@@ -10,8 +10,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import ir.xilo.app.R
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.AuthField
 import ir.xilo.app.ui.components.XiloButton
@@ -83,7 +85,7 @@ fun AuthScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Xilo ✈",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.displayLarge,
                         color = XiloBlue
                     )

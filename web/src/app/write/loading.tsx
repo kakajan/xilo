@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const siteEn = process.env.NEXT_PUBLIC_SITE_NAME_EN || "aile";
+
 export const metadata: Metadata = {
-  title: "Write — Xilo",
+  title: `Write — ${siteEn}`,
 };
 
 export default function WriteLoading() {

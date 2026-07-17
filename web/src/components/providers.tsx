@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useAuthStore } from "@/stores/auth-store";
+import { useBrandStore } from "@/stores/brand-store";
 import { useThemeStore } from "@/stores/theme-store";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -29,10 +30,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
 function PlatformThemeInitializer({ children }: { children: React.ReactNode }) {
   const fetchTheme = useThemeStore((s) => s.fetchTheme);
+  const fetchBrand = useBrandStore((s) => s.fetchBrand);
 
   useEffect(() => {
     void fetchTheme();
-  }, [fetchTheme]);
+    void fetchBrand();
+  }, [fetchTheme, fetchBrand]);
 
   return <>{children}</>;
 }

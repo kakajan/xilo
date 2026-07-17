@@ -226,8 +226,10 @@ class AuthRepository @Inject constructor(
         _onboardingCompleted.value = true
     }
 
+    fun getRole(): String? = tokenManager.getRole()
+
     private suspend fun saveUserLocal(user: UserResponse) {
-        tokenManager.saveUser(user.id, user.username)
+        tokenManager.saveUser(user.id, user.username, user.role.ifBlank { "reader" })
         val calendar = user.preferredCalendar?.takeIf { it.isNotBlank() } ?: "auto"
         tokenManager.setPreferredCalendar(calendar)
         DateFormatter.setUserPreferenceFromApi(calendar)

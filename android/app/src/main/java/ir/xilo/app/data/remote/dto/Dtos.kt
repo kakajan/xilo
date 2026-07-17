@@ -69,7 +69,15 @@ data class LanguagesResponse(
 @Serializable
 data class PlatformSettingsResponse(
     val calendarDefaults: Map<String, String> = emptyMap(),
-    val theme: ThemeSettingsDto? = null
+    val theme: ThemeSettingsDto? = null,
+    val brand: BrandSettingsDto? = null,
+)
+
+@Serializable
+data class BrandSettingsDto(
+    val nameFa: String = "آیله",
+    val nameEn: String = "aile",
+    val display: String = "آیله | aile",
 )
 
 @Serializable

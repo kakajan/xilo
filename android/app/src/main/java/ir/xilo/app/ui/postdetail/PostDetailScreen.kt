@@ -168,7 +168,7 @@ fun PostDetailScreen(
                         XiloLogo(size = 24.dp)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Xilo",
+                            text = stringResource(R.string.app_name),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = XiloBlue

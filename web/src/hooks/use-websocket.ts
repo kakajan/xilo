@@ -10,7 +10,7 @@ type MessageHandler = (event: string, data: unknown) => void;
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const backoffRef = useRef(1000);
   const handlersRef = useRef<MessageHandler[]>([]);
   const [connected, setConnected] = useState(false);

@@ -16,7 +16,10 @@ export function getArticleJsonLd(post: Post, baseUrl: string) {
     },
     publisher: {
       "@type": "Organization",
-      name: "Xilo",
+      name:
+        process.env.NEXT_PUBLIC_SITE_DISPLAY ||
+        process.env.NEXT_PUBLIC_SITE_NAME_EN ||
+        "aile",
     },
     mainEntityOfPage: {
       "@type": "WebPage",

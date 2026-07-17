@@ -64,7 +64,10 @@ fun MainNavigation() {
             onSettingsClick = { backStack.add(SettingsKey) },
             onEditProfileClick = { backStack.add(SettingsKey) },
             onSetPhotoClick = { backStack.add(SettingsKey) },
-            onCreatePostClick = { backStack.add(CreatePostKey) },
+            onCreatePostClick = {
+              // ProfileScreen hides FAB when role cannot create posts.
+              backStack.add(CreatePostKey)
+            },
             onChatClick = { chatId ->
               backStack.add(ChatConversationKey(chatId = chatId))
             },

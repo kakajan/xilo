@@ -17,19 +17,36 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import ir.xilo.app.R
+import ir.xilo.app.data.repository.BrandRepository
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
+import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.lifecycle.ViewModel
+import javax.inject.Inject
+
+@HiltViewModel
+class OnboardingBrandViewModel @Inject constructor(
+    brandRepository: BrandRepository,
+) : ViewModel() {
+    val brand = brandRepository.brand
+}
 
 @Composable
 fun OnboardingScreen(
     onOnboardingComplete: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    brandViewModel: OnboardingBrandViewModel = hiltViewModel(),
 ) {
     var step by remember { mutableStateOf(1) } // 1: Welcome, 2: Interests, 3: Suggestions
     val selectedInterests = remember { mutableStateListOf<String>() }
+    val brand by brandViewModel.brand.collectAsState()
+    val brandName = brand.nameFa.ifBlank { stringResource(R.string.app_name) }
 
     val backgroundBg = MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onBackground
@@ -69,7 +86,7 @@ fun OnboardingScreen(
                 label = "onboarding_step"
             ) { targetStep ->
                 when (targetStep) {
-                    1 -> OnboardingStepWelcome()
+                    1 -> OnboardingStepWelcome(brandName = brandName)
                     2 -> OnboardingStepInterests(
                         selected = selectedInterests.toSet(),
                         onToggle = { interest ->
@@ -80,7 +97,7 @@ fun OnboardingScreen(
                             }
                         }
                     )
-                    3 -> OnboardingStepFollows()
+                    3 -> OnboardingStepFollows(brandName = brandName)
                 }
             }
 
@@ -141,7 +158,7 @@ fun OnboardingScreen(
 }
 
 @Composable
-fun OnboardingStepWelcome() {
+fun OnboardingStepWelcome(brandName: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -164,7 +181,7 @@ fun OnboardingStepWelcome() {
         }
 
         Text(
-            text = "به زیلو خوش آمدید",
+            text = stringResource(R.string.onboarding_welcome, brandName),
             style = MaterialTheme.typography.displayLarge,
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
@@ -198,7 +215,7 @@ fun OnboardingStepWelcome() {
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = "نکته: زیلو تمام پیام‌های شما را در یک پایگاه داده محلی SQLite ذخیره می‌کند. برای همگام‌سازی زنده، دکمه مش را در پروفایل خود فعال کنید!",
+                    text = stringResource(R.string.onboarding_tip, brandName),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.9f),
                     lineHeight = 20.sp
@@ -281,9 +298,9 @@ fun OnboardingStepInterests(selected: Set<String>, onToggle: (String) -> Unit) {
 }
 
 @Composable
-fun OnboardingStepFollows() {
+fun OnboardingStepFollows(brandName: String) {
     val suggestedFollows = listOf(
-        SuggestedUser("علی رضایی", "ali_rezaei", "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150", "معمار فنی زیلو"),
+        SuggestedUser("علی رضایی", "ali_rezaei", "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150", "معمار فنی $brandName"),
         SuggestedUser("امیرحسین امیری", "amir_dev", "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150", "توسعه‌دهنده اندروید"),
         SuggestedUser("دیانا حسینی", "diana_sync", "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150", "هماهنگ‌کننده شبکه‌های مش")
     )

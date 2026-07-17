@@ -154,6 +154,7 @@ func main() {
 
 	socialH := userhandler.NewSocialHandler(db)
 	profileH := userhandler.NewProfileHandler(db, rdb, postRepo, commentRepo)
+	adminH := userhandler.NewAdminHandler(db)
 	analyticsDH := analyticshandler.NewDashboardHandler(db)
 	adH := analyticshandler.NewAdHandler(db)
 	donationH := analyticshandler.NewDonationHandler(db)
@@ -206,6 +207,10 @@ func main() {
 	platform.Get("/settings", platformSettingsH.GetSettings)
 	platform.Patch("/settings", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), platformSettingsH.UpdateSettings)
 
+	admin := app.Group("/api/admin", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"))
+	admin.Get("/users", adminH.ListUsers)
+	admin.Patch("/users/:id/role", adminH.UpdateUserRole)
+
 	applyPublicRateLimit := limiter.New(limiter.Config{Max: 30, Expiration: 1 * time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.IP() }})
 	// Local/dev-friendly auth budget; production should tighten via env/config later.
 	applyAuthRateLimit := limiter.New(limiter.Config{Max: 60, Expiration: 1 * time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.IP() }})
@@ -230,8 +235,8 @@ func main() {
 	posts.Post("/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
 	posts.Delete("/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
 	posts.Get("/:slug", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.GetBySlug)
-	// Registered readers may publish; author/editor/admin remain elevated roles for moderation.
-	posts.Post("/", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("reader", "author", "editor", "admin"), postH.Create)
+	// Only authors and elevated roles may create posts; readers may comment and chat.
+	posts.Post("/", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin", "superadmin"), postH.Create)
 	posts.Patch("/:id", authmw.AuthRequired(jwtMgr), postH.Update)
 	posts.Delete("/:id", authmw.AuthRequired(jwtMgr), postH.Delete)
 
@@ -272,7 +277,7 @@ func main() {
 	react.Post("/comments/:id/pin", authmw.AuthRequired(jwtMgr), commentH.Pin)
 
 	media := app.Group("/api/media")
-	media.Post("/upload", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin"), mediaH.Upload)
+	media.Post("/upload", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin", "superadmin"), mediaH.Upload)
 	media.Get("/", authmw.AuthRequired(jwtMgr), mediaH.List)
 	media.Get("/:id", authmw.AuthRequired(jwtMgr), mediaH.Get)
 	media.Delete("/:id", authmw.AuthRequired(jwtMgr), mediaH.Delete)

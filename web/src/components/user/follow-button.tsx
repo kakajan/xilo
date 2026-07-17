@@ -1,45 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { UserPlus, UserCheck } from "lucide-react";
-import { apiFetch } from "@/lib/api-client";
+import { UserPlus, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { followUser, unfollowUser } from "@/lib/api/users";
+import { useAuthStore } from "@/stores/auth-store";
 
-interface FollowButtonProps {
+export function FollowButton({
+  username,
+  initialFollowing,
+}: {
   username: string;
-  followed?: boolean;
-}
+  initialFollowing?: boolean;
+}) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const self = useAuthStore((s) => s.user?.username);
+  const [following, setFollowing] = useState(!!initialFollowing);
+  const [busy, setBusy] = useState(false);
 
-export function FollowButton({ username, followed: initialFollowed = false }: FollowButtonProps) {
-  const [followed, setFollowed] = useState(initialFollowed);
-  const queryClient = useQueryClient();
+  if (!isAuthenticated || self === username) return null;
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      apiFetch(`/api/users/${username}/follow`, {
-        method: followed ? "DELETE" : "POST",
-      }),
-    onSuccess: () => {
-      setFollowed(!followed);
-      queryClient.invalidateQueries({ queryKey: ["user", username] });
-    },
-  });
+  const toggle = async () => {
+    const prev = following;
+    setFollowing(!prev);
+    setBusy(true);
+    try {
+      if (prev) await unfollowUser(username);
+      else await followUser(username);
+    } catch {
+      setFollowing(prev);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Button
-      variant={followed ? "outline" : "default"}
-      size="sm"
-      onClick={() => mutation.mutate()}
-      disabled={mutation.isPending}
+      variant={following ? "outline" : "default"}
+      className="min-h-11"
+      disabled={busy}
+      onClick={() => void toggle()}
     >
-      {followed ? (
+      {following ? (
         <>
-          <UserCheck className="h-4 w-4 mr-1" /> Following
+          <UserMinus className="ms-1 h-4 w-4" />
+          لغو دنبال
         </>
       ) : (
         <>
-          <UserPlus className="h-4 w-4 mr-1" /> Follow
+          <UserPlus className="ms-1 h-4 w-4" />
+          دنبال کردن
         </>
       )}
     </Button>

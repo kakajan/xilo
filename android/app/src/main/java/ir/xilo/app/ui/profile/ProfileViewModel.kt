@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
+import ir.xilo.app.core.util.canCreatePost
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.CommentResponse
@@ -58,6 +59,9 @@ class ProfileViewModel @Inject constructor(
 
     private val _isOwnProfile = MutableStateFlow(false)
     val isOwnProfile: StateFlow<Boolean> = _isOwnProfile.asStateFlow()
+
+    private val _canCreatePost = MutableStateFlow(canCreatePost(authRepository.getRole()))
+    val canCreatePost: StateFlow<Boolean> = _canCreatePost.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -131,6 +135,7 @@ class ProfileViewModel @Inject constructor(
             _error.value = null
             loadedUsername = username
             _isOwnProfile.value = isCurrentUser(username = username, userId = null)
+            _canCreatePost.value = canCreatePost(authRepository.getRole())
             try {
                 val remote = apiService.getPublicProfile(username)
                 applyPublicProfile(remote)

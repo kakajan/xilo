@@ -6,25 +6,40 @@ import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getInitials } from "@/lib/utils";
+import { getInitials, cn } from "@/lib/utils";
 import { useFormatDate } from "@/hooks/use-format-date";
 import { useAuthStore } from "@/stores/auth-store";
-import { cn } from "@/lib/utils";
 import type { Comment, CommentListResponse } from "@/types/comment";
 
-export function CommentSection({ postId }: { postId: string }) {
+type SortKey = "newest" | "oldest" | "most_reacted" | "most_replied";
+
+const SORT_LABELS: { key: SortKey; label: string }[] = [
+  { key: "newest", label: "جدیدترین" },
+  { key: "oldest", label: "قدیمی‌ترین" },
+  { key: "most_reacted", label: "بیشترین واکنش" },
+  { key: "most_replied", label: "بیشترین پاسخ" },
+];
+
+export function CommentSection({
+  postId,
+  initialReplyTo,
+}: {
+  postId: string;
+  initialReplyTo?: string | null;
+}) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [newComment, setNewComment] = useState("");
-  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyToId, setReplyToId] = useState<string | null>(initialReplyTo ?? null);
   const [replyDraft, setReplyDraft] = useState("");
+  const [sort, setSort] = useState<SortKey>("newest");
   const [focusStack, setFocusStack] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["comments", postId],
+    queryKey: ["comments", postId, sort],
     queryFn: async () => {
       const res = await apiFetch<CommentListResponse>(
-        `/api/posts/${postId}/comments?limit=50`
+        `/api/posts/${postId}/comments?limit=50&sort=${sort}`
       );
       return res.data;
     },
@@ -58,329 +73,248 @@ export function CommentSection({ postId }: { postId: string }) {
     },
   });
 
-  const handleSubmitTopLevel = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    createMutation.mutate({ content: newComment, parentId: null });
-  };
-
-  const handleSubmitReply = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!replyDraft.trim() || !replyToId) return;
-    createMutation.mutate({ content: replyDraft, parentId: replyToId });
-  };
-
-  const handleDrillDown = (commentId: string) => {
-    setFocusStack((stack) => [...stack, commentId]);
-  };
-
-  const handleFocusBack = () => {
-    setFocusStack((stack) => stack.slice(0, -1));
-  };
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="border-t border-border mb-4" />
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-bold">
+          <span className="min-w-0">نظرات</span>
+        </h2>
+        <div className="flex flex-wrap gap-1">
+          {SORT_LABELS.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setSort(s.key)}
+              className={cn(
+                "min-h-9 rounded-full px-3 text-xs font-medium",
+                sort === s.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent"
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {replyParent ? (
-        <TwitterStyleReplyCompose
-          parent={replyParent}
-          replyDraft={replyDraft}
-          onReplyDraftChange={setReplyDraft}
-          currentUserAvatar={user?.avatar_url}
-          currentUserName={user?.display_name || user?.username || "You"}
-          onCancel={() => {
-            setReplyToId(null);
-            setReplyDraft("");
+      {focusCommentId && (
+        <Button variant="ghost" size="sm" onClick={() => setFocusStack((s) => s.slice(0, -1))}>
+          ← بازگشت به رشته
+        </Button>
+      )}
+
+      {user ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!newComment.trim()) return;
+            createMutation.mutate({ content: newComment, parentId: null });
           }}
-          onSubmit={handleSubmitReply}
-          isPending={createMutation.isPending}
-        />
-      ) : (
-        <form onSubmit={handleSubmitTopLevel} className="mb-6">
-          <textarea
+          className="flex gap-2"
+        >
+          <input
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder="نوشتن نظر..."
-            rows={3}
-            className="w-full px-3 py-2 border rounded-lg bg-background resize-none text-sm"
+            placeholder="نظر خود را بنویسید..."
+            className="min-h-11 flex-1 rounded-2xl border bg-background px-4 text-sm"
           />
-          <div className="flex justify-end mt-2">
-            <Button type="submit" size="sm" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "در حال ارسال..." : "ارسال"}
-            </Button>
+          <Button type="submit" className="min-h-11" disabled={createMutation.isPending}>
+            ارسال
+          </Button>
+        </form>
+      ) : (
+        <p className="text-sm text-muted-foreground">برای نظر دادن وارد شوید.</p>
+      )}
+
+      <div className="relative space-y-3 ps-4">
+        <div className="absolute bottom-2 start-0 top-2 w-px bg-border" aria-hidden />
+        {visibleRoots.length === 0 ? (
+          <p className="py-8 text-center text-muted-foreground">هنوز نظری نیست</p>
+        ) : (
+          visibleRoots.map((c) => (
+            <CommentBubble
+              key={c.id}
+              comment={c}
+              currentUserId={user?.id}
+              replyToId={replyToId}
+              replyDraft={replyDraft}
+              onReplyDraft={setReplyDraft}
+              onReply={(id) => setReplyToId(id)}
+              onCancelReply={() => {
+                setReplyToId(null);
+                setReplyDraft("");
+              }}
+              onSubmitReply={() => {
+                if (!replyDraft.trim() || !replyToId) return;
+                createMutation.mutate({ content: replyDraft, parentId: replyToId });
+              }}
+              onDrill={(id) => setFocusStack((s) => [...s, id])}
+              depth={0}
+            />
+          ))
+        )}
+      </div>
+
+      {replyParent && (
+        <p className="text-xs text-muted-foreground">
+          پاسخ به {replyParent.author?.display_name || replyParent.author?.username}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function CommentBubble({
+  comment,
+  currentUserId,
+  replyToId,
+  replyDraft,
+  onReplyDraft,
+  onReply,
+  onCancelReply,
+  onSubmitReply,
+  onDrill,
+  depth,
+}: {
+  comment: Comment;
+  currentUserId?: string;
+  replyToId: string | null;
+  replyDraft: string;
+  onReplyDraft: (v: string) => void;
+  onReply: (id: string) => void;
+  onCancelReply: () => void;
+  onSubmitReply: () => void;
+  onDrill: (id: string) => void;
+  depth: number;
+}) {
+  const formatDate = useFormatDate();
+  const isOwn = currentUserId && comment.author_id === currentUserId;
+  const name = comment.author?.display_name || comment.author?.username || "کاربر";
+  const reactionEntries = Object.entries(comment.reactions ?? {}).filter(([, n]) => n > 0);
+
+  return (
+    <div className={cn("relative", depth > 0 && "ms-4")}>
+      <div className="mb-1 flex items-center gap-2">
+        <Avatar className="h-8 w-8 shrink-0">
+          {comment.author?.avatar_url ? (
+            <AvatarImage src={comment.author.avatar_url} alt="" />
+          ) : null}
+          <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
+        </Avatar>
+        <span className="min-w-0 text-sm font-semibold">{name}</span>
+        <span className="text-xs text-muted-foreground">
+          {formatDate(comment.created_at)}
+        </span>
+      </div>
+
+      <div
+        className={cn(
+          "rounded-[1rem] px-3.5 py-3 text-[15px] leading-relaxed",
+          isOwn ? "bg-bubble-own" : "bg-bubble-others"
+        )}
+      >
+        <p className="whitespace-pre-wrap">{comment.content}</p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+          <div className="flex flex-wrap gap-1">
+            {reactionEntries.map(([emoji, count]) => (
+              <span
+                key={emoji}
+                className="rounded-full bg-background/60 px-2 py-0.5 text-xs"
+              >
+                {emoji === "like" || emoji === "heart" ? "❤️" : emoji === "flame" ? "🔥" : "👍"}{" "}
+                {count}
+              </span>
+            ))}
           </div>
+          <div className="flex gap-2 text-xs text-muted-foreground">
+            <button type="button" className="min-h-8 hover:text-primary" onClick={() => onReply(comment.id)}>
+              پاسخ
+            </button>
+            {(comment.replies?.length ?? 0) > 0 && (
+              <button
+                type="button"
+                className="min-h-8 hover:text-primary"
+                onClick={() => onDrill(comment.id)}
+              >
+                {comment.replies!.length} پاسخ
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {replyToId === comment.id && (
+        <form
+          className="mt-2 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmitReply();
+          }}
+        >
+          <input
+            value={replyDraft}
+            onChange={(e) => onReplyDraft(e.target.value)}
+            className="min-h-11 flex-1 rounded-2xl border bg-background px-3 text-sm"
+            placeholder="پاسخ..."
+            autoFocus
+          />
+          <Button type="submit" size="sm" className="min-h-11">
+            ارسال
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="min-h-11" onClick={onCancelReply}>
+            لغو
+          </Button>
         </form>
       )}
 
-      {focusCommentId ? (
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={handleFocusBack}
-            className="text-sm text-primary hover:underline"
-          >
-            بازگشت
-          </button>
-          <span className="text-xs text-muted-foreground">نمایش شاخه پاسخ</span>
+      {comment.replies?.map((r) => (
+        <div key={r.id} className="mt-3">
+          <CommentBubble
+            comment={r}
+            currentUserId={currentUserId}
+            replyToId={replyToId}
+            replyDraft={replyDraft}
+            onReplyDraft={onReplyDraft}
+            onReply={onReply}
+            onCancelReply={onCancelReply}
+            onSubmitReply={onSubmitReply}
+            onDrill={onDrill}
+            depth={depth + 1}
+          />
         </div>
-      ) : null}
-
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex gap-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1">
-                <Skeleton className="h-4 w-24 mb-1" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : data?.length === 0 ? (
-        <p className="text-sm text-muted-foreground">هنوز نظری ثبت نشده. اولین نفر باشید!</p>
-      ) : (
-        <div className="space-y-1">
-          {visibleRoots.map((comment) => (
-            <CommentThreadWindow
-              key={comment.id}
-              root={comment}
-              onReply={(id) => {
-                setReplyDraft("");
-                setReplyToId(id);
-              }}
-              onDrillDown={handleDrillDown}
-            />
-          ))}
-        </div>
-      )}
+      ))}
     </div>
-  );
-}
-
-/** Renders one focus-root comment + its direct replies (max 2 relative levels). */
-function CommentThreadWindow({
-  root,
-  onReply,
-  onDrillDown,
-}: {
-  root: Comment;
-  onReply: (id: string) => void;
-  onDrillDown: (id: string) => void;
-}) {
-  const replies = root.replies ?? [];
-  const hasReplies = replies.length > 0;
-
-  return (
-    <div className="border-b border-border/40 pb-1 last:border-b-0">
-      <CommentRow
-        comment={root}
-        showLineBelow={hasReplies}
-        showLineAbove={false}
-        onReply={onReply}
-      />
-      {replies.map((reply, index) => {
-        const childCount = reply.replies?.length ?? 0;
-        const isLast = index === replies.length - 1;
-        return (
-          <div key={reply.id}>
-            <CommentRow
-              comment={reply}
-              showLineBelow={!isLast}
-              showLineAbove
-              onReply={onReply}
-              drillDownCount={childCount > 0 ? childCount : undefined}
-              onDrillDown={childCount > 0 ? () => onDrillDown(reply.id) : undefined}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function CommentRow({
-  comment,
-  showLineBelow,
-  showLineAbove,
-  onReply,
-  drillDownCount,
-  onDrillDown,
-}: {
-  comment: Comment;
-  showLineBelow: boolean;
-  showLineAbove: boolean;
-  onReply: (id: string) => void;
-  drillDownCount?: number;
-  onDrillDown?: () => void;
-}) {
-  const formatDate = useFormatDate();
-  const authorName = comment.author?.display_name || comment.author?.username || "Unknown";
-  const username = comment.author?.username;
-
-  return (
-    <div className="flex items-stretch gap-3 py-2">
-      <div className="flex w-8 shrink-0 flex-col items-center self-stretch">
-        {showLineAbove ? (
-          <div className="mb-0.5 h-2 w-0.5 shrink-0 rounded-full bg-border" />
-        ) : null}
-        <Avatar className="h-8 w-8 shrink-0">
-          {comment.author?.avatar_url ? (
-            <AvatarImage src={comment.author.avatar_url} alt={authorName} />
-          ) : null}
-          <AvatarFallback>{getInitials(authorName)}</AvatarFallback>
-        </Avatar>
-        {showLineBelow ? (
-          <div className="mt-0.5 w-0.5 min-h-[8px] flex-1 rounded-full bg-border" />
-        ) : null}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="mb-0.5 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">{authorName}</span>
-          {username ? (
-            <span className="text-xs text-muted-foreground">@{username}</span>
-          ) : null}
-          <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
-        </div>
-        <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => onReply(comment.id)}
-            className="text-xs text-muted-foreground hover:text-primary"
-          >
-            پاسخ
-          </button>
-          {onDrillDown && drillDownCount != null && drillDownCount > 0 ? (
-            <button
-              type="button"
-              onClick={onDrillDown}
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              {drillDownCount} پاسخ
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TwitterStyleReplyCompose({
-  parent,
-  replyDraft,
-  onReplyDraftChange,
-  currentUserAvatar,
-  currentUserName,
-  onCancel,
-  onSubmit,
-  isPending,
-}: {
-  parent: Comment;
-  replyDraft: string;
-  onReplyDraftChange: (value: string) => void;
-  currentUserAvatar?: string;
-  currentUserName: string;
-  onCancel: () => void;
-  onSubmit: (e: React.FormEvent) => void;
-  isPending: boolean;
-}) {
-  const formatDate = useFormatDate();
-  const parentName = parent.author?.display_name || parent.author?.username || "Unknown";
-  const parentUsername = parent.author?.username || "user";
-  const parentInitials = getInitials(parentName);
-  const meInitials = getInitials(currentUserName);
-
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="mb-6 rounded-xl border border-border/60 bg-background p-4"
-    >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          بستن
-        </button>
-        <Button type="submit" size="sm" disabled={isPending || !replyDraft.trim()}>
-          {isPending ? "..." : "پاسخ"}
-        </Button>
-      </div>
-
-      <div className="flex flex-col">
-        <div className="flex gap-3">
-          <div className="flex w-10 shrink-0 flex-col items-center">
-            <Avatar className="h-10 w-10">
-              {parent.author?.avatar_url ? (
-                <AvatarImage src={parent.author.avatar_url} alt={parentName} />
-              ) : null}
-              <AvatarFallback>{parentInitials}</AvatarFallback>
-            </Avatar>
-            <div className="mt-1 w-0.5 min-h-full flex-1 rounded-full bg-border" />
-          </div>
-          <div className="min-w-0 flex-1 pb-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold">{parentName}</span>
-              <span className="text-xs text-muted-foreground">
-                @{parentUsername} · {formatDate(parent.created_at)}
-              </span>
-            </div>
-            <p className="mt-1 text-sm whitespace-pre-wrap">{parent.content}</p>
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <div className="flex w-10 shrink-0 flex-col items-center">
-            <div className="h-2 w-0.5 rounded-full bg-border" />
-            <Avatar className="h-10 w-10">
-              {currentUserAvatar ? (
-                <AvatarImage src={currentUserAvatar} alt={currentUserName} />
-              ) : null}
-              <AvatarFallback>{meInitials}</AvatarFallback>
-            </Avatar>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm text-muted-foreground">
-              در حال پاسخ به <span className="text-primary">@{parentUsername}</span>
-            </p>
-            <textarea
-              value={replyDraft}
-              onChange={(e) => onReplyDraftChange(e.target.value)}
-              placeholder="پاسخ خود را بنویسید"
-              rows={3}
-              autoFocus
-              className={cn(
-                "mt-1 w-full resize-none bg-transparent text-sm outline-none",
-                "placeholder:text-muted-foreground"
-              )}
-            />
-          </div>
-        </div>
-      </div>
-    </form>
   );
 }
 
 function flattenComments(comments: Comment[]): Comment[] {
-  const result: Comment[] = [];
-  const walk = (items: Comment[]) => {
-    for (const item of items) {
-      result.push(item);
-      if (item.replies?.length) walk(item.replies);
+  const out: Comment[] = [];
+  const walk = (list: Comment[]) => {
+    for (const c of list) {
+      out.push(c);
+      if (c.replies?.length) walk(c.replies);
     }
   };
   walk(comments);
-  return result;
+  return out;
 }
 
 function findCommentById(comments: Comment[], id: string): Comment | null {
-  for (const comment of comments) {
-    if (comment.id === id) return comment;
-    if (comment.replies?.length) {
-      const found = findCommentById(comment.replies, id);
+  for (const c of comments) {
+    if (c.id === id) return c;
+    if (c.replies?.length) {
+      const found = findCommentById(c.replies, id);
       if (found) return found;
     }
   }

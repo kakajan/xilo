@@ -74,6 +74,7 @@ fun MainScreen(
     val isAuthenticated by viewModel.isAuthenticated.collectAsState()
     val onboardingCompleted by viewModel.onboardingCompleted.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
+    val canCreatePost by viewModel.canCreatePost.collectAsState()
 
     if (!isAuthenticated) {
         AuthScreen(
@@ -116,7 +117,7 @@ fun MainScreen(
                     OfflineBanner(isOffline = !isOnline)
                 },
                 bottomBar = {
-                    val showFab = selectedTab == 0 && chromeState.isVisible
+                    val showFab = selectedTab == 0 && chromeState.isVisible && canCreatePost
                     val chromeAnimSpec = tween<Float>(durationMillis = 300)
                     val chromeAnimSpecDp = tween<Dp>(durationMillis = 300)
 
@@ -305,7 +306,9 @@ fun MainScreen(
                                         onSettingsClick = { onItemClick(SettingsKey) },
                                         onEditProfileClick = { onItemClick(SettingsKey) },
                                         onSetPhotoClick = { onItemClick(SettingsKey) },
-                                        onCreatePostClick = { onItemClick(CreatePostKey) },
+                                        onCreatePostClick = {
+                                            if (canCreatePost) onItemClick(CreatePostKey)
+                                        },
                                         onPostClick = { slug -> onItemClick(PostDetailKey(slug)) },
                                         onChatClick = { chatId ->
                                             onItemClick(ChatConversationKey(chatId = chatId))

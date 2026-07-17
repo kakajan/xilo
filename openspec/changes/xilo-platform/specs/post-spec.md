@@ -9,9 +9,13 @@ Full CRUD for blog posts/articles with rich text editing, media embedding, versi
 
 ### REQ-POST-001: Create Post
 
-**Given** an authenticated author  
+**Given** an authenticated user with role `author`, `editor`, `admin`, or `superadmin`  
 **When** they submit a post with title, slug, content (Tiptap JSON/Markdown), excerpt, cover image, tags, and category  
 **Then** the post is saved as `draft` and can be published.
+
+**Given** an authenticated `reader`  
+**When** they call `POST /api/posts`  
+**Then** the API returns `403 Forbidden`.
 
 **Validation:**
 - Title: 1–200 chars

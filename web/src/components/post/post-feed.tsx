@@ -1,17 +1,19 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 import { PostCard } from "./post-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import type { PostListResponse } from "@/types/post";
 
 export function PostFeed() {
-  const searchParams = useSearchParams();
-
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteFeed();
+  const { data, isLoading } = useQuery({
+    queryKey: ["feed"],
+    queryFn: async () => {
+      const res = await apiFetch<PostListResponse>("/api/posts?limit=10");
+      return res.data;
+    },
+  });
 
   if (isLoading) {
     return (
@@ -36,9 +38,9 @@ export function PostFeed() {
 
   if (!data?.length) {
     return (
-      <div className="text-center py-20 text-muted-foreground">
-        <p className="text-lg font-medium">No posts yet</p>
-        <p className="text-sm mt-1">Check back later for new content</p>
+      <div className="py-20 text-center text-muted-foreground">
+        <p className="text-lg font-medium">هنوز پستی نیست</p>
+        <p className="mt-1 text-sm">بعداً دوباره سر بزنید</p>
       </div>
     );
   }
@@ -48,26 +50,6 @@ export function PostFeed() {
       {data.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
-
-      {hasNextPage && (
-        <div className="text-center pt-4">
-          <Button variant="outline" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-            {isFetchingNextPage ? "Loading..." : "Load more"}
-          </Button>
-        </div>
-      )}
     </div>
   );
-}
-
-function useInfiniteFeed() {
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useQuery({
-    queryKey: ["feed"],
-    queryFn: async () => {
-      const res = await apiFetch<PostListResponse>("/api/posts?limit=10");
-      return res.data;
-    },
-  });
-
-  return { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage };
 }

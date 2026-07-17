@@ -30,7 +30,14 @@ fun CreatePostScreen(
     val error by viewModel.error.collectAsState()
     val fieldErrors by viewModel.fieldErrors.collectAsState()
     val success by viewModel.success.collectAsState()
+    val allowed by viewModel.allowed.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(allowed) {
+        if (allowed == false) {
+            onBackClick()
+        }
+    }
 
     LaunchedEffect(success) {
         if (success) {

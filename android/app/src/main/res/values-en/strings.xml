@@ -1,5 +1,10 @@
 <resources>
-    <string name="app_name">Xilo</string>
+    <string name="app_name">aile</string>
+    <string name="brand_display">آیله | aile</string>
+    <string name="error_create_post_forbidden">You do not have permission to create posts.</string>
+    <string name="onboarding_welcome">Welcome to %1$s</string>
+    <string name="onboarding_tip">Tip: %1$s keeps your messages available offline.</string>
+    <string name="auth_brand_title">%1$s</string>
 
     <!-- Client-side validation -->
     <string name="validation_empty_credentials">Username and password cannot be empty</string>
@@ -100,7 +105,7 @@
     <string name="profile_unfollow">Unfollow</string>
     <string name="profile_message">Message</string>
     <string name="profile_share">Share</string>
-    <string name="profile_share_text">@%1$s on Xilo</string>
+    <string name="profile_share_text">@%1$s on aile</string>
     <string name="profile_empty_archived">No archived posts yet.</string>
     <string name="profile_empty_posts">No posts yet.</string>
     <string name="profile_empty_replies">No replies yet.</string>

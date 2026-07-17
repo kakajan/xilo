@@ -105,10 +105,11 @@ class TokenManager @Inject constructor(
         }
     }
 
-    fun saveUser(id: String, username: String) {
+    fun saveUser(id: String, username: String, role: String = "reader") {
         prefs.edit()
             .putString("user_id", id)
             .putString("username", username)
+            .putString("user_role", role)
             .commit()
     }
 
@@ -116,6 +117,7 @@ class TokenManager @Inject constructor(
         prefs.edit()
             .remove("user_id")
             .remove("username")
+            .remove("user_role")
             .apply()
     }
 
@@ -125,6 +127,10 @@ class TokenManager @Inject constructor(
 
     fun getUsername(): String? {
         return prefs.getString("username", null)
+    }
+
+    fun getRole(): String? {
+        return prefs.getString("user_role", null)
     }
 
     fun isOnboardingCompleted(): Boolean {

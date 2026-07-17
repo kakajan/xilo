@@ -23,9 +23,15 @@
   --color-border: var(--xilo-border);
   --color-input: var(--xilo-input);
   --color-ring: var(--xilo-ring);
+  --color-bubble-own: var(--xilo-bubble-own);
+  --color-bubble-others: var(--xilo-bubble-others);
+  --color-chat-bubble-own: var(--xilo-chat-bubble-own);
+  --color-chat-bubble-others: var(--xilo-chat-bubble-others);
+  --font-sans: var(--font-vazirmatn), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
+  --radius-bubble: 1rem;
 }
 
 :root {
@@ -47,6 +53,10 @@
   --xilo-border: #eff3f4;
   --xilo-input: #eff3f4;
   --xilo-ring: #1d9bf0;
+  --xilo-bubble-own: #e8f5fe;
+  --xilo-bubble-others: #f7f9fa;
+  --xilo-chat-bubble-own: #e8f5fe;
+  --xilo-chat-bubble-others: #f0f2f5;
 
   --xilo-dark-background: #15202b;
   --xilo-dark-foreground: #e7e9ea;
@@ -66,6 +76,10 @@
   --xilo-dark-border: #38444d;
   --xilo-dark-input: #38444d;
   --xilo-dark-ring: #1d9bf0;
+  --xilo-dark-bubble-own: #1e3a5f;
+  --xilo-dark-bubble-others: #2c2c2e;
+  --xilo-dark-chat-bubble-own: #1e3a5f;
+  --xilo-dark-chat-bubble-others: #2c2c2e;
 }
 
 .dark {
@@ -87,9 +101,20 @@
   --xilo-border: var(--xilo-dark-border);
   --xilo-input: var(--xilo-dark-input);
   --xilo-ring: var(--xilo-dark-ring);
+  --xilo-bubble-own: var(--xilo-dark-bubble-own);
+  --xilo-bubble-others: var(--xilo-dark-bubble-others);
+  --xilo-chat-bubble-own: var(--xilo-dark-chat-bubble-own);
+  --xilo-chat-bubble-others: var(--xilo-dark-chat-bubble-others);
 }
 
 @layer base {
-  * { @apply border-border; }
-  body { @apply bg-background text-foreground; }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
 }

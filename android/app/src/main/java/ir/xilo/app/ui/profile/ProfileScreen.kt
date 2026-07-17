@@ -120,6 +120,7 @@ fun ProfileScreen(
     val userLikes by viewModel.userLikes.collectAsState()
     val isFollowing by viewModel.isFollowing.collectAsState()
     val isOwnProfile by viewModel.isOwnProfile.collectAsState()
+    val canCreatePost by viewModel.canCreatePost.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -537,7 +538,7 @@ fun ProfileScreen(
                     .zIndex(3f)
             )
 
-            if (isOwnProfile) {
+            if (isOwnProfile && canCreatePost) {
                 FloatingActionButton(
                     onClick = onCreatePostClick,
                     shape = RoundedCornerShape(22.dp),

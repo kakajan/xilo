@@ -13,7 +13,7 @@ export function formatDate(date: string, preferredCalendar?: string) {
 }
 
 export function readingTimeText(minutes: number) {
-  return `${minutes} min read`;
+  return `${minutes} دقیقه مطالعه`;
 }
 
 export function getInitials(name: string) {

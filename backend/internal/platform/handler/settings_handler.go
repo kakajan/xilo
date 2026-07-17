@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/xilo-platform/xilo/pkg/brand"
 	"github.com/xilo-platform/xilo/pkg/i18n"
 	"github.com/xilo-platform/xilo/pkg/theme"
 )
@@ -25,7 +26,7 @@ type platformSettingRow struct {
 	Value json.RawMessage `db:"value"`
 }
 
-// GetSettings returns public platform settings (calendar defaults + theme).
+// GetSettings returns public platform settings (calendar defaults + theme + brand).
 func (h *SettingsHandler) GetSettings(c *fiber.Ctx) error {
 	defaults, err := h.loadCalendarDefaults(c)
 	if err != nil {
@@ -41,15 +42,24 @@ func (h *SettingsHandler) GetSettings(c *fiber.Ctx) error {
 			"code":  "internal_error",
 		})
 	}
+	brandSettings, err := h.loadBrand(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "failed to load brand settings",
+			"code":  "internal_error",
+		})
+	}
 	return c.JSON(fiber.Map{
 		"calendar_defaults": defaults,
 		"theme":             themeSettings,
+		"brand":             brandSettings,
 	})
 }
 
 type updateSettingsRequest struct {
 	CalendarDefaults map[string]string `json:"calendar_defaults"`
 	Theme            *theme.Settings   `json:"theme"`
+	Brand            *brand.Settings   `json:"brand"`
 }
 
 // UpdateSettings updates platform settings (admin only).
@@ -61,9 +71,9 @@ func (h *SettingsHandler) UpdateSettings(c *fiber.Ctx) error {
 			"code":  "bad_request",
 		})
 	}
-	if len(req.CalendarDefaults) == 0 && req.Theme == nil {
+	if len(req.CalendarDefaults) == 0 && req.Theme == nil && req.Brand == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "calendar_defaults or theme is required",
+			"error": "calendar_defaults, theme, or brand is required",
 			"code":  "bad_request",
 		})
 	}
@@ -146,9 +156,44 @@ func (h *SettingsHandler) UpdateSettings(c *fiber.Ctx) error {
 		themeOut, _ = h.loadTheme(c)
 	}
 
+	var brandOut brand.Settings
+	if req.Brand != nil {
+		current, err := h.loadBrand(c)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "failed to load brand settings",
+				"code":  "internal_error",
+			})
+		}
+		merged := brand.Normalize(brand.Merge(current, *req.Brand))
+		if err := brand.Validate(merged); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": err.Error(),
+				"code":  "bad_request",
+			})
+		}
+		raw, err := json.Marshal(merged)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "failed to encode brand",
+				"code":  "internal_error",
+			})
+		}
+		if err := h.upsertSetting(c, brand.SettingsKey, raw); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "failed to save brand settings",
+				"code":  "internal_error",
+			})
+		}
+		brandOut = merged
+	} else {
+		brandOut, _ = h.loadBrand(c)
+	}
+
 	return c.JSON(fiber.Map{
 		"calendar_defaults": calendarOut,
 		"theme":             themeOut,
+		"brand":             brandOut,
 	})
 }
 
@@ -197,6 +242,17 @@ func (h *SettingsHandler) loadTheme(c *fiber.Ctx) (theme.Settings, error) {
 		return theme.Default(), nil
 	}
 	return theme.Parse(row.Value)
+}
+
+func (h *SettingsHandler) loadBrand(c *fiber.Ctx) (brand.Settings, error) {
+	var row platformSettingRow
+	err := h.db.GetContext(c.UserContext(), &row, `
+		SELECT key, value FROM platform_settings WHERE key = $1
+	`, brand.SettingsKey)
+	if err != nil {
+		return brand.Default(), nil
+	}
+	return brand.Parse(row.Value)
 }
 
 func copyDefaults(src map[string]string) map[string]string {

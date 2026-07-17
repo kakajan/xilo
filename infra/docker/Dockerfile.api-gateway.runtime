@@ -1,0 +1,9 @@
+# Runtime-only image — binary is built elsewhere (e.g. Germany) when Iran cannot reach proxy.golang.org.
+FROM alpine:3.21
+RUN apk add --no-cache ca-certificates && adduser -D -u 1000 xilo
+WORKDIR /app
+COPY api-gateway /api-gateway
+USER xilo
+EXPOSE 8000
+ENV PORT=8000
+ENTRYPOINT ["/api-gateway"]

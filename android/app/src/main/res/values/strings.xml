@@ -1,5 +1,10 @@
 <resources>
-    <string name="app_name">Xilo</string>
+    <string name="app_name">آیله</string>
+    <string name="brand_display">آیله | aile</string>
+    <string name="error_create_post_forbidden">شما اجازهٔ ارسال پست ندارید.</string>
+    <string name="onboarding_welcome">به %1$s خوش آمدید</string>
+    <string name="onboarding_tip">نکته: %1$s پیام‌های شما را به‌صورت آفلاین هم همگام نگه می‌دارد.</string>
+    <string name="auth_brand_title">%1$s</string>
 
     <!-- Client-side validation -->
     <string name="validation_empty_credentials">نام کاربری و رمز عبور نمی‌تواند خالی باشد</string>
@@ -140,7 +145,7 @@
     <string name="profile_unfollow">لغو دنبال</string>
     <string name="profile_message">گفتگو</string>
     <string name="profile_share">اشتراک</string>
-    <string name="profile_share_text">پروفایل @%1$s در Xilo</string>
+    <string name="profile_share_text">پروفایل @%1$s در آیله</string>
     <string name="profile_empty_archived">پست آرشیو‌شده‌ای وجود ندارد.</string>
     <string name="profile_empty_posts">هنوز پستی منتشر نشده است.</string>
     <string name="profile_empty_replies">هنوز نظری ثبت نشده است.</string>

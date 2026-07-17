@@ -2,6 +2,7 @@ package ir.xilo.app.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ir.xilo.app.core.util.canCreatePost
 import ir.xilo.app.data.NetworkMonitor
 import ir.xilo.app.data.remote.websocket.WebSocketManager
 import ir.xilo.app.data.repository.AuthRepository
@@ -27,6 +28,9 @@ class MainScreenViewModel @Inject constructor(
     private val _currentUsername = MutableStateFlow(authRepository.getUsername())
     val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
 
+    private val _canCreatePost = MutableStateFlow(canCreatePost(authRepository.getRole()))
+    val canCreatePost: StateFlow<Boolean> = _canCreatePost.asStateFlow()
+
     private val _pendingTab = MutableStateFlow<Int?>(null)
     val pendingTab: StateFlow<Int?> = _pendingTab.asStateFlow()
 
@@ -47,6 +51,7 @@ class MainScreenViewModel @Inject constructor(
 
     init {
         refreshUsername()
+        refreshPermissions()
         if (authRepository.isAuthenticated()) {
             connectRealtime()
         }
@@ -55,10 +60,12 @@ class MainScreenViewModel @Inject constructor(
     fun updateAuthStatus() {
         if (!authRepository.isAuthenticated()) {
             _currentUsername.value = null
+            _canCreatePost.value = false
             webSocketManager.disconnect()
             return
         }
         refreshUsername()
+        refreshPermissions()
         connectRealtime()
     }
 
@@ -77,6 +84,17 @@ class MainScreenViewModel @Inject constructor(
             val username = authRepository.getLocalProfile()?.username
                 ?: runCatching { authRepository.getMeUsername() }.getOrNull()
             _currentUsername.value = username?.takeIf { it.isNotBlank() }
+            refreshPermissions()
+        }
+    }
+
+    fun refreshPermissions() {
+        val role = authRepository.getRole()
+        _canCreatePost.value = canCreatePost(role)
+        if (role != null || !authRepository.isAuthenticated()) return
+        viewModelScope.launch {
+            runCatching { authRepository.refreshMe() }
+            _canCreatePost.value = canCreatePost(authRepository.getRole())
         }
     }
 

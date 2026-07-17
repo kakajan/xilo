@@ -18,6 +18,8 @@ export interface ThemePalette {
   warning: string;
   bubble_own: string;
   bubble_others: string;
+  chat_bubble_own: string;
+  chat_bubble_others: string;
 }
 
 export interface PlatformTheme {
@@ -44,6 +46,8 @@ export const DEFAULT_THEME: PlatformTheme = {
     warning: "#FFAD1F",
     bubble_own: "#E8F5FE",
     bubble_others: "#F7F9FA",
+    chat_bubble_own: "#E8F5FE",
+    chat_bubble_others: "#F0F2F5",
   },
   dark: {
     primary: "#1D9BF0",
@@ -63,6 +67,8 @@ export const DEFAULT_THEME: PlatformTheme = {
     warning: "#FFAD1F",
     bubble_own: "#1E3A5F",
     bubble_others: "#2C2C2E",
+    chat_bubble_own: "#1E3A5F",
+    chat_bubble_others: "#2C2C2E",
   },
 };
 
@@ -99,6 +105,10 @@ function setPaletteVars(root: HTMLElement, prefix: string, p: ThemePalette): voi
   root.style.setProperty(`--${prefix}-border`, p.border);
   root.style.setProperty(`--${prefix}-input`, p.border);
   root.style.setProperty(`--${prefix}-ring`, p.primary);
+  root.style.setProperty(`--${prefix}-bubble-own`, p.bubble_own);
+  root.style.setProperty(`--${prefix}-bubble-others`, p.bubble_others);
+  root.style.setProperty(`--${prefix}-chat-bubble-own`, p.chat_bubble_own);
+  root.style.setProperty(`--${prefix}-chat-bubble-others`, p.chat_bubble_others);
 }
 
 export const THEME_FIELD_LABELS: { key: keyof ThemePalette; label: string }[] = [
@@ -119,4 +129,6 @@ export const THEME_FIELD_LABELS: { key: keyof ThemePalette; label: string }[] = 
   { key: "warning", label: "هشدار" },
   { key: "bubble_own", label: "حباب خودم" },
   { key: "bubble_others", label: "حباب دیگران" },
+  { key: "chat_bubble_own", label: "حباب چت خودم" },
+  { key: "chat_bubble_others", label: "حباب چت دیگران" },
 ];

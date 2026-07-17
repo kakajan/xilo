@@ -50,11 +50,17 @@ Secure, stateless authentication with JWT access tokens and refresh tokens. Supp
 
 | Role | Permissions |
 |------|------------|
-| reader | Read posts, write comments, react |
+| reader | Read posts, write comments, react, use chat — **cannot** create posts |
 | author | Create/edit own posts, upload media |
 | editor | Edit any post, moderate comments |
-| admin | Manage users, configure system |
-| superadmin | Full system access, billing |
+| admin | Manage users, configure system, create posts |
+| superadmin | Full system access, billing, create posts |
+
+**UI:** Clients (web + Android) MUST hide create-post entry points (FAB, write nav, `/write`) when the user’s role is not `author` or higher. Commenting and chat remain available to `reader`.
+
+**Admin:** Platform admins MAY assign roles via `PATCH /api/admin/users/:id/role` (and list via `GET /api/admin/users`).
+
+**Bootstrap:** Migration `000018_seed_default_admin` seeds the Aile deploy owner as `superadmin` (`faslolkhitab@gmail.com`) when absent, or promotes/updates that email on re-apply.
 
 ### REQ-AUTH-006: Rate Limiting
 

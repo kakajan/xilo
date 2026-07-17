@@ -3,6 +3,8 @@ package ir.xilo.app.ui.feed
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.xilo.app.R
+import ir.xilo.app.core.util.canCreatePost
+import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.PostRepository
 import ir.xilo.app.ui.components.PostField
 import ir.xilo.app.util.ErrorMessageResolver
@@ -16,6 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CreatePostViewModel @Inject constructor(
     private val postRepository: PostRepository,
+    private val authRepository: AuthRepository,
     private val errorMessageResolver: ErrorMessageResolver,
 ) : ViewModel() {
 
@@ -31,7 +34,23 @@ class CreatePostViewModel @Inject constructor(
     private val _success = MutableStateFlow(false)
     val success: StateFlow<Boolean> = _success.asStateFlow()
 
+    private val _allowed = MutableStateFlow<Boolean?>(null)
+    val allowed: StateFlow<Boolean?> = _allowed.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            if (!canCreatePost(authRepository.getRole())) {
+                runCatching { authRepository.refreshMe() }
+            }
+            _allowed.value = canCreatePost(authRepository.getRole())
+        }
+    }
+
     fun createPost(title: String, content: String) {
+        if (!canCreatePost(authRepository.getRole())) {
+            _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
+            return
+        }
         val errors = buildMap {
             if (title.isBlank()) {
                 put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))

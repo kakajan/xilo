@@ -86,7 +86,7 @@ export function ReactionBar({ targetType, targetId, reactions, className }: Reac
                 animate={{ opacity: 0, y: -20 }}
                 exit={{ opacity: 0 }}
               >
-                {icon({ className: cn("h-4 w-4", color) })}
+                <Icon className={cn("h-4 w-4", color)} />
               </motion.span>
             )}
           </AnimatePresence>

@@ -2,15 +2,16 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Post } from "@/types/post";
-import { apiFetch } from "@/lib/api-client";
 import { formatDate, readingTimeText, getInitials } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "@/components/comment/comment-section";
+import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
 
-async function getPost(username: string, slug: string): Promise<Post | null> {
+async function getPost(slug: string): Promise<Post | null> {
   try {
-    const res = await fetch(`http://localhost:8000/api/posts/${slug}`, {
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${base}/api/posts/${slug}`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;
@@ -22,27 +23,37 @@ async function getPost(username: string, slug: string): Promise<Post | null> {
 
 export default async function PostPage({
   params,
+  searchParams,
 }: {
-  params: { username: string; slug: string };
+  params: Promise<{ username: string; slug: string }>;
+  searchParams: Promise<{ reply?: string }>;
 }) {
-  const post = await getPost(params.username, params.slug);
+  const { username, slug } = await params;
+  const { reply } = await searchParams;
+  const post = await getPost(slug);
   if (!post) notFound();
 
-  const authorName = post.author?.display_name || post.author?.username || "Unknown";
+  const authorName = post.author?.display_name || post.author?.username || "ناشناس";
 
   return (
-    <article className="max-w-3xl mx-auto">
+    <article className="mx-auto max-w-3xl">
       <header className="mb-8">
-        <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
+        <h1 className="mb-4 text-3xl font-bold md:text-4xl">{post.title}</h1>
 
-        <div className="flex items-center gap-3 mb-4">
-          <Link href={`/${post.author?.username}`}>
+        <div className="mb-4 flex items-center gap-3">
+          <Link href={`/${post.author?.username || username}`}>
             <Avatar className="h-10 w-10">
+              {post.author?.avatar_url ? (
+                <AvatarImage src={post.author.avatar_url} alt="" />
+              ) : null}
               <AvatarFallback>{getInitials(authorName)}</AvatarFallback>
             </Avatar>
           </Link>
-          <div>
-            <Link href={`/${post.author?.username}`} className="font-medium hover:underline">
+          <div className="min-w-0">
+            <Link
+              href={`/${post.author?.username || username}`}
+              className="font-medium hover:underline"
+            >
               {authorName}
             </Link>
             <p className="text-sm text-muted-foreground">
@@ -54,12 +65,12 @@ export default async function PostPage({
         </div>
 
         {post.tags?.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap gap-2">
             {post.tags.map((tag) => (
               <Link
                 key={tag}
                 href={`/tag/${tag}`}
-                className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full"
+                className="rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground"
               >
                 {tag}
               </Link>
@@ -68,13 +79,17 @@ export default async function PostPage({
         )}
       </header>
 
-      <div className="prose dark:prose-invert max-w-none mb-12">
-        <p>{post.content_md || post.excerpt}</p>
+      <div className="prose dark:prose-invert mb-8 max-w-none">
+        <p className="whitespace-pre-wrap leading-relaxed">
+          {post.content_md || post.content || post.excerpt}
+        </p>
       </div>
+
+      <StickyReactionBar postId={post.id} reactions={post.reactions} />
 
       <div className="border-t pt-8">
         <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-          <CommentSection postId={post.id} />
+          <CommentSection postId={post.id} initialReplyTo={reply} />
         </Suspense>
       </div>
     </article>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { MetadataSidebar } from "@/components/editor/metadata-sidebar";
 import { useEditorStore } from "@/stores/editor-store";
+import { canCreatePost } from "@/lib/auth/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -12,25 +13,14 @@ import type { Post } from "@/types/post";
 
 export default function WritePage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { title, slug, excerpt, coverImageUrl, category, tags, status, isPremium, reset } =
     useEditorStore();
 
-  const [html, setHtml] = useState("");
+  const [, setHtml] = useState("");
   const [json, setJson] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  if (!isAuthenticated) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-lg text-muted-foreground">Sign in to write</p>
-        <Button className="mt-4" onClick={() => router.push("/login")}>
-          Sign in
-        </Button>
-      </div>
-    );
-  }
 
   const handleSave = useCallback((newHtml: string, newJson: string) => {
     setHtml(newHtml);
@@ -39,7 +29,7 @@ export default function WritePage() {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      setError("Title is required");
+      setError("عنوان لازم است");
       return;
     }
 
@@ -72,26 +62,52 @@ export default function WritePage() {
     setSaving(false);
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="py-20 text-center">
+        <p className="text-lg text-muted-foreground">برای نوشتن وارد شوید</p>
+        <Button className="mt-4 min-h-11" onClick={() => router.push("/login")}>
+          ورود
+        </Button>
+      </div>
+    );
+  }
+
+  if (!canCreatePost(user?.role)) {
+    return (
+      <div className="py-20 text-center">
+        <p className="text-lg text-muted-foreground">
+          شما اجازهٔ ارسال پست ندارید. می‌توانید نظر بگذارید و از چت استفاده کنید.
+        </p>
+        <Button className="mt-4 min-h-11" onClick={() => router.push("/")}>
+          بازگشت
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="lg:flex lg:gap-8">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">New Post</h1>
-          <Button onClick={handleSubmit} disabled={saving}>
+      <div className="min-w-0 flex-1">
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-xl font-bold">پست جدید</h1>
+          <Button className="min-h-11" onClick={handleSubmit} disabled={saving}>
             {status === "published"
-              ? saving ? "Publishing..." : "Publish"
-              : saving ? "Saving..." : "Save Draft"}
+              ? saving
+                ? "در حال انتشار..."
+                : "انتشار"
+              : saving
+                ? "در حال ذخیره..."
+                : "ذخیره پیش‌نویس"}
           </Button>
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive mb-3">{error}</p>
-        )}
+        {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
         <TiptapEditor onSave={handleSave} />
       </div>
 
-      <aside className="w-64 shrink-0 mt-8 lg:mt-0">
+      <aside className="mt-8 w-64 shrink-0 lg:mt-0">
         <MetadataSidebar />
       </aside>
     </div>
