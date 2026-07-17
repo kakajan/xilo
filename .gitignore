@@ -44,8 +44,14 @@ build/
 coverage/
 
 infra/docker-compose.override.yml
-infra/docker-compose.prod.yml
-
+infra/deploy/.env.deploy
+infra/deploy/node_modules/
+infra/proxy/clients/
+infra/proxy/secrets/
+infra/env/prod.env
+infra/.compose.secrets.env
+infra/.env
+infra/secrets/
 
 Docs/*
 Fonts

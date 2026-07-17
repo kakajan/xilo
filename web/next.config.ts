@@ -1,8 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", port: "9000" },
+      { protocol: "https", hostname: "brain.aile.ir" },
+      { protocol: "https", hostname: "aile.ir" },
       { protocol: "https", hostname: "**.amazonaws.com" },
     ],
   },

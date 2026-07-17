@@ -178,7 +178,15 @@ func main() {
 
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOriginsFunc: func(origin string) bool { return true },
+		AllowOriginsFunc: func(origin string) bool {
+			switch origin {
+			case "https://aile.ir", "https://www.aile.ir", "http://localhost:3000":
+				return true
+			default:
+				return origin == ""
+			}
+		},
+		AllowCredentials: true,
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, Idempotency-Key, X-Device-Name, X-Device-Platform, X-Refresh-Token",
 	}))
 

@@ -1,0 +1,16 @@
+{
+  "name": "xilo-deploy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Secure deploy/sync CLI for Xilo on aile.ir",
+  "bin": {
+    "xilo-deploy": "./deploy.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

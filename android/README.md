@@ -42,19 +42,21 @@ Examples:
 # Debug against a LAN device
 ./gradlew :app:assembleDebug -Pxilo.apiBaseUrl=http://192.168.1.10:8888/ -Pxilo.wsBaseUrl=ws://192.168.1.10:8888/ws
 
-# Release (required — no silent localhost defaults)
+# Release against production (aile.ir)
 ./gradlew :app:assembleRelease \
-  -Pxilo.apiBaseUrl=https://api.example.com/ \
-  -Pxilo.wsBaseUrl=wss://api.example.com/ws
+  -Pxilo.apiBaseUrl=https://brain.aile.ir/ \
+  -Pxilo.wsBaseUrl=wss://brain.aile.ir/ws
 ```
 
 Or with env vars (Windows `cmd`):
 
 ```bat
-set XILO_API_BASE_URL=https://api.example.com/
-set XILO_WS_BASE_URL=wss://api.example.com/ws
+set XILO_API_BASE_URL=https://brain.aile.ir/
+set XILO_WS_BASE_URL=wss://brain.aile.ir/ws
 gradlew.bat :app:assembleRelease
 ```
+
+See also `gradle.properties.example` for the production property names.
 
 Release packaging runs `checkReleaseEndpoints` and **fails** if either override is missing, contains embedded credentials, lacks a valid host, or does not use `https://` for REST and `wss://` for WebSocket.
 

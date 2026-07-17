@@ -1,0 +1,116 @@
+# Production stack — runs ONLY on Iran Edge for Aile (/opt/xilo).
+# TLS terminates at host nginx (Virtualmin); containers bind localhost only.
+# Isolated compose project name — does not manage other host containers.
+
+name: xilo
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  api-gateway:
+    build:
+      context: ../backend
+      dockerfile: ../infra/docker/Dockerfile.api-gateway.prod
+    image: xilo/api-gateway:${XILO_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - ./env/prod.env
+    environment:
+      JWT_PRIVATE_KEY_PATH: /secrets/jwt/private.pem
+      JWT_PUBLIC_KEY_PATH: /secrets/jwt/public.pem
+      DATABASE_URL: postgres://${POSTGRES_USER:-xilo}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-xilo}?sslmode=disable
+      MEILISEARCH_KEY: ${MEILI_MASTER_KEY}
+      STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
+      STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./secrets/jwt:/secrets/jwt:ro
+    ports:
+      - "127.0.0.1:18000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  web:
+    build:
+      context: ../web
+      dockerfile: ../infra/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://brain.aile.ir}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-wss://brain.aile.ir}
+        NEXT_PUBLIC_URL: ${NEXT_PUBLIC_URL:-https://aile.ir}
+    image: xilo/web:${XILO_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:13000:3000"
+    depends_on:
+      - api-gateway
+    logging: *default-logging
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-xilo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-xilo}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-xilo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  nats:
+    image: nats:2.10-alpine
+    restart: unless-stopped
+    command: ["-js", "-m", "8222"]
+    logging: *default-logging
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.9
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meili_data:/meili_data
+    logging: *default-logging
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    logging: *default-logging
+
+volumes:
+  postgres_data:
+  redis_data:
+  meili_data:
+  minio_data:

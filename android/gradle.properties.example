@@ -1,0 +1,5 @@
+# Copy values into gradle.properties (local) or pass -P flags / env vars for CI.
+# Production endpoints for aile.ir release builds:
+
+# xilo.apiBaseUrl=https://brain.aile.ir/
+# xilo.wsBaseUrl=wss://brain.aile.ir/ws

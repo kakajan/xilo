@@ -1,0 +1,19 @@
+# Optional edge (prefer existing nginx + Virtualmin TLS on aile).
+# When used, mount wildcard certs into /etc/caddy/certs.
+
+aile.ir, www.aile.ir {
+	tls /etc/caddy/certs/ssl.combined /etc/caddy/certs/ssl.key
+	encode gzip
+	reverse_proxy web:3000
+}
+
+brain.aile.ir {
+	tls /etc/caddy/certs/ssl.combined /etc/caddy/certs/ssl.key
+	encode gzip
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket api-gateway:8000
+	reverse_proxy api-gateway:8000
+}
