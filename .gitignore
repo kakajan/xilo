@@ -26,6 +26,7 @@ backend/public.pem
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 
 .dart_tool/
 .packages
