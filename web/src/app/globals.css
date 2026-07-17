@@ -1,48 +1,92 @@
 @import "tailwindcss";
 
+/*
+  Design tokens: ui-ux-spec §2 (Xilo blue / cool gray).
+  Runtime overrides come from platform theme via --xilo-* variables.
+*/
 @theme inline {
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0 0);
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.145 0 0);
-  --color-primary: oklch(0.55 0.18 265);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.96 0 265);
-  --color-secondary-foreground: oklch(0.205 0 0);
-  --color-muted: oklch(0.96 0 265);
-  --color-muted-foreground: oklch(0.556 0 0);
-  --color-accent: oklch(0.96 0.02 265);
-  --color-accent-foreground: oklch(0.205 0 0);
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-border: oklch(0.922 0 0);
-  --color-input: oklch(0.922 0 0);
-  --color-ring: oklch(0.55 0.18 265);
+  --color-background: var(--xilo-background);
+  --color-foreground: var(--xilo-foreground);
+  --color-card: var(--xilo-card);
+  --color-card-foreground: var(--xilo-card-foreground);
+  --color-popover: var(--xilo-popover);
+  --color-popover-foreground: var(--xilo-popover-foreground);
+  --color-primary: var(--xilo-primary);
+  --color-primary-foreground: var(--xilo-primary-foreground);
+  --color-secondary: var(--xilo-secondary);
+  --color-secondary-foreground: var(--xilo-secondary-foreground);
+  --color-muted: var(--xilo-muted);
+  --color-muted-foreground: var(--xilo-muted-foreground);
+  --color-accent: var(--xilo-accent);
+  --color-accent-foreground: var(--xilo-accent-foreground);
+  --color-destructive: var(--xilo-destructive);
+  --color-border: var(--xilo-border);
+  --color-input: var(--xilo-input);
+  --color-ring: var(--xilo-ring);
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
 }
 
+:root {
+  --xilo-background: #ffffff;
+  --xilo-foreground: #0f1419;
+  --xilo-card: #ffffff;
+  --xilo-card-foreground: #0f1419;
+  --xilo-popover: #ffffff;
+  --xilo-popover-foreground: #0f1419;
+  --xilo-primary: #1d9bf0;
+  --xilo-primary-foreground: #ffffff;
+  --xilo-secondary: #f7f9fa;
+  --xilo-secondary-foreground: #0f1419;
+  --xilo-muted: #eff3f4;
+  --xilo-muted-foreground: #536471;
+  --xilo-accent: #e8f5fe;
+  --xilo-accent-foreground: #0f1419;
+  --xilo-destructive: #f4212e;
+  --xilo-border: #eff3f4;
+  --xilo-input: #eff3f4;
+  --xilo-ring: #1d9bf0;
+
+  --xilo-dark-background: #15202b;
+  --xilo-dark-foreground: #e7e9ea;
+  --xilo-dark-card: #15202b;
+  --xilo-dark-card-foreground: #e7e9ea;
+  --xilo-dark-popover: #15202b;
+  --xilo-dark-popover-foreground: #e7e9ea;
+  --xilo-dark-primary: #1d9bf0;
+  --xilo-dark-primary-foreground: #ffffff;
+  --xilo-dark-secondary: #192734;
+  --xilo-dark-secondary-foreground: #e7e9ea;
+  --xilo-dark-muted: #22303c;
+  --xilo-dark-muted-foreground: #71767b;
+  --xilo-dark-accent: #1a2a3a;
+  --xilo-dark-accent-foreground: #e7e9ea;
+  --xilo-dark-destructive: #f4212e;
+  --xilo-dark-border: #38444d;
+  --xilo-dark-input: #38444d;
+  --xilo-dark-ring: #1d9bf0;
+}
+
 .dark {
-  --color-background: oklch(0.145 0 0);
-  --color-foreground: oklch(0.985 0 0);
-  --color-card: oklch(0.145 0 0);
-  --color-card-foreground: oklch(0.985 0 0);
-  --color-popover: oklch(0.145 0 0);
-  --color-popover-foreground: oklch(0.985 0 0);
-  --color-primary: oklch(0.65 0.2 265);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.269 0 265);
-  --color-secondary-foreground: oklch(0.985 0 0);
-  --color-muted: oklch(0.269 0 265);
-  --color-muted-foreground: oklch(0.708 0 0);
-  --color-accent: oklch(0.269 0.02 265);
-  --color-accent-foreground: oklch(0.985 0 0);
-  --color-destructive: oklch(0.704 0.191 22.216);
-  --color-border: oklch(0.269 0 265);
-  --color-input: oklch(0.269 0 265);
-  --color-ring: oklch(0.65 0.2 265);
+  --xilo-background: var(--xilo-dark-background);
+  --xilo-foreground: var(--xilo-dark-foreground);
+  --xilo-card: var(--xilo-dark-card);
+  --xilo-card-foreground: var(--xilo-dark-card-foreground);
+  --xilo-popover: var(--xilo-dark-popover);
+  --xilo-popover-foreground: var(--xilo-dark-popover-foreground);
+  --xilo-primary: var(--xilo-dark-primary);
+  --xilo-primary-foreground: var(--xilo-dark-primary-foreground);
+  --xilo-secondary: var(--xilo-dark-secondary);
+  --xilo-secondary-foreground: var(--xilo-dark-secondary-foreground);
+  --xilo-muted: var(--xilo-dark-muted);
+  --xilo-muted-foreground: var(--xilo-dark-muted-foreground);
+  --xilo-accent: var(--xilo-dark-accent);
+  --xilo-accent-foreground: var(--xilo-dark-accent-foreground);
+  --xilo-destructive: var(--xilo-dark-destructive);
+  --xilo-border: var(--xilo-dark-border);
+  --xilo-input: var(--xilo-dark-input);
+  --xilo-ring: var(--xilo-dark-ring);
 }
 
 @layer base {

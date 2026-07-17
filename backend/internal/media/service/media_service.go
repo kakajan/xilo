@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
 	"image/png"
 	"io"
 	"path/filepath"
@@ -17,6 +19,7 @@ import (
 	"github.com/xilo-platform/xilo/pkg/storage"
 
 	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
 )
 
 type MediaService struct {
@@ -39,6 +42,7 @@ var maxFileSize int64 = 10 * 1024 * 1024
 var maxImageDimension = 5000
 
 func (s *MediaService) Upload(ctx context.Context, userID string, filename string, reader io.Reader, size int64, mimeType string) (*model.UploadResponse, error) {
+	mimeType = normalizeMimeType(mimeType, filename)
 	if !allowedMimeTypes[mimeType] {
 		return nil, fmt.Errorf("unsupported mime type: %s", mimeType)
 	}
@@ -67,7 +71,7 @@ func (s *MediaService) Upload(ctx context.Context, userID string, filename strin
 		OriginalName: filename,
 		MimeType:     mimeType,
 		SizeBytes:    result.Size,
-		Variants:     map[string]string{"original": result.URL},
+		Variants:     model.JSONMap{"original": result.URL},
 		CreatedAt:    time.Now(),
 	}
 
@@ -85,6 +89,7 @@ func (s *MediaService) Upload(ctx context.Context, userID string, filename strin
 }
 
 func (s *MediaService) UploadAvatar(ctx context.Context, userID string, filename string, reader io.Reader, size int64, mimeType string) (*model.UploadResponse, error) {
+	mimeType = normalizeMimeType(mimeType, filename)
 	if !allowedMimeTypes[mimeType] {
 		return nil, fmt.Errorf("unsupported mime type: %s", mimeType)
 	}
@@ -120,7 +125,7 @@ func (s *MediaService) UploadAvatar(ctx context.Context, userID string, filename
 		SizeBytes:    result.Size,
 		Width:        256,
 		Height:       256,
-		Variants:     map[string]string{"256x256": result.URL},
+		Variants:     model.JSONMap{"256x256": result.URL},
 		CreatedAt:    time.Now(),
 	}
 
@@ -132,11 +137,36 @@ func (s *MediaService) UploadAvatar(ctx context.Context, userID string, filename
 	return &model.UploadResponse{
 		ID:       mediaID,
 		URL:      result.URL,
-		Variants: map[string]string{"avatar": result.URL},
+		Variants: model.JSONMap{"avatar": result.URL},
 		Width:    256,
 		Height:   256,
 		Size:     result.Size,
 	}, nil
+}
+
+func normalizeMimeType(mimeType, filename string) string {
+	mimeType = strings.TrimSpace(strings.ToLower(mimeType))
+	if i := strings.Index(mimeType, ";"); i >= 0 {
+		mimeType = strings.TrimSpace(mimeType[:i])
+	}
+	if mimeType != "" && mimeType != "application/octet-stream" {
+		return mimeType
+	}
+	switch strings.ToLower(filepath.Ext(filename)) {
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".png":
+		return "image/png"
+	case ".webp":
+		return "image/webp"
+	case ".gif":
+		return "image/gif"
+	default:
+		if mimeType == "" {
+			return "application/octet-stream"
+		}
+		return mimeType
+	}
 }
 
 func processAvatar(data []byte) ([]byte, error) {

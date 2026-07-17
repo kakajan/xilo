@@ -37,10 +37,10 @@
 
 ### 1.4 User Service — Language Preference
 
-- [x] **1.4.1** Update user profile to accept and validate `preferred_language`
-  - Acceptance: PATCH /api/users/me with `preferred_language` saves correctly
-- [x] **1.4.2** Include `preferred_language` in user profile response
-  - Acceptance: GET /api/users/me returns `preferred_language`
+- [ ] **1.4.1** Update user profile to accept and validate `preferred_language`
+  - Acceptance: `PATCH /api/auth/me` with `preferred_language` saves correctly; prior completion against the former incorrect profile route is not accepted.
+- [ ] **1.4.2** Include `preferred_language` in user profile response
+  - Acceptance: `GET /api/auth/me` returns `preferred_language`; prior completion against the former incorrect profile route is not accepted.
 - [x] **1.4.3** Set default language on user registration
   - Acceptance: New users have `preferred_language = 'fa'`
 
@@ -154,81 +154,83 @@
 
 ---
 
-## 3. Mobile App — i18n Infrastructure
+## 3. Historical Flutter Mobile i18n Records (Legacy / Out of Scope)
 
-### 3.1 Flutter Localization Setup
+> The following Flutter records are not active implementation tasks and their historical checkmarks do not establish Android completion. Active Android i18n work is deliberately unchecked in `android-native-production` Phase 3 and `REQ-AND-014` through `REQ-AND-016`.
 
-- [x] **3.1.1** Add `flutter_localizations` and `intl` dependencies
+### 3.1 Legacy Flutter Localization Record
+
+- [ ] **LEGACY-3.1.1** Former Flutter localization dependency record — out of scope
   - Acceptance: `pubspec.yaml` updated; `flutter pub get` succeeds
-- [x] **3.1.2** Configure `MaterialApp` with localization delegates
+- [ ] **LEGACY-3.1.2** Former Flutter localization configuration record — out of scope
   - Acceptance: App supports multiple locales
-- [x] **3.1.3** Create ARB file structure (`lib/l10n/`)
+- [ ] **LEGACY-3.1.3** Former Flutter ARB record — out of scope
   - Acceptance: ARB files exist for fa, en, ar, ru, tr
 
 ### 3.2 Translation Files
 
-- [x] **3.2.1** Extract all hardcoded strings to ARB files (fa + en)
+- [ ] **LEGACY-3.2.1** Former Flutter string-extraction record — out of scope
   - Acceptance: No hardcoded strings in UI widgets
-- [x] **3.2.2** Create Arabic (`ar`) ARB file
+- [ ] **LEGACY-3.2.2** Former Flutter Arabic-resource record — out of scope
   - Acceptance: All strings translated to Arabic
-- [x] **3.2.3** Create Russian (`ru`) ARB file
+- [ ] **LEGACY-3.2.3** Former Flutter Russian-resource record — out of scope
   - Acceptance: All strings translated to Russian
-- [x] **3.2.4** Create Turkish (`tr`) ARB file
+- [ ] **LEGACY-3.2.4** Former Flutter Turkish-resource record — out of scope
   - Acceptance: All strings translated to Turkish
-- [x] **3.2.5** Run `flutter gen-l10n` to generate localization code
+- [ ] **LEGACY-3.2.5** Former Flutter generated-localization record — out of scope
   - Acceptance: `AppLocalizations` class generated; compiles without errors
 
 ### 3.3 RTL/LTR Support
 
-- [x] **3.3.1** Verify `Directionality` is set correctly per locale
+- [ ] **LEGACY-3.3.1** Former Flutter directionality record — out of scope
   - Acceptance: `Directionality.of(context)` returns correct direction
-- [ ] **3.3.2** Audit and fix all widgets to use directional properties
+- [ ] **LEGACY-3.3.2** Former Flutter directional-widget audit — out of scope
   - Acceptance: No hardcoded `left`/`right` alignments; use `start`/`end`
-- [ ] **3.3.3** Fix app bar layout for RTL
+- [ ] **LEGACY-3.3.3** Former Flutter RTL app-bar task — out of scope
   - Acceptance: Back button, title, actions render correctly in RTL
-- [ ] **3.3.4** Fix list items for RTL
+- [ ] **LEGACY-3.3.4** Former Flutter RTL list task — out of scope
   - Acceptance: Post cards, comment items render correctly in RTL
-- [ ] **3.3.5** Fix bottom navigation for RTL
+- [ ] **LEGACY-3.3.5** Former Flutter RTL navigation task — out of scope
   - Acceptance: Nav items render correctly in RTL
-- [ ] **3.3.6** Fix drawer/sidebar for RTL
+- [ ] **LEGACY-3.3.6** Former Flutter RTL drawer task — out of scope
   - Acceptance: Drawer slides from correct side
 
 ### 3.4 Font Support
 
-- [x] **3.4.1** Add Vazirmatn font to Flutter assets
+- [ ] **LEGACY-3.4.1** Former Flutter Vazirmatn record — out of scope
   - Acceptance: Font declared in pubspec.yaml; download script ready
-- [x] **3.4.2** Add Noto Sans Arabic font to Flutter assets
+- [ ] **LEGACY-3.4.2** Former Flutter Arabic-font record — out of scope
   - Acceptance: Font declared in pubspec.yaml; download script ready
-- [x] **3.4.3** Configure dynamic font family based on locale
+- [ ] **LEGACY-3.4.3** Former Flutter font-selection record — out of scope
   - Acceptance: `ThemeData.fontFamily` changes with locale
 
 ### 3.5 Language Settings
 
-- [x] **3.5.1** Create language selection screen
+- [ ] **LEGACY-3.5.1** Former Flutter language-screen record — out of scope
   - Acceptance: Shows all supported languages with native names and checkmark for current
-- [x] **3.5.2** Add language settings to user settings page
+- [ ] **LEGACY-3.5.2** Former Flutter language-settings record — out of scope
   - Acceptance: "Language" option navigates to language selection
-- [x] **3.5.3** Implement locale switching with Riverpod provider
+- [ ] **LEGACY-3.5.3** Former Flutter locale-state record — out of scope
   - Acceptance: Selecting a language rebuilds the entire app with new locale
-- [x] **3.5.4** Persist language preference in Hive
+- [ ] **LEGACY-3.5.4** Former Flutter preference-storage record — out of scope
   - Acceptance: Preference survives app restart
-- [x] **3.5.5** Sync language preference with backend (if authenticated)
-  - Acceptance: Language change calls `PATCH /api/users/me`
+- [ ] **LEGACY-3.5.5** Former Flutter locale-sync record — out of scope
+  - Acceptance: Historical only; the current profile route is `PATCH /api/auth/me`.
 
 ### 3.6 Language Badge
 
-- [x] **3.6.1** Create `LanguageBadge` widget
+- [ ] **LEGACY-3.6.1** Former Flutter language-badge record — out of scope
   - Acceptance: Renders language indicator with consistent styling
-- [x] **3.6.2** Add language badge to post cards
+- [ ] **LEGACY-3.6.2** Former Flutter post-card badge record — out of scope
   - Acceptance: Each post card shows its language
-- [x] **3.6.3** Add language badge to post detail screen
+- [ ] **LEGACY-3.6.3** Former Flutter post-detail badge record — out of scope
   - Acceptance: Post header shows language
 
 ### 3.7 Device Locale Detection
 
-- [x] **3.7.1** Implement device locale detection on first launch
+- [ ] **LEGACY-3.7.1** Former Flutter device-locale record — out of scope
   - Acceptance: App uses device language if supported
-- [x] **3.7.2** Implement fallback to default locale (`fa`) for unsupported device languages
+- [ ] **LEGACY-3.7.2** Former Flutter locale-fallback record — out of scope
   - Acceptance: Unsupported device language falls back to Persian
 
 ---
@@ -255,13 +257,13 @@
 - [ ] **4.2.4** Manual QA: verify all pages in fa, en, ar, ru, tr
   - Acceptance: No missing translations, correct direction on all pages
 
-### 4.3 Mobile Tests
+### 4.3 Legacy Flutter Mobile Test Records (Out of Scope)
 
-- [ ] **4.3.1** Write widget tests for language settings screen
+- [ ] **LEGACY-4.3.1** Former Flutter widget tests for language settings — out of scope
   - Acceptance: Screen renders, switches locale, persists preference
-- [ ] **4.3.2** Write widget tests for RTL layout
+- [ ] **LEGACY-4.3.2** Former Flutter widget tests for RTL layout — out of scope
   - Acceptance: Widgets render in correct direction
-- [ ] **4.3.3** Manual QA: verify all screens in fa, en, ar, ru, tr
+- [ ] **LEGACY-4.3.3** Former Flutter multilingual manual QA — out of scope
   - Acceptance: No missing translations, correct direction on all screens
 
 ### 4.4 CI/CD
@@ -275,10 +277,11 @@
 
 ## Task Summary
 
-| Phase | Tasks | Focus |
-|-------|-------|-------|
-| 1. Database & Backend | 14 | Migration, language config, API changes, search |
-| 2. Web Frontend | 25 | next-intl, translations, RTL, fonts, switcher, badges |
-| 3. Mobile App | 22/22 | flutter_localizations, ARB files, RTL, fonts, settings |
-| 4. Testing & Validation | 10 | Unit/integration tests, manual QA, CI |
-| **Total** | **71** | **Mobile: 22 complete** |
+| Scope | Active tasks | Active completed | Notes |
+|-------|-------------:|-----------------:|-------|
+| 1. Database & Backend | 16 | 14 | Profile route tasks 1.4.1–1.4.2 were reopened for `/api/auth/me` verification. |
+| 2. Web Frontend | 37 | 0 | next-intl, translations, RTL, fonts, switcher, badges |
+| 4. Active Testing & CI | 9 | 1 | Excludes legacy Flutter mobile tests. |
+| **Active total in this change** | **62** | **15** | |
+| Legacy Flutter records | 30 records | Excluded | Historical records never count as active completion. |
+| Active native Android | Tracked in `android-native-production` | **0 complete** | Every Android task and gate remains unchecked. |

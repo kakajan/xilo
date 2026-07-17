@@ -82,7 +82,8 @@ The post list endpoint SHALL accept an optional `language` query parameter to fi
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/languages` | None | List supported languages |
-| PATCH | `/api/users/me` | Reader+ | Update user profile (includes `preferred_language`) |
+| GET | `/api/auth/me` | Reader+ | Get current user profile (includes `preferred_language`) |
+| PATCH | `/api/auth/me` | Reader+ | Update current user profile (includes `preferred_language`) |
 
 ### GET /api/languages Response
 

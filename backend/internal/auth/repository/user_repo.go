@@ -15,10 +15,11 @@ import (
 )
 
 var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrEmailExists       = errors.New("email already exists")
-	ErrUsernameExists    = errors.New("username already exists")
+	ErrUserNotFound        = errors.New("user not found")
+	ErrEmailExists         = errors.New("email already exists")
+	ErrUsernameExists      = errors.New("username already exists")
 	ErrRefreshTokenRevoked = errors.New("refresh token revoked")
+	ErrSessionNotFound     = errors.New("session not found")
 )
 
 type UserRepo struct {
@@ -35,7 +36,7 @@ func (r *UserRepo) Create(ctx context.Context, req *model.RegisterRequest, passw
 		INSERT INTO users (email, username, password_hash)
 		VALUES ($1, $2, $3)
 		RETURNING id, email, username, phone, password_hash, display_name, avatar_url,
-		          bio, role, email_verified, preferred_language, created_at, updated_at
+		          bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 	`, req.Email, req.Username, passwordHash)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -52,7 +53,7 @@ func (r *UserRepo) CreateWithPhone(ctx context.Context, email, username, phone, 
 		INSERT INTO users (email, username, phone, password_hash)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, email, username, phone, password_hash, display_name, avatar_url,
-		          bio, role, email_verified, preferred_language, created_at, updated_at
+		          bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 	`, email, username, phone, passwordHash)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -67,7 +68,7 @@ func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*model.User, 
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
 		SELECT id, email, username, phone, password_hash, display_name, avatar_url,
-		       bio, role, email_verified, preferred_language, created_at, updated_at
+		       bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 		FROM users
 		WHERE email = $1 AND deleted_at IS NULL
 	`, email)
@@ -84,7 +85,7 @@ func (r *UserRepo) FindByID(ctx context.Context, id string) (*model.User, error)
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
 		SELECT id, email, username, phone, password_hash, display_name, avatar_url,
-		       bio, role, email_verified, preferred_language, created_at, updated_at
+		       bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 		FROM users
 		WHERE id = $1 AND deleted_at IS NULL
 	`, id)
@@ -101,7 +102,7 @@ func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*model.
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
 		SELECT id, email, username, phone, password_hash, display_name, avatar_url,
-		       bio, role, email_verified, preferred_language, created_at, updated_at
+		       bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 		FROM users
 		WHERE username = $1 AND deleted_at IS NULL
 	`, username)
@@ -122,11 +123,12 @@ func (r *UserRepo) UpdateProfile(ctx context.Context, userID string, req *model.
 		    bio = COALESCE(NULLIF($3, ''), bio),
 		    avatar_url = COALESCE(NULLIF($4, ''), avatar_url),
 		    preferred_language = COALESCE(NULLIF($5, ''), preferred_language),
+		    preferred_calendar = COALESCE(NULLIF($6, ''), preferred_calendar),
 		    updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, email, username, phone, password_hash, display_name, avatar_url,
-		          bio, role, email_verified, preferred_language, created_at, updated_at
-	`, userID, req.DisplayName, req.Bio, req.AvatarURL, req.PreferredLanguage)
+		          bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
+	`, userID, req.DisplayName, req.Bio, req.AvatarURL, req.PreferredLanguage, req.PreferredCalendar)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -136,18 +138,82 @@ func (r *UserRepo) UpdateProfile(ctx context.Context, userID string, req *model.
 	return &user, nil
 }
 
-func (r *UserRepo) SaveRefreshToken(ctx context.Context, userID, family string, tokenHash string, expiresAt time.Time) error {
+func (r *UserRepo) SaveRefreshToken(
+	ctx context.Context,
+	userID, family string,
+	tokenHash string,
+	expiresAt time.Time,
+	device *model.DeviceMetadata,
+) error {
+	var deviceName, platform, userAgent, ip *string
+	if device != nil {
+		deviceName = device.DeviceName
+		platform = device.Platform
+		userAgent = device.UserAgent
+		ip = device.IP
+	}
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO refresh_tokens (user_id, token_hash, family, expires_at)
-		VALUES ($1, $2, $3, $4)
-	`, userID, tokenHash, family, expiresAt)
+		INSERT INTO refresh_tokens (
+			user_id, token_hash, family, expires_at,
+			device_name, platform, user_agent, ip, last_seen_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+	`, userID, tokenHash, family, expiresAt, deviceName, platform, userAgent, ip)
+	return err
+}
+
+func (r *UserRepo) ListActiveSessions(ctx context.Context, userID string) ([]model.RefreshToken, error) {
+	var sessions []model.RefreshToken
+	err := r.db.SelectContext(ctx, &sessions, `
+		SELECT DISTINCT ON (family)
+		       id, user_id, token_hash, family, expires_at, revoked,
+		       device_name, platform, user_agent, ip, last_seen_at, created_at
+		FROM refresh_tokens
+		WHERE user_id = $1
+		  AND revoked = FALSE
+		  AND expires_at > NOW()
+		ORDER BY family, created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list active sessions: %w", err)
+	}
+	if sessions == nil {
+		sessions = []model.RefreshToken{}
+	}
+	return sessions, nil
+}
+
+func (r *UserRepo) FindSessionByID(ctx context.Context, userID, sessionID string) (*model.RefreshToken, error) {
+	var session model.RefreshToken
+	err := r.db.GetContext(ctx, &session, `
+		SELECT id, user_id, token_hash, family, expires_at, revoked,
+		       device_name, platform, user_agent, ip, last_seen_at, created_at
+		FROM refresh_tokens
+		WHERE id = $1 AND user_id = $2
+	`, sessionID, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrSessionNotFound
+		}
+		return nil, fmt.Errorf("find session by id: %w", err)
+	}
+	return &session, nil
+}
+
+func (r *UserRepo) UpdateSessionLastSeen(ctx context.Context, tokenHash string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE refresh_tokens
+		SET last_seen_at = NOW()
+		WHERE token_hash = $1 AND revoked = FALSE
+	`, tokenHash)
 	return err
 }
 
 func (r *UserRepo) FindRefreshToken(ctx context.Context, tokenHash string) (*model.RefreshToken, error) {
 	var rt model.RefreshToken
 	err := r.db.GetContext(ctx, &rt, `
-		SELECT id, user_id, token_hash, family, expires_at, revoked, created_at
+		SELECT id, user_id, token_hash, family, expires_at, revoked,
+		       device_name, platform, user_agent, ip, last_seen_at, created_at
 		FROM refresh_tokens
 		WHERE token_hash = $1
 	`, tokenHash)
@@ -190,7 +256,7 @@ func (r *UserRepo) FindByPhone(ctx context.Context, phone string) (*model.User, 
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
 		SELECT id, email, username, phone, password_hash, display_name, avatar_url,
-		       bio, role, email_verified, preferred_language, created_at, updated_at
+		       bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 		FROM users
 		WHERE phone = $1 AND deleted_at IS NULL
 	`, phone)

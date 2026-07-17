@@ -8,20 +8,20 @@
 
 ### 1.1 Project Scaffolding & Infrastructure
 
-- [x] **T1.1.1** Create monorepo directory structure (`backend/`, `web/`, `mobile/`, `infra/`)
-  - Acceptance: Directory tree matches design doc
+- [ ] **T1.1.1** Validate active monorepo directory structure (`backend/`, `web/`, `android/`, `infra/`)
+  - Acceptance: `ANP-1.1` verifies the in-place Android project; the legacy `mobile/` tree is preserved but not an active target.
 - [x] **T1.1.2** Initialize Go module with Fiber dependency
   - Acceptance: `go mod tidy` succeeds, hello world endpoint runs
 - [x] **T1.1.3** Initialize Next.js 15 project with TypeScript, Tailwind CSS 4, shadcn/ui
   - Acceptance: `npm run dev` starts, homepage renders
-- [x] **T1.1.4** Initialize Flutter project with Clean Architecture folder structure
-  - Acceptance: `flutter run` launches app on emulator
-- [x] **T1.2.7** Create mobile login/register screens with Riverpod
-  - Acceptance: Screens match web behavior; tokens stored in Hive
-- [x] **T1.5.5** Create mobile comment screen with reply and nested view
-  - Acceptance: Matches web behavior; smooth scroll to reply
-- [x] **T1.6.5** Create mobile search screen with autocomplete dropdown
-  - Acceptance: Matches web search behavior
+- [ ] **LEGACY-T1.1.4** Former Flutter initialization record — out of scope
+  - Historical only; it is not Android completion evidence. See `android-native-production` Phase 1.
+- [ ] **LEGACY-T1.2.7** Former Flutter auth-screen record — out of scope
+  - Historical only; Android auth is `ANP-2.1`.
+- [ ] **LEGACY-T1.5.5** Former Flutter comment-screen record — out of scope
+  - Historical only; Android engagement work is `ANP-2.4`.
+- [ ] **LEGACY-T1.6.5** Former Flutter search-screen record — out of scope
+  - Historical only; Android feed/search work is `ANP-2.2`.
 
 ### 1.7 Visual Design System
 
@@ -53,10 +53,10 @@
   - Acceptance: Duration/easing tokens (§9.1-9.2); bubble entrance, like, thread expand animations work
 - [ ] **T1.7.14** Implement focus states and accessibility
   - Acceptance: All interactive elements have visible focus (§11.2); color contrast passes AA (§11.1)
-- [x] **T1.7.15** Create profile header component (web + mobile)
-  - Acceptance: Matches X-style spec (§8.14) — avatar, stats, action buttons, tabs
-- [x] **T1.7.16** Create post card component (web + mobile)
-  - Acceptance: Matches X-style spec (§8.4) — header, content, media, action row
+- [ ] **T1.7.15** Create profile header component (web + native Android)
+  - Acceptance: Android proof is tracked by `ANP-2.2`; historical Flutter work is not completion evidence.
+- [ ] **T1.7.16** Create post card component (web + native Android)
+  - Acceptance: Android proof is tracked by `ANP-2.2`; historical Flutter work is not completion evidence.
 - [x] **T1.7.17** Create button component variants
   - Acceptance: Primary, secondary, ghost, danger (§8.1) with correct states
 - [ ] **T1.7.18** Create input field component
@@ -88,7 +88,7 @@
 - [ ] **T2.2.4** Implement Telegram-style comment bubble UI (mobile)
   - Acceptance: Matches web; swipe to reply/like; long-press menu (§10.1)
 - [ ] **T2.2.5** Implement thread visualization with indentation and collapse
-  - Acceptance: 24px indent per level; "View N more replies" for collapsed threads; max 3 visible levels
+  - Acceptance: Twitter-style avatar-column thread line; max 2 visible levels relative to focus; "N پاسخ" drill-down for deeper replies
 - [ ] **T2.2.6** Implement comment composer with mentions/hashtags autocomplete
   - Acceptance: @username and #hashtag suggestions while typing; image attachment; draft autosave
 - [ ] **T2.2.7** Implement comment sorting UI (newest, oldest, most reacted, most replied)
@@ -126,19 +126,21 @@
   - Acceptance: Bookmark added/removed; list endpoint returns bookmarked posts
 - [x] **T2.5.2** Implement follow/unfollow endpoint
   - Acceptance: Follow relationship created; follow event emits NATS notification
-- [x] **T2.5.3** Create bookmarks page in web and mobile
-  - Acceptance: Shows bookmarked posts list
+- [x] **T2.5.3** Create bookmarks page in web and native Android
+  - Acceptance: Android Saved hub (Messages tab chip + Messages/Posts/Comments segments) delivered; web bookmarks page still outstanding and tracked separately.
 - [x] **T2.5.4** Add follow button to author profile and post author card
   - Acceptance: Button toggles follow/unfollow; count updates
+- [x] **T2.5.5** Implement post repost toggle (API + web + Android)
+  - Acceptance: `POST/DELETE /api/posts/:id/repost`; `repost_count`/`is_reposted` on list/detail; Android/web toggle with optimistic update
 
-### 2.6 Mobile Real-time
+### 2.6 Mobile Real-time (Native Android)
 
-- [x] **T2.6.1** Implement WebSocket manager in Flutter with reconnection
-  - Acceptance: Connects on app start; reconnects on network change
-- [x] **T2.6.2** Wire mobile comment screen to WebSocket events
-  - Acceptance: Live comment updates in mobile app
-- [x] **T2.6.3** Implement mobile notification with local push when in-app
-  - Acceptance: In-app notification banner when new notification arrives
+- [ ] **T2.6.1** Implement Android OkHttp WebSocket manager with reconnection and Room reconciliation.
+  - Acceptance: `ANP-3.2` and `REQ-AND-007` pass; Flutter code is not evidence.
+- [ ] **T2.6.2** Wire Android comments and reactions to realtime events.
+  - Acceptance: `ANP-2.4` passes on a supported Android test device.
+- [ ] **T2.6.3** Implement Android push registration and in-app notification handling.
+  - Acceptance: `ANP-3.1` and `REQ-AND-006` pass.
 
 ### 2.7 Discover Feed
 
@@ -343,7 +345,7 @@
 - [ ] **T5.2** Collaborative editing (CRDT-based, Yjs + Tiptap)
 - [ ] **T5.3** Newsletter system (email subscriptions, automated digests)
 - [ ] **T5.4** Community features (groups, forums)
-- [ ] **T5.5** Native desktop app (Tauri or Flutter desktop)
+- [ ] **T5.5** Native desktop app (Tauri, future and separate from Android mobile scope)
 - [ ] **T5.6** Multi-language/i18n support (RTL, translations)
 - [ ] **T5.7** White-label / custom domain support for authors
 - [ ] **T5.8** API for third-party integrations (OAuth2 provider)

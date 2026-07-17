@@ -87,7 +87,9 @@ Readers can sort comments by:
 **Then** it appears as a chat bubble with:
 
 **Visual properties:**
-- Bubble background: `#E3F2FD` (own) / `#F5F5F5` (others) in light mode
+- Visual authority: `openspec/changes/xilo-platform/specs/ui-ux-spec.md`
+- Bubble background: own `#E8F5FE` / others `#F7F9FA` in light mode
+- Dark bubble background: own `#1E3A5F` / others `#2C2C2E`
 - Bubble border-radius: 14-16px
 - Padding: 12-14px
 - Author avatar (32px mobile, 40px desktop) beside bubble
@@ -95,17 +97,28 @@ Readers can sort comments by:
 - Engagement bar (likes, replies, share) below bubble
 
 **Thread visualization:**
-- Indentation: 24px per nesting level
-- Thread lines connecting parent-child
-- Max visible depth: 3 levels
-- "View N more replies" for collapsed threads
+- Twitter-style vertical thread line in the avatar column (≈2px, centered under avatars) connecting parent to child — not a full-height side border indent
+- Max visible depth: **2 levels relative to the current focus root** (post root, or a drilled-into comment)
+- Deeper replies are not inlined; show an "**N پاسخ**" / "View N replies" control using direct child count
+- Clicking the control drills into that comment as the new focus root (same 2-level window again); UI provides back navigation
+- Backend nesting max depth remains 4 (REQ-CMT-002)
 
 **Animations:**
 - Entrance: `opacity 0→1, translateY 16px→0, 250ms`
 - Like: heart scale `1→1.25→1, 300ms`
 - Thread expand: height transition `200-250ms`
 
-### REQ-CMT-010: Discover Feed Eligibility
+### REQ-CMT-010: Comment Bookmarks
+
+**Given** an authenticated user viewing a comment  
+**When** they bookmark the comment  
+**Then** it appears in their Saved hub Comments segment (`GET /api/bookmarks/comments`) and `is_bookmarked` is true on subsequent comment lists.
+
+**API:**
+- `POST /api/comments/:id/bookmark` / `DELETE /api/comments/:id/bookmark`
+- `GET /api/bookmarks/comments`
+
+### REQ-CMT-011: Discover Feed Eligibility
 
 **Given** a comment  
 **When** it meets the Discover criteria (REQ-DIS-004)  
@@ -131,6 +144,8 @@ Readers can sort comments by:
 | POST | `/api/comments/:id/reactions` | Reader+ | Toggle reaction |
 | POST | `/api/comments/:id/pin` | Author/Mod | Pin/unpin comment |
 | POST | `/api/comments/:id/report` | Reader+ | Report comment |
+| POST/DELETE | `/api/comments/:id/bookmark` | Reader+ | Toggle comment bookmark |
+| GET | `/api/bookmarks/comments` | Reader+ | List bookmarked comments |
 
 ## WebSocket Events
 

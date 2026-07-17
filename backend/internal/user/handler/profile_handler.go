@@ -270,6 +270,138 @@ func (h *ProfileHandler) ListUserLikes(c *fiber.Ctx) error {
 	})
 }
 
+type followListUser struct {
+	ID          string `json:"id" db:"id"`
+	Username    string `json:"username" db:"username"`
+	DisplayName string `json:"display_name" db:"display_name"`
+	AvatarURL   string `json:"avatar_url" db:"avatar_url"`
+	Role        string `json:"-" db:"role"`
+	CreatedAt   time.Time `json:"-" db:"created_at"`
+	IsVerified  bool   `json:"is_verified"`
+	IsFollowing bool   `json:"is_following"`
+}
+
+// ListUserFollowers lists users who follow the given username.
+func (h *ProfileHandler) ListUserFollowers(c *fiber.Ctx) error {
+	return h.listFollowGraph(c, followGraphFollowers)
+}
+
+// ListUserFollowing lists users that the given username follows.
+func (h *ProfileHandler) ListUserFollowing(c *fiber.Ctx) error {
+	return h.listFollowGraph(c, followGraphFollowing)
+}
+
+type followGraphKind int
+
+const (
+	followGraphFollowers followGraphKind = iota
+	followGraphFollowing
+)
+
+func (h *ProfileHandler) listFollowGraph(c *fiber.Ctx, kind followGraphKind) error {
+	username := c.Params("username")
+	cursor := c.Query("cursor")
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	viewerID, _ := c.Locals("userID").(string)
+	ctx := c.UserContext()
+
+	var targetID string
+	err := h.db.GetContext(ctx, &targetID, `
+		SELECT id FROM users WHERE username = $1 AND deleted_at IS NULL
+	`, username)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
+	}
+
+	var (
+		joinOn        string
+		whereCol      string
+		whereCol2     string
+		edgeUserCol   string // listed user id on follows row
+		edgeUserCol2  string // same column with f2 alias for cursor subquery
+	)
+	switch kind {
+	case followGraphFollowers:
+		// Users who follow target: f.following_id = target, join follower
+		joinOn = "u.id = f.follower_id"
+		whereCol = "f.following_id"
+		whereCol2 = "f2.following_id"
+		edgeUserCol = "f.follower_id"
+		edgeUserCol2 = "f2.follower_id"
+	default:
+		// Users target follows: f.follower_id = target, join following
+		joinOn = "u.id = f.following_id"
+		whereCol = "f.follower_id"
+		whereCol2 = "f2.follower_id"
+		edgeUserCol = "f.following_id"
+		edgeUserCol2 = "f2.following_id"
+	}
+
+	query := `
+		SELECT u.id, u.username, u.display_name,
+		       COALESCE(u.avatar_url, '') AS avatar_url,
+		       u.role, f.created_at
+		FROM follows f
+		JOIN users u ON ` + joinOn + `
+		WHERE ` + whereCol + ` = $1 AND u.deleted_at IS NULL
+	`
+	args := []interface{}{targetID}
+	argIdx := 2
+	if cursor != "" {
+		query += ` AND (f.created_at, ` + edgeUserCol + `) < (
+			SELECT f2.created_at, ` + edgeUserCol2 + `
+			FROM follows f2
+			WHERE ` + edgeUserCol2 + ` = $` + strconv.Itoa(argIdx) + `
+			  AND ` + whereCol2 + ` = $1
+		)`
+		args = append(args, cursor)
+		argIdx++
+	}
+	query += ` ORDER BY f.created_at DESC, ` + edgeUserCol + ` DESC LIMIT $` + strconv.Itoa(argIdx)
+	args = append(args, limit+1)
+
+	rows := make([]followListUser, 0)
+	if err := h.db.SelectContext(ctx, &rows, query, args...); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list follows"})
+	}
+
+	var nextCursor string
+	if len(rows) > limit {
+		rows = rows[:limit]
+		nextCursor = rows[limit-1].ID
+	}
+
+	ids := make([]string, 0, len(rows))
+	for i := range rows {
+		rows[i].IsVerified = userutil.IsVerifiedWriter(rows[i].Role)
+		ids = append(ids, rows[i].ID)
+	}
+
+	followingSet := map[string]bool{}
+	if viewerID != "" && len(ids) > 0 {
+		var followedIDs []string
+		_ = h.db.SelectContext(ctx, &followedIDs, `
+			SELECT following_id FROM follows
+			WHERE follower_id = $1 AND following_id = ANY($2)
+		`, viewerID, pq.Array(ids))
+		for _, id := range followedIDs {
+			followingSet[id] = true
+		}
+	}
+	for i := range rows {
+		rows[i].IsFollowing = followingSet[rows[i].ID]
+	}
+
+	return c.JSON(fiber.Map{
+		"data":        rows,
+		"next_cursor": nextCursor,
+		"has_more":    nextCursor != "",
+	})
+}
+
 // InvalidateProfileCache removes cached profile for a username.
 func (h *ProfileHandler) InvalidateProfileCache(ctx context.Context, username string) {
 	if h.rdb != nil {

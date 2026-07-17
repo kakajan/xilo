@@ -15,6 +15,14 @@
     <string name="error_forbidden">You do not have permission to do this.</string>
     <string name="error_not_found">The requested item was not found.</string>
     <string name="error_bad_request">Invalid request. Please check your input.</string>
+
+    <!-- Avatar crop -->
+    <string name="avatar_crop_title">Profile photo</string>
+    <string name="avatar_crop_hint">Move and scale</string>
+    <string name="avatar_crop_cancel">Cancel</string>
+    <string name="avatar_crop_confirm">Set</string>
+    <string name="avatar_crop_load_failed">Failed to load image</string>
+    <string name="error_avatar_upload">Could not upload profile photo. Try another image.</string>
     <string name="error_too_many_requests">Too many requests. Please wait a moment.</string>
     <string name="error_load_feed">Failed to load feed</string>
     <string name="error_load_post">Failed to load post</string>
@@ -24,6 +32,87 @@
     <string name="error_search">Search failed</string>
     <string name="error_login_failed">Login failed</string>
     <string name="error_registration_failed">Registration failed</string>
+
+    <!-- Discover -->
+    <string name="discover_action_reply">Reply</string>
+    <string name="discover_action_like">Like</string>
+    <string name="discover_action_dislike">Dislike</string>
+    <string name="discover_action_report">Report</string>
+    <string name="discover_report_title">Report comment</string>
+    <string name="discover_report_message">Do you want to report this comment?</string>
+    <string name="discover_report_confirm">Report</string>
+    <string name="discover_report_cancel">Cancel</string>
+    <string name="discover_report_submitted">Your report was submitted</string>
+
+    <!-- Chat delivery -->
+    <string name="chat_default_title">Chat</string>
+    <string name="chat_message_placeholder">Write a message…</string>
+    <string name="saved_messages_title">Saved Messages</string>
+    <string name="saved_messages_back">Back</string>
+    <string name="saved_messages_count">%d items</string>
+    <string name="saved_messages_empty_title">No saved messages yet</string>
+    <string name="saved_messages_empty_subtitle">Messages you save will appear here.</string>
+    <string name="saved_hub_chip">Saved</string>
+    <string name="saved_hub_segment_messages">Messages</string>
+    <string name="saved_hub_segment_posts">Posts</string>
+    <string name="saved_hub_segment_comments">Comments</string>
+    <string name="saved_hub_posts_empty_title">No saved posts</string>
+    <string name="saved_hub_posts_empty_subtitle">Posts you bookmark will appear here.</string>
+    <string name="saved_hub_comments_empty_title">No saved comments</string>
+    <string name="saved_hub_comments_empty_subtitle">Comments you bookmark will appear here.</string>
+    <string name="saved_hub_all_chats">All chats</string>
+    <string name="comment_action_bookmark">Save comment</string>
+    <string name="comment_action_unbookmark">Remove from saved</string>
+    <string name="chat_send_failed">The message was not saved on this device. Try again.</string>
+    <string name="chat_message_pending">Queued</string>
+    <string name="chat_message_sent">Accepted by server</string>
+    <string name="chat_message_failed">This message could not be sent</string>
+    <string name="chat_message_retry">Retry</string>
+    <string name="chat_message_delete">Delete</string>
+    <string name="chat_message_retry_accessibility">Retry failed message</string>
+    <string name="chat_message_delete_accessibility">Delete failed message</string>
+    <string name="chat_message_state_pending_accessibility">Message is queued for delivery</string>
+    <string name="chat_message_state_sent_accessibility">Message was accepted by the server; delivery and read status are not yet known</string>
+    <string name="chat_message_state_failed_accessibility">Message failed; you can retry or delete it</string>
+    <string name="chat_typing">typing…</string>
+    <string name="chat_online">online</string>
+    <string name="chat_offline">last seen recently</string>
+    <string name="chat_message_deleted">This message was deleted</string>
+    <string name="chat_message_deleted_accessibility">Deleted message</string>
+
+    <!-- Profile -->
+    <string name="profile_set_photo">Set Photo</string>
+    <string name="profile_edit_info">Edit Info</string>
+    <string name="profile_settings">Settings</string>
+    <string name="profile_tab_posts">Posts</string>
+    <string name="profile_tab_archived">Archived Posts</string>
+    <string name="profile_tab_replies">Replies</string>
+    <string name="profile_tab_likes">Likes</string>
+    <string name="profile_add_post">Add a post</string>
+    <string name="profile_label_mobile">Mobile</string>
+    <string name="profile_label_bio">Bio</string>
+    <string name="profile_label_username">Username</string>
+    <string name="profile_posts_count">%d posts</string>
+    <string name="profile_stat_posts">Posts</string>
+    <string name="profile_stat_followers">Followers</string>
+    <string name="profile_stat_following">Following</string>
+    <string name="profile_follow">Follow</string>
+    <string name="profile_unfollow">Unfollow</string>
+    <string name="profile_message">Message</string>
+    <string name="profile_share">Share</string>
+    <string name="profile_share_text">@%1$s on Xilo</string>
+    <string name="profile_empty_archived">No archived posts yet.</string>
+    <string name="profile_empty_posts">No posts yet.</string>
+    <string name="profile_empty_replies">No replies yet.</string>
+    <string name="profile_empty_likes">No liked posts yet.</string>
+    <string name="profile_menu">Menu</string>
+    <string name="profile_more">More</string>
+    <string name="profile_followers_title">Followers</string>
+    <string name="profile_following_title">Following</string>
+    <string name="profile_follow_list_empty">No one here yet.</string>
+    <string name="error_follow_failed">Could not update follow</string>
+    <string name="error_load_follow_list">Failed to load list</string>
+    <string name="error_start_chat">Could not start chat</string>
 
     <!-- API error codes -->
     <string name="api_invalid_request_body">The submitted data is invalid.</string>

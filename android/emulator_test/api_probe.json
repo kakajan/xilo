@@ -1,0 +1,40 @@
+{
+  "login_user": {
+    "id": "81ab51a1-cdd1-48a9-9eb5-ebf92943d189",
+    "email": "emulator1784228295@xilo.test",
+    "username": "emu1784228295",
+    "display_name": "",
+    "avatar_url": "",
+    "bio": "",
+    "role": "reader",
+    "email_verified": false,
+    "preferred_language": "fa",
+    "created_at": "2026-07-16T18:58:16.257028Z",
+    "updated_at": "2026-07-16T18:58:16.257028Z",
+    "is_verified": false
+  },
+  "auth_me": [
+    200,
+    {
+      "id": "81ab51a1-cdd1-48a9-9eb5-ebf92943d189",
+      "email": "emulator1784228295@xilo.test",
+      "username": "emu1784228295",
+      "display_name": "",
+      "avatar_url": "",
+      "bio": "",
+      "role": "reader",
+      "email_verified": false,
+      "preferred_language": "fa",
+      "created_at": "2026-07-16T18:58:16.257028Z",
+      "updated_at": "2026-07-16T18:58:16.257028Z",
+      "is_verified": false
+    }
+  ],
+  "chats": [
+    500,
+    {
+      "error": "internal server error",
+      "code": "internal_error"
+    }
+  ]
+}

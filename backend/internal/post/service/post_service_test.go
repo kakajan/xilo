@@ -69,6 +69,10 @@ func (m *mockPostRepo) List(ctx context.Context, params model.PostListParams) ([
 	return result, "", nil
 }
 
+func (m *mockPostRepo) EnrichPosts(ctx context.Context, posts []*model.Post, viewerID string) error {
+	return nil
+}
+
 func TestCreatePost_Valid(t *testing.T) {
 	repo := newMockPostRepo()
 	rdb := &pkgredis.Client{}

@@ -353,7 +353,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.LoginRequest"
+                            "$ref": "#/definitions/model.LoginRequest"
                         }
                     }
                 ],
@@ -361,7 +361,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.AuthResponse"
+                            "$ref": "#/definitions/model.AuthResponse"
                         }
                     },
                     "400": {
@@ -409,7 +409,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.RefreshRequest"
+                            "$ref": "#/definitions/model.RefreshRequest"
                         }
                     }
                 ],
@@ -445,7 +445,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.User"
+                            "$ref": "#/definitions/model.User"
                         }
                     },
                     "401": {
@@ -483,7 +483,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.UpdateProfileRequest"
+                            "$ref": "#/definitions/model.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -491,7 +491,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.User"
+                            "$ref": "#/definitions/model.User"
                         }
                     },
                     "400": {
@@ -535,7 +535,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.RequestOTPRequest"
+                            "$ref": "#/definitions/model.RequestOTPRequest"
                         }
                     }
                 ],
@@ -590,7 +590,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.VerifyOTPLoginRequest"
+                            "$ref": "#/definitions/model.VerifyOTPLoginRequest"
                         }
                     }
                 ],
@@ -598,7 +598,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.AuthResponse"
+                            "$ref": "#/definitions/model.AuthResponse"
                         }
                     },
                     "400": {
@@ -633,7 +633,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.VerifyOTPRegisterRequest"
+                            "$ref": "#/definitions/model.VerifyOTPRegisterRequest"
                         }
                     }
                 ],
@@ -641,7 +641,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.AuthResponse"
+                            "$ref": "#/definitions/model.AuthResponse"
                         }
                     },
                     "400": {
@@ -676,7 +676,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.RefreshRequest"
+                            "$ref": "#/definitions/model.RefreshRequest"
                         }
                     }
                 ],
@@ -684,7 +684,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.AuthResponse"
+                            "$ref": "#/definitions/model.AuthResponse"
                         }
                     },
                     "400": {
@@ -728,7 +728,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.RegisterRequest"
+                            "$ref": "#/definitions/model.RegisterRequest"
                         }
                     }
                 ],
@@ -736,7 +736,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.AuthResponse"
+                            "$ref": "#/definitions/model.AuthResponse"
                         }
                     },
                     "400": {
@@ -1213,6 +1213,562 @@ const docTemplate = `{
                 }
             }
         },
+        "/chats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List only the authenticated user's active chat memberships",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "List chats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Opaque pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 50,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pagination.Result-model_Chat"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a group chat or create/reuse a direct chat",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Create a chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "UUIDv4 generated once per semantic operation",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Chat data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.Chat"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get chat details when the authenticated user is a member",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Get chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Chat"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Leave a group chat, or archive a direct chat for the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Leave or archive chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Group admins update metadata; each member controls their mute/archive state",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Update chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Chat update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Chat"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/members": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add members to a group chat as a group admin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Add group members",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Member IDs",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AddMembersRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Chat"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/members/{userId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Group admins remove another member; any group member may remove themselves",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Remove or leave group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/messages": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List chat messages using opaque cursor pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "List messages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pagination.Result-model_Message"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Persist a message for a chat member; realtime delivery is not part of this endpoint",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Send message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "UUIDv4 generated once per semantic operation",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Message data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.Message"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Search message text and sender names within a member's chat",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Search chat messages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pagination.Result-model_Message"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/comments/{id}/pin": {
             "post": {
                 "security": [
@@ -1473,7 +2029,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_media_model.UploadResponse"
+                            "$ref": "#/definitions/model.UploadResponse"
                         }
                     },
                     "400": {
@@ -1515,7 +2071,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_media_model.Media"
+                            "$ref": "#/definitions/model.Media"
                         }
                     },
                     "404": {
@@ -1568,6 +2124,197 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Soft-delete a sender-owned message",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Delete message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Edit a sender-owned message within 48 hours",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Edit message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated content",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Message"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/{id}/reactions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add or remove one supported reaction for the current member",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Toggle message reaction",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reaction",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ReactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ReactionResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/{id}/read": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create or advance the current member's read receipt",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Mark message read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Read"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     }
                 }
@@ -1898,6 +2645,12 @@ const docTemplate = `{
                         "description": "Filter by author",
                         "name": "author",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by language",
+                        "name": "language",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1934,7 +2687,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_post_model.CreatePostRequest"
+                            "$ref": "#/definitions/model.CreatePostRequest"
                         }
                     }
                 ],
@@ -1942,7 +2695,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_post_model.Post"
+                            "$ref": "#/definitions/model.Post"
                         }
                     },
                     "400": {
@@ -2033,7 +2786,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_post_model.UpdatePostRequest"
+                            "$ref": "#/definitions/model.UpdatePostRequest"
                         }
                     }
                 ],
@@ -2041,7 +2794,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_post_model.Post"
+                            "$ref": "#/definitions/model.Post"
                         }
                     },
                     "400": {
@@ -2200,7 +2953,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_comment_model.CreateCommentRequest"
+                            "$ref": "#/definitions/model.CreateCommentRequest"
                         }
                     }
                 ],
@@ -2208,7 +2961,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_comment_model.Comment"
+                            "$ref": "#/definitions/model.Comment"
                         }
                     },
                     "400": {
@@ -2319,7 +3072,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_comment_model.Comment"
+                            "$ref": "#/definitions/model.Comment"
                         }
                     },
                     "400": {
@@ -2357,7 +3110,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_post_model.Post"
+                            "$ref": "#/definitions/model.Post"
                         }
                     },
                     "404": {
@@ -2404,6 +3157,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter by author",
                         "name": "author",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by language",
+                        "name": "language",
                         "in": "query"
                     },
                     {
@@ -2630,7 +3389,32 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_xilo-platform_xilo_internal_auth_model.AuthResponse": {
+        "github_com_xilo-platform_xilo_internal_chat_model.Reaction": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "reacted": {
+                    "type": "boolean"
+                },
+                "reaction": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.AddMembersRequest": {
+            "type": "object",
+            "properties": {
+                "user_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.AuthResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -2643,102 +3427,85 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.User"
+                    "$ref": "#/definitions/model.User"
                 }
             }
         },
-        "github_com_xilo-platform_xilo_internal_auth_model.LoginRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_xilo-platform_xilo_internal_auth_model.RefreshRequest": {
-            "type": "object",
-            "properties": {
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_xilo-platform_xilo_internal_auth_model.RegisterRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_xilo-platform_xilo_internal_auth_model.RequestOTPRequest": {
-            "type": "object",
-            "properties": {
-                "phone": {
-                    "type": "string"
-                },
-                "purpose": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_xilo-platform_xilo_internal_auth_model.UpdateProfileRequest": {
+        "model.Chat": {
             "type": "object",
             "properties": {
                 "avatar_url": {
-                    "type": "string"
-                },
-                "bio": {
-                    "type": "string"
-                },
-                "display_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_xilo-platform_xilo_internal_auth_model.User": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "bio": {
                     "type": "string"
                 },
                 "created_at": {
                     "type": "string"
                 },
-                "deleted_at": {
+                "current_role": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_archived": {
+                    "type": "boolean"
+                },
+                "is_muted": {
+                    "type": "boolean"
+                },
+                "last_message": {
+                    "$ref": "#/definitions/model.Message"
+                },
+                "last_message_at": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ChatMember"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "unread_count": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ChatMember": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "chat_id": {
                     "type": "string"
                 },
                 "display_name": {
                     "type": "string"
                 },
-                "email": {
-                    "type": "string"
-                },
-                "email_verified": {
+                "is_archived": {
                     "type": "boolean"
                 },
-                "id": {
+                "is_muted": {
+                    "type": "boolean"
+                },
+                "joined_at": {
                     "type": "string"
                 },
-                "phone": {
+                "last_read_at": {
                     "type": "string"
                 },
                 "role": {
                     "type": "string"
                 },
-                "updated_at": {
+                "user_id": {
                     "type": "string"
                 },
                 "username": {
@@ -2746,39 +3513,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_xilo-platform_xilo_internal_auth_model.VerifyOTPLoginRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_xilo-platform_xilo_internal_auth_model.VerifyOTPRegisterRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_xilo-platform_xilo_internal_comment_model.Comment": {
+        "model.Comment": {
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.User"
+                    "$ref": "#/definitions/model.User"
                 },
                 "author_id": {
                     "type": "string"
@@ -2813,6 +3552,9 @@ const docTemplate = `{
                 "parent_id": {
                     "type": "string"
                 },
+                "post": {
+                    "$ref": "#/definitions/model.PostRef"
+                },
                 "post_id": {
                     "type": "string"
                 },
@@ -2825,7 +3567,7 @@ const docTemplate = `{
                 "replies": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_comment_model.Comment"
+                        "$ref": "#/definitions/model.Comment"
                     }
                 },
                 "root_id": {
@@ -2836,7 +3578,27 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_xilo-platform_xilo_internal_comment_model.CreateCommentRequest": {
+        "model.CreateChatRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "member_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateCommentRequest": {
             "type": "object",
             "properties": {
                 "content": {
@@ -2853,7 +3615,90 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_xilo-platform_xilo_internal_media_model.Media": {
+        "model.CreateMessageRequest": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "media_url": {
+                    "type": "string"
+                },
+                "reply_to_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreatePostRequest": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "content_md": {
+                    "type": "string"
+                },
+                "cover_image_url": {
+                    "type": "string"
+                },
+                "excerpt": {
+                    "type": "string"
+                },
+                "is_premium": {
+                    "type": "boolean"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Media": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2891,84 +3736,79 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_xilo-platform_xilo_internal_media_model.UploadResponse": {
+        "model.Message": {
             "type": "object",
             "properties": {
-                "height": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "size": {
-                    "type": "integer"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "variants": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "width": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_xilo-platform_xilo_internal_post_model.CreatePostRequest": {
-            "type": "object",
-            "properties": {
-                "category": {
+                "chat_id": {
                     "type": "string"
                 },
                 "content": {
                     "type": "string"
                 },
-                "content_md": {
+                "created_at": {
                     "type": "string"
                 },
-                "cover_image_url": {
+                "deleted_at": {
                     "type": "string"
                 },
-                "excerpt": {
+                "edited_at": {
                     "type": "string"
                 },
-                "is_premium": {
+                "id": {
+                    "type": "string"
+                },
+                "is_deleted": {
                     "type": "boolean"
                 },
-                "scheduled_at": {
+                "is_edited": {
+                    "type": "boolean"
+                },
+                "media_id": {
                     "type": "string"
                 },
-                "slug": {
+                "media_url": {
                     "type": "string"
                 },
-                "status": {
-                    "type": "string"
-                },
-                "tags": {
+                "reactions": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_chat_model.Reaction"
                     }
                 },
-                "title": {
+                "read_by": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Read"
+                    }
+                },
+                "reply_to_id": {
+                    "type": "string"
+                },
+                "sender_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
         },
-        "github_com_xilo-platform_xilo_internal_post_model.Post": {
+        "model.Post": {
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/github_com_xilo-platform_xilo_internal_auth_model.User"
+                    "$ref": "#/definitions/model.User"
                 },
                 "author_id": {
                     "type": "string"
                 },
                 "category": {
                     "type": "string"
+                },
+                "comment_count": {
+                    "type": "integer"
                 },
                 "content": {
                     "type": "string"
@@ -2991,11 +3831,23 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "is_bookmarked": {
+                    "type": "boolean"
+                },
                 "is_premium": {
                     "type": "boolean"
                 },
+                "language": {
+                    "type": "string"
+                },
                 "published_at": {
                     "type": "string"
+                },
+                "reactions": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
                 },
                 "reading_time": {
                     "type": "integer"
@@ -3021,12 +3873,123 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string"
                 },
+                "viewer_reactions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "word_count": {
                     "type": "integer"
                 }
             }
         },
-        "github_com_xilo-platform_xilo_internal_post_model.UpdatePostRequest": {
+        "model.PostRef": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ReactionRequest": {
+            "type": "object",
+            "properties": {
+                "reaction": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ReactionResult": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "reaction": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Read": {
+            "type": "object",
+            "properties": {
+                "read_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RefreshRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RegisterRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RequestOTPRequest": {
+            "type": "object",
+            "properties": {
+                "phone": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateChatRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "is_archived": {
+                    "type": "boolean"
+                },
+                "is_muted": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateMessageRequest": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdatePostRequest": {
             "type": "object",
             "properties": {
                 "category": {
@@ -3047,6 +4010,9 @@ const docTemplate = `{
                 "is_premium": {
                     "type": "boolean"
                 },
+                "language": {
+                    "type": "string"
+                },
                 "scheduled_at": {
                     "type": "string"
                 },
@@ -3064,6 +4030,164 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "model.UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "preferred_language": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UploadResponse": {
+            "type": "object",
+            "properties": {
+                "height": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "variants": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.User": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_verified": {
+                    "type": "boolean"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "preferred_language": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.VerifyOTPLoginRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.VerifyOTPRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "pagination.Result-model_Chat": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Chat"
+                    }
+                },
+                "has_more": {
+                    "type": "boolean"
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "pagination.Result-model_Message": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Message"
+                    }
+                },
+                "has_more": {
+                    "type": "boolean"
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         }

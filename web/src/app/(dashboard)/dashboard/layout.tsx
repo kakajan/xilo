@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CreditCard, LayoutDashboard } from "lucide-react";
+import { BarChart3, CreditCard, LayoutDashboard, Settings } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/payments", label: "Payments", icon: CreditCard },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

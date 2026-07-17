@@ -173,3 +173,27 @@ func (r *CommentRepo) attachReactionCounts(ctx context.Context, comments []*mode
 	}
 	return nil
 }
+
+func (r *CommentRepo) attachBookmarks(ctx context.Context, comments []*model.Comment, ids []string, viewerID string) error {
+	if len(ids) == 0 || viewerID == "" {
+		return nil
+	}
+
+	var bookmarked []string
+	err := r.db.SelectContext(ctx, &bookmarked, `
+		SELECT comment_id FROM comment_bookmarks
+		WHERE user_id = $1 AND comment_id = ANY($2)
+	`, viewerID, pq.Array(ids))
+	if err != nil {
+		return fmt.Errorf("attach comment bookmarks: %w", err)
+	}
+
+	bookmarkSet := make(map[string]bool, len(bookmarked))
+	for _, id := range bookmarked {
+		bookmarkSet[id] = true
+	}
+	for _, c := range comments {
+		c.IsBookmarked = bookmarkSet[c.ID]
+	}
+	return nil
+}

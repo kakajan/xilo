@@ -40,7 +40,7 @@ This document details the visual UI/UX concepts for the Xilo application, based 
     *   A subtle, continuous vertical thread line connects the parent post's avatar downward to the replies' avatars.
     *   **Reply Bubbles:** 
         *   Replies are encased in rounded chat bubbles with an internal padding of ~12-14px.
-        *   **Color Differentiation:** Background colors alternate to distinguish the profile owner from other commenters (e.g., light blue `#E8F5FE` for external users, light gray `#F7F9FA` for the profile owner's own replies).
+        *   **Color Differentiation:** Per the authority in `ui-ux-spec.md`, the profile owner's own replies use light blue `#E8F5FE` (`#1E3A5F` dark), while other commenters use gray `#F7F9FA` (`#2C2C2E` dark).
     *   **Bubble Content:**
         *   Text of the reply.
         *   **Reaction Pills:** Telegram-style reaction pills attached to the bottom-left inside the bubble (e.g., "🔥 12", "💯 3"). The pills have subtle background tints corresponding to the emoji.

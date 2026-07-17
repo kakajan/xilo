@@ -135,6 +135,26 @@ Multiple reactions per user per message allowed.
 
 **Searchable:** text content, sender name, date range.
 
+### REQ-CHAT-013: Saved Messages
+
+**Given** an authenticated user  
+**When** they open Saved Messages  
+**Then** the system get-or-creates a private chat of type `saved` owned solely by that user (one per user).
+
+**Android UX:**
+- Messages tab `ذخیره‌شده‌ها` chip filters in-place to saved chat messages only.
+- Settings → «پیام‌های ذخیره‌شده» opens a dedicated Saved hub with Messages / Posts / Comments segments.
+
+### REQ-CHAT-014: Chat Folders
+
+**Given** an authenticated user  
+**When** they create, rename, delete, or assign chats to a folder  
+**Then** folders are scoped to that user and may only contain chats where the user is an active member.
+
+**Given** a chat list with folders  
+**When** the user selects a folder filter  
+**Then** only chats assigned to that folder are shown (plus an All filter).
+
 ---
 
 ## API Endpoints
@@ -143,6 +163,7 @@ Multiple reactions per user per message allowed.
 |--------|------|------|-------------|
 | GET | `/api/chats` | Reader+ | List user's chats |
 | POST | `/api/chats` | Reader+ | Create new chat |
+| GET | `/api/chats/saved` | Reader+ | Get or create Saved Messages chat |
 | GET | `/api/chats/:id` | Member | Chat details |
 | PATCH | `/api/chats/:id` | Admin | Update chat (group) |
 | DELETE | `/api/chats/:id` | Member | Leave chat |
@@ -155,6 +176,11 @@ Multiple reactions per user per message allowed.
 | POST | `/api/messages/:id/read` | Member | Mark as read |
 | POST | `/api/messages/:id/reactions` | Member | Toggle reaction |
 | GET | `/api/chats/:id/search?q=` | Member | Search messages |
+| GET | `/api/chat-folders` | Reader+ | List folders |
+| POST | `/api/chat-folders` | Reader+ | Create folder |
+| PATCH | `/api/chat-folders/:id` | Owner | Rename / reorder folder |
+| DELETE | `/api/chat-folders/:id` | Owner | Delete folder |
+| PUT | `/api/chat-folders/:id/chats` | Owner | Replace folder chat membership |
 
 ## WebSocket Events
 

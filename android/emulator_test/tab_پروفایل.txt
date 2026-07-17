@@ -1,0 +1,5 @@
+View: text='' desc='فید' click=false [858,2044][924,2110]
+View: text='' desc='اکتشاف' click=false [669,2044][735,2110]
+View: text='' desc='پیام\u200cها' click=false [480,2044][546,2110]
+View: text='' desc='پروفایل' click=false [287,2041][359,2113]
+TextView: text='پروفایل' desc='' click=false [154,2050][269,2104]

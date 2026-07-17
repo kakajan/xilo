@@ -1,7 +1,9 @@
-# Spec: Mobile App (Flutter)
+# Historical Spec: Flutter Mobile App (Legacy / Out of Scope)
 
 ## Overview
-Cross-platform native mobile app built with Flutter 3+ and Dart 3+. Clean Architecture (presentation/domain/data), Riverpod state management, Dio networking, Hive local storage, WebSocket real-time communication. UX inspired by Telegram with smooth animations.
+> **Non-normative historical record.** This document describes the former Flutter direction only. `mobile/` is preserved but legacy and out of scope: agents MUST NOT implement, maintain, validate, or infer active completion from it. The sole active mobile client is `android/`, built with Kotlin and Jetpack Compose. Its authoritative requirements are `openspec/changes/android-native-production/specs/android-native-production/spec.md` and `openspec/changes/android-native-production/specs/android-i18n/spec.md`.
+
+The retained material below is historical context, not an active requirement, task source, or architecture guide.
 
 ---
 

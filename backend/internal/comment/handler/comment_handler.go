@@ -30,8 +30,9 @@ func (h *CommentHandler) List(c *fiber.Ctx) error {
 	cursor := c.Query("cursor")
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	sort := c.Query("sort", "newest")
+	viewerID, _ := c.Locals("userID").(string)
 
-	comments, nextCursor, err := h.svc.List(c.UserContext(), postID, cursor, limit, sort)
+	comments, nextCursor, err := h.svc.List(c.UserContext(), postID, cursor, limit, sort, viewerID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "failed to list comments",

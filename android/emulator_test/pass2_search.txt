@@ -1,0 +1,7 @@
+View: text='' desc='بستن جستجو' click=false [970,253][1036,319]
+TextView: text='جستجو در موضوعات، پست\u200cها...' desc='' click=false [356,261][882,311]
+View: text='' desc='فید' click=false [857,2044][923,2110]
+View: text='' desc='اکتشاف' click=false [664,2041][735,2113]
+TextView: text='اکتشاف' desc='' click=false [535,2050][646,2104]
+View: text='' desc='پیام\u200cها' click=false [346,2044][412,2110]
+View: text='' desc='پروفایل' click=false [157,2044][223,2110]

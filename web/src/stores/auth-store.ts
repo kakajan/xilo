@@ -11,7 +11,13 @@ interface AuthState {
   register: (req: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   fetchMe: () => Promise<void>;
-  updateProfile: (data: { display_name?: string; bio?: string; avatar_url?: string }) => Promise<void>;
+  updateProfile: (data: {
+    display_name?: string;
+    bio?: string;
+    avatar_url?: string;
+    preferred_language?: string;
+    preferred_calendar?: string;
+  }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({

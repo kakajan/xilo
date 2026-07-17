@@ -111,7 +111,7 @@ func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, e
 	return comment, nil
 }
 
-func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor string, limit int, sort string) ([]*model.Comment, string, error) {
+func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor string, limit int, sort string, viewerID string) ([]*model.Comment, string, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
@@ -126,6 +126,9 @@ func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor stri
 		flatIDs[i] = c.ID
 	}
 	if err := r.attachReactionCounts(ctx, allComments, flatIDs); err != nil {
+		return nil, "", err
+	}
+	if err := r.attachBookmarks(ctx, allComments, flatIDs, viewerID); err != nil {
 		return nil, "", err
 	}
 

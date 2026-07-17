@@ -60,8 +60,24 @@ func (r *PostRepo) EnrichPosts(ctx context.Context, posts []*model.Post, viewerI
 		reactionMap[row.TargetID][row.Reaction] = row.Count
 	}
 
+	var repostCounts []countRow
+	err = r.db.SelectContext(ctx, &repostCounts, `
+		SELECT post_id, COUNT(*)::int as count
+		FROM reposts
+		WHERE post_id = ANY($1)
+		GROUP BY post_id
+	`, pq.Array(postIDs))
+	if err != nil {
+		return fmt.Errorf("repost counts: %w", err)
+	}
+	repostMap := make(map[string]int, len(repostCounts))
+	for _, row := range repostCounts {
+		repostMap[row.PostID] = row.Count
+	}
+
 	viewerReactionMap := make(map[string][]string)
 	bookmarkMap := make(map[string]bool)
+	repostedMap := make(map[string]bool)
 	if viewerID != "" {
 		type viewerRow struct {
 			TargetID string `db:"target_id"`
@@ -83,10 +99,19 @@ func (r *PostRepo) EnrichPosts(ctx context.Context, posts []*model.Post, viewerI
 		for _, id := range bookmarked {
 			bookmarkMap[id] = true
 		}
+
+		var reposted []string
+		_ = r.db.SelectContext(ctx, &reposted, `
+			SELECT post_id FROM reposts WHERE user_id = $1 AND post_id = ANY($2)
+		`, viewerID, pq.Array(postIDs))
+		for _, id := range reposted {
+			repostedMap[id] = true
+		}
 	}
 
 	for _, post := range posts {
 		post.CommentCount = commentMap[post.ID]
+		post.RepostCount = repostMap[post.ID]
 		if reactions, ok := reactionMap[post.ID]; ok {
 			post.Reactions = reactions
 		} else {
@@ -95,6 +120,7 @@ func (r *PostRepo) EnrichPosts(ctx context.Context, posts []*model.Post, viewerI
 		if viewerID != "" {
 			post.ViewerReactions = viewerReactionMap[post.ID]
 			post.IsBookmarked = bookmarkMap[post.ID]
+			post.IsReposted = repostedMap[post.ID]
 		}
 	}
 

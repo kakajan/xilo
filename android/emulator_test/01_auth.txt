@@ -1,0 +1,7 @@
+TextView: text='Xilo ✈' desc=''
+TextView: text='خوش آمدید' desc=''
+TextView: text='نام کاربری یا ایمیل' desc=''
+TextView: text='رمز عبور' desc=''
+TextView: text='ورود به حساب' desc=''
+TextView: text='حساب کاربری ندارید؟ ثبت نام' desc=''
+TextView: text='ورود با پیامک (OTP)' desc=''

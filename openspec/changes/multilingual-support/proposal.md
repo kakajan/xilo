@@ -26,7 +26,7 @@ Add full internationalization (i18n) support to the Xilo platform, enabling user
 |--------|-------------|
 | **Backend** | `language` field on `posts` table, language preference on `users` table, i18n API for system messages, language filter on post list endpoint |
 | **Web Frontend** | `next-intl` integration, RTL/LTR layout switching, language switcher component, translation files (fa, en), direction-aware components |
-| **Mobile App** | `flutter_localizations` + `intl`, RTL/LTR support, language settings, translation files (fa, en) |
+| **Mobile App** | Native Android resources + Jetpack Compose, RTL/LTR support, DataStore-backed language settings, translation resources (fa, en) |
 | **Database** | Migration: add `language` column to `posts`, `preferred_language` to `users` |
 | **Search** | Meilisearch language-aware indexing and filtering |
 

@@ -1,0 +1,5 @@
+TextView: text='عنوان پست' desc='' click=false [802,332][992,394]
+TextView: text='چه خبر؟ بنویسید...' desc='' click=false [673,530][992,592]
+View: text='' desc='بستن' click=false [970,121][1036,187]
+TextView: text='ایجاد پست جدید' desc='' click=false [598,116][926,192]
+TextView: text='انتشار' desc='' click=false [99,125][199,184]

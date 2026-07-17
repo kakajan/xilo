@@ -1,6 +1,8 @@
-# Delta for Mobile App (i18n)
+# Historical Delta for Flutter Mobile i18n (Legacy / Out of Scope)
 
-## ADDED Requirements
+> **Non-normative historical record.** The Flutter requirements below are retained for audit history only. They SHALL NOT direct active implementation or count as completed work. The active Android i18n requirements are `REQ-AND-014` through `REQ-AND-016` in `openspec/changes/android-native-production/specs/android-i18n/spec.md`.
+
+## Historical Requirements
 
 ### Requirement: Flutter Localization Setup
 The mobile app SHALL use `flutter_localizations` and `intl` packages for internationalization.
@@ -104,7 +106,7 @@ The user's language preference SHALL be stored locally and synced with the backe
 
 #### Scenario: Backend sync
 - GIVEN an authenticated user changes their language
-- THEN the preference is sent to `PATCH /api/users/me`
+- THEN the preference is sent to `PATCH /api/auth/me`
 - AND on login, the user's `preferred_language` from the API overrides the local value
 
 ---

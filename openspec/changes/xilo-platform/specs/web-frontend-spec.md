@@ -188,6 +188,8 @@ useChatStore        — active chat, typing users, online status
 
 ## Visual Design Tokens
 
+The normative visual authority is `openspec/changes/xilo-platform/specs/ui-ux-spec.md`.
+
 ### Color Palette (Light Mode)
 ```typescript
 const colors = {
@@ -197,8 +199,8 @@ const colors = {
   textPrimary: '#0F1419',
   textSecondary: '#536471',
   border: '#EFF3F4',
-  bubbleOwn: '#E3F2FD',
-  bubbleOthers: '#F5F5F5'
+  bubbleOwn: '#E8F5FE',
+  bubbleOthers: '#F7F9FA'
 };
 ```
 

@@ -18,6 +18,12 @@ export interface Post {
   created_at: string;
   updated_at: string;
   author?: User;
+  comment_count?: number;
+  repost_count?: number;
+  reactions?: Record<string, number>;
+  viewer_reactions?: string[];
+  is_bookmarked?: boolean;
+  is_reposted?: boolean;
 }
 
 import { User } from "./user";

@@ -13,6 +13,7 @@ func AuthRequired(jwtMgr *jwt.Manager) fiber.Handler {
 		if token == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "missing authorization token",
+				"code":  "unauthorized",
 			})
 		}
 
@@ -20,6 +21,7 @@ func AuthRequired(jwtMgr *jwt.Manager) fiber.Handler {
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "invalid or expired token",
+				"code":  "unauthorized",
 			})
 		}
 
@@ -35,12 +37,18 @@ func RoleRequired(roles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		roleVal := c.Locals("role")
 		if roleVal == nil {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "insufficient permissions"})
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "insufficient permissions",
+				"code":  "forbidden",
+			})
 		}
 
 		userRole, ok := roleVal.(string)
 		if !ok {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "insufficient permissions"})
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "insufficient permissions",
+				"code":  "forbidden",
+			})
 		}
 
 		for _, allowed := range roles {
@@ -48,7 +56,10 @@ func RoleRequired(roles ...string) fiber.Handler {
 				return c.Next()
 			}
 		}
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "insufficient permissions"})
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "insufficient permissions",
+			"code":  "forbidden",
+		})
 	}
 }
 

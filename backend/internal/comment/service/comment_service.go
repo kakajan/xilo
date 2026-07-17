@@ -29,8 +29,8 @@ func (s *CommentService) Create(ctx context.Context, postID, authorID string, re
 	return s.repo.Create(ctx, postID, authorID, req)
 }
 
-func (s *CommentService) List(ctx context.Context, postID string, cursor string, limit int, sort string) ([]*model.Comment, string, error) {
-	return s.repo.ListByPost(ctx, postID, cursor, limit, sort)
+func (s *CommentService) List(ctx context.Context, postID string, cursor string, limit int, sort string, viewerID string) ([]*model.Comment, string, error) {
+	return s.repo.ListByPost(ctx, postID, cursor, limit, sort, viewerID)
 }
 
 func (s *CommentService) Update(ctx context.Context, commentID, userID, content string) (*model.Comment, error) {

@@ -70,6 +70,20 @@ Secure, stateless authentication with JWT access tokens and refresh tokens. Supp
 
 Support sign-in via Google and GitHub OAuth2 providers with account linking to existing email.
 
+### REQ-AUTH-008: Active Sessions / Devices
+
+**Given** an authenticated user with one or more refresh-token families  
+**When** they list sessions  
+**Then** the API returns non-revoked, non-expired sessions with device metadata (`device_name`, `platform`, `user_agent`, `ip`, `last_seen_at`) and marks `is_current` when the presented refresh token matches that session family.
+
+**Given** an authenticated user  
+**When** they revoke a session by id  
+**Then** the entire refresh-token family for that session is revoked.
+
+**Constraints:**
+- Login/refresh/register/OTP SHALL persist optional device metadata from `User-Agent`, `X-Device-Name`, `X-Device-Platform`, and client IP.
+- Revoking the current session SHALL force the client to clear local credentials.
+
 ---
 
 ## API Endpoints
@@ -80,8 +94,11 @@ Support sign-in via Google and GitHub OAuth2 providers with account linking to e
 | POST | `/api/auth/login` | None | Login |
 | POST | `/api/auth/refresh` | Refresh | Refresh access token |
 | POST | `/api/auth/logout` | Access | Invalidate refresh token |
+| GET | `/api/auth/sessions` | Access | List active sessions/devices |
+| DELETE | `/api/auth/sessions/:id` | Access | Revoke a session family |
 | POST | `/api/auth/forgot-password` | None | Request password reset |
 | POST | `/api/auth/reset-password` | Reset | Reset password |
 | GET | `/api/auth/me` | Access | Get current user profile |
 | PATCH | `/api/auth/me` | Access | Update profile |
+| POST | `/api/auth/avatar` | Access | Upload profile avatar |
 | POST | `/api/auth/verify-email` | None | Verify email with token |

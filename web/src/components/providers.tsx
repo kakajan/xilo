@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useAuthStore } from "@/stores/auth-store";
+import { useThemeStore } from "@/stores/theme-store";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -18,10 +19,22 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <AuthInitializer>{children}</AuthInitializer>
+        <PlatformThemeInitializer>
+          <AuthInitializer>{children}</AuthInitializer>
+        </PlatformThemeInitializer>
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function PlatformThemeInitializer({ children }: { children: React.ReactNode }) {
+  const fetchTheme = useThemeStore((s) => s.fetchTheme);
+
+  useEffect(() => {
+    void fetchTheme();
+  }, [fetchTheme]);
+
+  return <>{children}</>;
 }
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {

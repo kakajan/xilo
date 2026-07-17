@@ -11,13 +11,14 @@ import (
 )
 
 type Driver struct {
-	client   *minio.Client
-	bucket   string
-	endpoint string
-	useSSL   bool
+	client         *minio.Client
+	bucket         string
+	endpoint       string
+	publicEndpoint string
+	useSSL         bool
 }
 
-func New(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*Driver, error) {
+func New(endpoint, accessKey, secretKey, bucket string, useSSL bool, publicEndpoint string) (*Driver, error) {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:        minioCreds.NewStaticV4(accessKey, secretKey, ""),
 		Secure:       useSSL,
@@ -40,11 +41,16 @@ func New(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*Driver, e
 		}
 	}
 
+	if publicEndpoint == "" {
+		publicEndpoint = endpoint
+	}
+
 	return &Driver{
-		client:   client,
-		bucket:   bucket,
-		endpoint: endpoint,
-		useSSL:   useSSL,
+		client:         client,
+		bucket:         bucket,
+		endpoint:       endpoint,
+		publicEndpoint: publicEndpoint,
+		useSSL:         useSSL,
 	}, nil
 }
 
@@ -88,7 +94,7 @@ func (d *Driver) GetURL(key string) string {
 	if d.useSSL {
 		protocol = "https"
 	}
-	return fmt.Sprintf("%s://%s/%s/%s", protocol, d.endpoint, d.bucket, key)
+	return fmt.Sprintf("%s://%s/%s/%s", protocol, d.publicEndpoint, d.bucket, key)
 }
 
 func (d *Driver) Bucket() string {

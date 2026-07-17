@@ -31,9 +31,11 @@ type Post struct {
 
 	Author           *authmodel.User   `json:"author,omitempty" db:"-"`
 	CommentCount     int               `json:"comment_count" db:"-"`
+	RepostCount      int               `json:"repost_count" db:"-"`
 	Reactions        map[string]int    `json:"reactions,omitempty" db:"-"`
 	ViewerReactions  []string          `json:"viewer_reactions,omitempty" db:"-"`
 	IsBookmarked     bool              `json:"is_bookmarked" db:"-"`
+	IsReposted       bool              `json:"is_reposted" db:"-"`
 }
 
 type PostVersion struct {

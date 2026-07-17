@@ -34,5 +34,5 @@ if ! adb devices | grep -qE '^emulator-[0-9]+[[:space:]]+device$'; then
 fi
 
 ./gradlew installDebug
-adb shell am start -n com.example.xilo/.MainActivity
+adb shell am start -n ir.xilo.app/.MainActivity
 echo "App installed and launched on emulator."

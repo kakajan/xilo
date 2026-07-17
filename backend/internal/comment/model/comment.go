@@ -22,10 +22,12 @@ type Comment struct {
 	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
 	DeletedAt   *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 
-	Author   *authmodel.User      `json:"author,omitempty" db:"-"`
-	Replies  []*Comment          `json:"replies,omitempty" db:"-"`
-	Reactions map[string]int     `json:"reactions,omitempty" db:"-"`
-	Post     *PostRef            `json:"post,omitempty" db:"-"`
+	Author          *authmodel.User  `json:"author,omitempty" db:"-"`
+	Replies         []*Comment       `json:"replies,omitempty" db:"-"`
+	Reactions       map[string]int   `json:"reactions,omitempty" db:"-"`
+	ViewerReactions []string         `json:"viewer_reactions,omitempty" db:"-"`
+	IsBookmarked    bool             `json:"is_bookmarked" db:"-"`
+	Post            *PostRef         `json:"post,omitempty" db:"-"`
 }
 
 type CreateCommentRequest struct {

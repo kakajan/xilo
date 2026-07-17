@@ -36,10 +36,13 @@ type UserRepository interface {
 	FindByPhone(ctx context.Context, phone string) (*model.User, error)
 	UpdateProfile(ctx context.Context, userID string, req *model.UpdateProfileRequest) (*model.User, error)
 	UpdatePhone(ctx context.Context, userID, phone string) error
-	SaveRefreshToken(ctx context.Context, userID, family string, tokenHash string, expiresAt time.Time) error
+	SaveRefreshToken(ctx context.Context, userID, family string, tokenHash string, expiresAt time.Time, device *model.DeviceMetadata) error
 	FindRefreshToken(ctx context.Context, tokenHash string) (*model.RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeTokenFamily(ctx context.Context, family string) error
+	ListActiveSessions(ctx context.Context, userID string) ([]model.RefreshToken, error)
+	FindSessionByID(ctx context.Context, userID, sessionID string) (*model.RefreshToken, error)
+	UpdateSessionLastSeen(ctx context.Context, tokenHash string) error
 	SaveSMSOTP(ctx context.Context, phone, code, purpose string, expiresAt time.Time) error
 	VerifySMSOTP(ctx context.Context, phone, code, purpose string) (bool, error)
 }
@@ -147,12 +150,54 @@ func (s *AuthService) UpdateProfile(ctx context.Context, userID string, req *mod
 	if req.PreferredLanguage != "" && !i18n.IsValidLanguage(req.PreferredLanguage) {
 		return nil, fmt.Errorf("invalid preferred language code: %s", req.PreferredLanguage)
 	}
+	if req.PreferredCalendar != "" && !i18n.IsValidCalendarPreference(req.PreferredCalendar) {
+		return nil, fmt.Errorf("invalid preferred calendar: %s", req.PreferredCalendar)
+	}
 	return s.repo.UpdateProfile(ctx, userID, req)
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	tokenHash := repository.HashRefreshToken(refreshToken)
 	return s.repo.RevokeRefreshToken(ctx, tokenHash)
+}
+
+func (s *AuthService) ListSessions(ctx context.Context, userID, currentRefreshToken string) ([]model.SessionResponse, error) {
+	sessions, err := s.repo.ListActiveSessions(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: %w", err)
+	}
+
+	currentFamily := ""
+	if currentRefreshToken != "" {
+		tokenHash := repository.HashRefreshToken(currentRefreshToken)
+		if rt, err := s.repo.FindRefreshToken(ctx, tokenHash); err == nil && rt != nil {
+			currentFamily = rt.Family
+		}
+	}
+
+	result := make([]model.SessionResponse, 0, len(sessions))
+	for _, session := range sessions {
+		result = append(result, model.SessionResponse{
+			ID:         session.ID,
+			Family:     session.Family,
+			DeviceName: session.DeviceName,
+			Platform:   session.Platform,
+			UserAgent:  session.UserAgent,
+			IP:         session.IP,
+			LastSeenAt: session.LastSeenAt,
+			CreatedAt:  session.CreatedAt,
+			IsCurrent:  currentFamily != "" && session.Family == currentFamily,
+		})
+	}
+	return result, nil
+}
+
+func (s *AuthService) RevokeSession(ctx context.Context, userID, sessionID string) error {
+	session, err := s.repo.FindSessionByID(ctx, userID, sessionID)
+	if err != nil {
+		return err
+	}
+	return s.repo.RevokeTokenFamily(ctx, session.Family)
 }
 
 func (s *AuthService) RequestOTP(ctx context.Context, req *model.RequestOTPRequest) error {
@@ -279,7 +324,8 @@ func (s *AuthService) generateAuthResponse(ctx context.Context, user *model.User
 
 	tokenHash := repository.HashRefreshToken(refreshToken)
 	expiresAt := time.Now().Add(7 * 24 * time.Hour)
-	if err := s.repo.SaveRefreshToken(ctx, user.ID, jti, tokenHash, expiresAt); err != nil {
+	device := DeviceMetadataFromContext(ctx)
+	if err := s.repo.SaveRefreshToken(ctx, user.ID, jti, tokenHash, expiresAt, device); err != nil {
 		return nil, fmt.Errorf("save refresh token: %w", err)
 	}
 

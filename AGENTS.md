@@ -5,9 +5,9 @@
 Xilo is a self-hosted, Telegram-inspired modern blog platform with:
 - **Backend**: Go 1.22+ with Fiber v2, Clean Architecture, microservices, pluggable storage drivers (MinIO default, S3 optional)
 - **Web Frontend**: Next.js 15+ (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui
-- **Mobile App**: Flutter 3+, Dart 3+, Clean Architecture, Riverpod
+- **Mobile App**: Native Android in Kotlin with Jetpack Compose. The existing `mobile/` Flutter project is legacy and out of scope; do not add features to, maintain, or delete it as part of active platform work.
 - **Infrastructure**: Docker, Kubernetes, PostgreSQL, Redis, NATS, Meilisearch, MinIO (self-hosted), S3-compatible cloud storage (optional)
-- **Monorepo**: `backend/`, `web/`, `mobile/`, `infra/`
+- **Monorepo**: `backend/`, `web/`, `android/`, `mobile/` (legacy Flutter), `infra/`
 
 ## OpenSpec Workflow
 
@@ -58,7 +58,7 @@ openspec/
 | `openspec-verify` | Verify implementation matches specs |
 | `xilo-backend` | Go/Fiber backend development conventions |
 | `xilo-frontend` | Next.js/React frontend development conventions |
-| `xilo-mobile` | Flutter/Dart mobile development conventions |
+| `xilo-android` | Native Android Kotlin/Jetpack Compose development conventions |
 | `xilo-infra` | Docker/K8s infrastructure conventions |
 
 ## Development Conventions
@@ -67,7 +67,7 @@ openspec/
 
 - **Language**: All code comments in English. UI text in Persian (Farsi) or English (TBD).
 - **Testing**: Every service MUST have unit tests. Integration tests for critical paths.
-- **Linting**: `golangci-lint` (Go), ESLint (TS/TSX), `dart analyze` (Flutter).
+- **Linting**: `golangci-lint` (Go), ESLint (TS/TSX), Android Gradle lint and Kotlin formatting/static analysis.
 - **Commits**: Conventional commits — `type(scope): message`. Example: `feat(auth): add JWT refresh token rotation`.
 - **Secrets**: NEVER hardcode secrets. Use environment variables / Kubernetes Secrets.
 
@@ -94,15 +94,16 @@ openspec/
 - File naming: kebab-case (`post-card.tsx`), hooks: `use-*.ts`
 - Routes: App Router file conventions (`page.tsx`, `layout.tsx`, `loading.tsx`)
 
-### Mobile (Flutter)
+### Mobile (Native Android)
 
-- Architecture: Clean Architecture (presentation → domain → data)
-- State: Riverpod 2.x
-- DI: GetIt + Injectable
-- HTTP: Dio + Retrofit
-- Local: Hive
-- Routes: GoRouter
-- Offline: Cache last 50 posts in Hive
+- **Target**: `android/` is the sole supported mobile client. `mobile/` is a preserved legacy Flutter implementation and is not a development target.
+- **Language/UI**: Kotlin + Jetpack Compose, Material 3, and Jetpack Navigation 3.
+- **Architecture**: Clean Architecture (presentation → domain → data) with ViewModels and StateFlow.
+- **DI**: Hilt.
+- **HTTP/realtime**: Retrofit + OkHttp, including OkHttp WebSockets.
+- **Local/offline**: Room, WorkManager outbox/sync, DataStore preferences, and Android Keystore-protected secrets.
+- **Pagination**: Paging 3.
+- **Testing**: JUnit, coroutine/Flow tests, Compose UI tests, and instrumented Room/network tests.
 
 ### Infrastructure
 
@@ -116,7 +117,7 @@ openspec/
 ```
 Backend:    Go 1.22+  → Fiber v2  → gRPC + NATS  → PostgreSQL 16 / Redis 7
 Web:        Next.js 15 → React 19 → Tailwind 4   → shadcn/ui / Zustand
-Mobile:     Flutter 3  → Dart 3   → Riverpod      → Dio / Hive
+Mobile:     Kotlin    → Jetpack Compose → Hilt / Room → Retrofit / OkHttp
 Search:     Meilisearch
 Storage:    MinIO (self-hosted, default) / S3 (cloud, swappable via driver)
 Queue:      NATS
@@ -130,9 +131,9 @@ Monitor:    Prometheus + Grafana + Loki
 
 When asked to implement something:
 
-1. Check `openspec/changes/xilo-platform/tasks.md` for the relevant phase.
-2. Read the corresponding spec in `openspec/changes/xilo-platform/specs/`.
-3. Read `openspec/changes/xilo-platform/design.md` for architecture decisions.
+1. For Android work, start with `openspec/changes/android-native-production/`; for shared platform work, also check `openspec/changes/xilo-platform/tasks.md`.
+2. Read the corresponding delta spec and `openspec/changes/android-native-production/design.md` before coding.
+3. Read `openspec/changes/xilo-platform/design.md` for shared backend/API decisions, treating its native Android section as authoritative for the mobile client.
 4. Follow the conventions listed above for the relevant stack.
 5. Write tests alongside implementation.
 6. Mark tasks as `[x]` when complete.

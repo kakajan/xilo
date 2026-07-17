@@ -25,6 +25,70 @@
     <string name="error_login_failed">ورود انجام نشد</string>
     <string name="error_registration_failed">ثبت‌نام انجام نشد</string>
 
+    <!-- Reply compose (Twitter-style) -->
+    <string name="reply_compose_submit">پاسخ</string>
+    <string name="reply_compose_close">بستن</string>
+    <string name="reply_compose_replying_to_prefix">در حال پاسخ به </string>
+    <string name="reply_compose_placeholder">پاسخ خود را بنویسید</string>
+
+    <!-- Discover -->
+    <string name="discover_action_reply">پاسخ</string>
+    <string name="discover_action_like">پسندیدن</string>
+    <string name="discover_action_dislike">نپسندیدن</string>
+    <string name="discover_action_report">گزارش</string>
+    <string name="discover_report_title">گزارش نظر</string>
+    <string name="discover_report_message">آیا می‌خواهید این نظر را گزارش کنید؟</string>
+    <string name="discover_report_confirm">گزارش</string>
+    <string name="discover_report_cancel">انصراف</string>
+    <string name="discover_report_submitted">گزارش شما ثبت شد</string>
+
+    <!-- Chat delivery -->
+    <string name="chat_default_title">گفتگو</string>
+    <string name="chat_message_placeholder">نوشتن پیام…</string>
+    <string name="saved_messages_title">پیام‌های ذخیره‌شده</string>
+    <string name="saved_messages_back">بازگشت</string>
+    <string name="saved_messages_count">%d مورد</string>
+    <string name="saved_messages_empty_title">هنوز پیام ذخیره‌شده‌ای ندارید</string>
+    <string name="saved_messages_empty_subtitle">پیام‌هایی که ذخیره می‌کنید اینجا نمایش داده می‌شوند.</string>
+    <string name="saved_hub_chip">ذخیره‌شده‌ها</string>
+    <string name="saved_hub_segment_messages">پیام‌ها</string>
+    <string name="saved_hub_segment_posts">پست‌ها</string>
+    <string name="saved_hub_segment_comments">نظرات</string>
+    <string name="saved_hub_posts_empty_title">پست ذخیره‌شده‌ای ندارید</string>
+    <string name="saved_hub_posts_empty_subtitle">پست‌هایی که بوک‌مارک می‌کنید اینجا نمایش داده می‌شوند.</string>
+    <string name="saved_hub_comments_empty_title">نظر ذخیره‌شده‌ای ندارید</string>
+    <string name="saved_hub_comments_empty_subtitle">نظراتی که بوک‌مارک می‌کنید اینجا نمایش داده می‌شوند.</string>
+    <string name="saved_hub_all_chats">همه گفتگوها</string>
+    <string name="comment_action_bookmark">ذخیره نظر</string>
+    <string name="comment_action_unbookmark">حذف از ذخیره‌شده‌ها</string>
+    <string name="comment_thread_view_replies">%d پاسخ</string>
+    <string name="comment_thread_back">بازگشت</string>
+    <string name="comment_thread_branch_label">نمایش شاخه پاسخ</string>
+    <string name="chat_send_failed">پیام در دستگاه ذخیره نشد. دوباره تلاش کنید.</string>
+    <string name="chat_message_pending">در صف ارسال</string>
+    <string name="chat_message_sent">به سرور رسید</string>
+    <string name="chat_message_failed">ارسال این پیام ناموفق بود</string>
+    <string name="chat_message_retry">ارسال دوباره</string>
+    <string name="chat_message_delete">حذف</string>
+    <string name="chat_message_retry_accessibility">ارسال دوباره پیام ناموفق</string>
+    <string name="chat_message_delete_accessibility">حذف پیام ناموفق</string>
+    <string name="chat_message_state_pending_accessibility">پیام در صف ارسال است</string>
+    <string name="chat_message_state_sent_accessibility">پیام توسط سرور پذیرفته شده است؛ وضعیت تحویل و خواندن هنوز مشخص نیست</string>
+    <string name="chat_message_state_failed_accessibility">ارسال پیام ناموفق است؛ می‌توانید دوباره ارسال یا حذف کنید</string>
+    <string name="chat_typing">در حال نوشتن…</string>
+    <string name="chat_online">آنلاین</string>
+    <string name="chat_offline">آخرین بازدید اخیراً</string>
+    <string name="chat_message_deleted">این پیام حذف شده است</string>
+    <string name="chat_message_deleted_accessibility">پیام حذف شده</string>
+
+    <!-- Avatar crop -->
+    <string name="avatar_crop_title">عکس پروفایل</string>
+    <string name="avatar_crop_hint">جابه‌جا کنید و بزرگ‌نمایی کنید</string>
+    <string name="avatar_crop_cancel">انصراف</string>
+    <string name="avatar_crop_confirm">تنظیم</string>
+    <string name="avatar_crop_load_failed">بارگذاری تصویر ناموفق بود</string>
+    <string name="error_avatar_upload">آپلود عکس پروفایل انجام نشد. تصویر دیگری را امتحان کنید.</string>
+
     <!-- API error codes -->
     <string name="api_invalid_request_body">اطلاعات ارسالی نامعتبر است.</string>
     <string name="api_registration_failed">ثبت‌نام انجام نشد. اطلاعات را بررسی کنید.</string>
@@ -55,4 +119,38 @@
     <string name="validation_title_too_long">عنوان نباید بیش از ۲۰۰ کاراکتر باشد.</string>
     <string name="validation_comment_required">متن نظر نمی‌تواند خالی باشد.</string>
     <string name="validation_comment_too_long">نظر نباید بیش از ۵۰۰۰ کاراکتر باشد.</string>
+
+    <!-- Profile -->
+    <string name="profile_set_photo">تنظیم عکس</string>
+    <string name="profile_edit_info">ویرایش اطلاعات</string>
+    <string name="profile_settings">تنظیمات</string>
+    <string name="profile_tab_posts">پست‌ها</string>
+    <string name="profile_tab_archived">پست‌های آرشیو</string>
+    <string name="profile_tab_replies">نظرات</string>
+    <string name="profile_tab_likes">پسندیده‌ها</string>
+    <string name="profile_add_post">افزودن پست</string>
+    <string name="profile_label_mobile">موبایل</string>
+    <string name="profile_label_bio">بیو</string>
+    <string name="profile_label_username">نام کاربری</string>
+    <string name="profile_posts_count">%d پست</string>
+    <string name="profile_stat_posts">پست</string>
+    <string name="profile_stat_followers">دنبال‌کننده</string>
+    <string name="profile_stat_following">دنبال‌شونده</string>
+    <string name="profile_follow">دنبال کردن</string>
+    <string name="profile_unfollow">لغو دنبال</string>
+    <string name="profile_message">گفتگو</string>
+    <string name="profile_share">اشتراک</string>
+    <string name="profile_share_text">پروفایل @%1$s در Xilo</string>
+    <string name="profile_empty_archived">پست آرشیو‌شده‌ای وجود ندارد.</string>
+    <string name="profile_empty_posts">هنوز پستی منتشر نشده است.</string>
+    <string name="profile_empty_replies">هنوز نظری ثبت نشده است.</string>
+    <string name="profile_empty_likes">هنوز پستی پسندیده نشده است.</string>
+    <string name="profile_menu">منو</string>
+    <string name="profile_more">بیشتر</string>
+    <string name="profile_followers_title">دنبال‌کنندگان</string>
+    <string name="profile_following_title">دنبال‌شوندگان</string>
+    <string name="profile_follow_list_empty">کسی اینجا نیست.</string>
+    <string name="error_follow_failed">عملیات دنبال کردن ناموفق بود</string>
+    <string name="error_load_follow_list">بارگذاری لیست با خطا مواجه شد</string>
+    <string name="error_start_chat">شروع گفتگو ناموفق بود</string>
 </resources>

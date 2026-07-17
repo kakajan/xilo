@@ -8,7 +8,7 @@
 
 ## Summary
 
-Build **Xilo** — a modern, Telegram-inspired blogging platform with a web frontend (Next.js) and native mobile app (Flutter). The system is fully self-hosted with zero dependency on paid SaaS services, designed to scale to 1M+ concurrent users through a microservices architecture backed by Go, PostgreSQL, Redis, NATS, Meilisearch, and MinIO.
+Build **Xilo** — a modern, Telegram-inspired blogging platform with a web frontend (Next.js) and a native Android app (Kotlin/Jetpack Compose). The system is fully self-hosted with zero dependency on paid SaaS services, designed to scale to 1M+ concurrent users through a microservices architecture backed by Go, PostgreSQL, Redis, NATS, Meilisearch, and MinIO. The preserved `mobile/` Flutter project is legacy and out of scope for active product development.
 
 ---
 
@@ -32,7 +32,7 @@ Build **Xilo** — a modern, Telegram-inspired blogging platform with a web fron
 | **Database** | PostgreSQL 16+ (primary), Redis (cache/pub/sub), Meilisearch (search), MinIO (object storage) |
 | **Message Queue** | NATS for event-driven inter-service communication |
 | **Web Frontend** | Next.js 15+ App Router, Tailwind CSS 4, shadcn/ui, Zustand, TanStack Query, Tiptap editor, Framer Motion |
-| **Mobile App** | Flutter 3+ with Clean Architecture, Riverpod, Dio, Hive |
+| **Mobile App** | Native Android in `android/`: Kotlin, Jetpack Compose, Hilt, Room, Retrofit, OkHttp, Paging 3, WorkManager, DataStore, Keystore |
 | **Real-time** | WebSocket with Redis Pub/Sub clustering for live comments, reactions, notifications, chat |
 | **Auth** | JWT + Refresh Tokens, Argon2 hashing, OAuth2 (optional) |
 | **SEO** | SSR/SSG/ISR, JSON-LD structured data, dynamic sitemap, Core Web Vitals targets |
@@ -89,7 +89,7 @@ Build **Xilo** — a modern, Telegram-inspired blogging platform with a web fron
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Microservice complexity early on | High dev overhead | Start with modular monolith, extract services in Phase 3 |
-| Flutter + Go context switching | Slower velocity | Separate teams; shared OpenAPI spec as contract |
+| Android + Go contract drift | Slower velocity | Shared OpenAPI/API contracts, Android integration tests, and `android-native-production` acceptance gates |
 | Self-hosting operational burden | Maintenance cost | Comprehensive Docker Compose and Helm charts; runbooks |
 | Real-time at scale | Infrastructure cost | Redis Pub/Sub clustering; horizontal WebSocket scaling |
 | SEO with SPA-like interactions | Search ranking | Next.js SSR + ISR for all public pages; server-rendered metadata |

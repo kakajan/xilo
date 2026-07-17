@@ -6,15 +6,16 @@ import { Bell } from "lucide-react";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
-import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useFormatDate } from "@/hooks/use-format-date";
 import type { Notification } from "@/types/notification";
 
 export function NotificationCenter() {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
   const { addHandler } = useWebSocket();
+  const formatDate = useFormatDate();
 
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],

@@ -75,6 +75,20 @@ A post can be in one of these states:
 **When** they bookmark a post  
 **Then** it appears in their bookmarks list for later reading.
 
+### REQ-POST-011: Post Reposts
+
+**Given** an authenticated user  
+**When** they repost a published post  
+**Then** the repost is persisted, `repost_count` increments, and `is_reposted` is true for that viewer.
+
+**Given** an authenticated user who already reposted a post  
+**When** they remove the repost  
+**Then** the repost row is deleted and `repost_count` decrements.
+
+**Notes:**
+- One repost per user per post (unique on `user_id`, `post_id`)
+- Repost is distinct from external share (`share_clicked` analytics)
+
 ### REQ-POST-009: Reading Time
 
 Posts display estimated reading time calculated as: `word_count / 200` words-per-minute, with minimum 1 minute.
@@ -98,5 +112,8 @@ Posts display estimated reading time calculated as: `word_count / 200` words-per
 | DELETE | `/api/posts/:id` | Author/Admin+ | Delete post |
 | POST | `/api/posts/:id/reactions` | Reader+ | Toggle reaction |
 | POST | `/api/posts/:id/bookmark` | Reader+ | Toggle bookmark |
+| DELETE | `/api/posts/:id/bookmark` | Reader+ | Remove bookmark |
+| POST | `/api/posts/:id/repost` | Reader+ | Repost a post |
+| DELETE | `/api/posts/:id/repost` | Reader+ | Remove repost |
 | GET | `/api/posts/feed` | Reader+ | Personalized feed |
 | GET | `/api/posts/my/drafts` | Author+ | List own drafts |

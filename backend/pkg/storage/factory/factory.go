@@ -32,10 +32,11 @@ func New() (storage.Driver, error) {
 		bucket = "xilo-media"
 	}
 	useSSL := os.Getenv("STORAGE_USE_SSL") == "true"
+	publicEndpoint := os.Getenv("STORAGE_PUBLIC_ENDPOINT")
 
 	switch driver {
 	case "minio":
-		return minio.New(endpoint, accessKey, secretKey, bucket, useSSL)
+		return minio.New(endpoint, accessKey, secretKey, bucket, useSSL, publicEndpoint)
 	case "s3":
 		region := os.Getenv("STORAGE_REGION")
 		if region == "" {

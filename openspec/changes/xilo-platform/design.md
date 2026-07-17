@@ -453,64 +453,11 @@ Real-time:
   WebSocket Message → Zustand Store Update → React Re-render
 ```
 
-## 6. Mobile App Architecture (Flutter)
+## 6. Mobile App Architecture (Native Android)
 
-### Clean Architecture Layers
+The active and sole mobile client is the Kotlin application in `android/`. The Flutter tree under `mobile/` is a preserved legacy artifact; it is not an active architecture, implementation target, or completion signal. The detailed production requirements and phased acceptance gates are defined in `openspec/changes/android-native-production/`.
 
-```
-┌─────────────────────────────────┐
-│      Presentation Layer          │
-│  Pages, Widgets, Providers       │
-│  (Riverpod providers, UI state)  │
-├─────────────────────────────────┤
-│        Domain Layer              │
-│  Entities, Use Cases, Failures   │
-│  (Pure Dart, no dependencies)    │
-├─────────────────────────────────┤
-│         Data Layer               │
-│  Repositories, DataSources, DTOs │
-│  (Dio, Hive, WebSocket)          │
-└─────────────────────────────────┘
-```
-
-### Data Flow
-
-```
-Widget → Riverpod Provider (StateNotifier)
-  → Use Case (Domain)
-    → Repository (Domain interface)
-      → DataSource (Data impl)
-        → Dio (HTTP) or Hive (local) or WebSocket
-```
-
-### Dependency Injection (GetIt)
-
-```dart
-// Registration hierarchy
-GetIt sl = GetIt.instance;
-
-// External
-sl.registerLazySingleton(() => Dio(BaseOptions(baseUrl: Config.apiUrl)));
-sl.registerLazySingleton(() => WebSocketChannel.connect(Uri.parse(Config.wsUrl)));
-sl.registerLazySingleton(() => Hive);
-
-// Data Sources
-sl.registerLazySingleton(() => AuthRemoteDataSource(sl()));
-sl.registerLazySingleton(() => AuthLocalDataSource(sl()));
-sl.registerLazySingleton(() => PostRemoteDataSource(sl()));
-sl.registerLazySingleton(() => PostLocalDataSource(sl()));
-
-// Repositories
-sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl(), sl()));
-sl.registerLazySingleton<PostRepository>(() => PostRepositoryImpl(sl(), sl()));
-
-// Use Cases
-sl.registerLazySingleton(() => LoginUseCase(sl()));
-sl.registerLazySingleton(() => GetFeedUseCase(sl()));
-sl.registerLazySingleton(() => CreatePostUseCase(sl()));
-```
-
-### 6.2 Native Android App Architecture (Kotlin)
+### 6.1 Native Android App Architecture (Kotlin)
 
 The native Android application follows the same Clean Architecture layout but maps dependencies to Android platform utilities:
 
@@ -536,6 +483,8 @@ The native Android application follows the same Clean Architecture layout but ma
 - **Networking**: Retrofit + OkHttp + kotlinx.serialization
 - **WebSocket**: OkHttp WebSockets via `WebSocketManager`
 - **UI State**: Compose StateFlow collection via `collectAsStateWithLifecycle()`
+- **Paging and background sync**: Paging 3 + WorkManager durable outbox
+- **Preferences and secrets**: DataStore + Android Keystore
 
 ---
 
@@ -891,6 +840,8 @@ Redis keys:
 
 Based on X/Twitter + Telegram hybrid aesthetic.
 
+`openspec/changes/xilo-platform/specs/ui-ux-spec.md` is the normative visual authority. Values and component sketches in this design document are illustrative and SHALL defer to that specification when they differ.
+
 ### 14.1 Color Palette
 
 ```typescript
@@ -906,8 +857,8 @@ const colors = {
   success: '#00BA7C',
   
   // Comment bubbles
-  bubbleOwn: '#E3F2FD',       // Light blue (own comments)
-  bubbleOthers: '#F5F5F5',    // Light gray (others)
+  bubbleOwn: '#E8F5FE',       // Light blue (own comments)
+  bubbleOthers: '#F7F9FA',    // Light gray (others)
   bubbleHighlighted: '#FFF9C4' // Yellow (mentioned)
 };
 
@@ -1036,11 +987,10 @@ const colorsDark = {
 ```
 
 Thread visualization:
-- Max depth: 3 levels (replies beyond depth 3 attach to root)
-- Indentation: 24px per level
-- Thread lines for parent-child relationship
-- Collapse/expand for long threads
-- "View N more replies" for threads > 3 replies
+- Backend max nest depth: 4; UI shows 2 levels relative to focus root
+- Twitter-style avatar-column thread line (≈2px)
+- "N پاسخ" drill-down for replies beyond the visible window
+- Back navigation pops focus to the previous root
 
 ---
 
@@ -1089,10 +1039,8 @@ xilo/
 │   ├── tailwind.config.ts
 │   ├── package.json
 │   └── tsconfig.json
-├── mobile/
-│   ├── lib/             — Flutter source (see above)
-│   ├── pubspec.yaml
-│   └── analysis_options.yaml
+├── android/             — active Kotlin/Jetpack Compose application
+├── mobile/              — preserved legacy Flutter source; out of scope
 ├── infra/
 │   ├── docker/
 │   │   ├── Dockerfile.api-gateway
@@ -1120,7 +1068,7 @@ xilo/
 │   └── workflows/
 │       ├── backend-ci.yml
 │       ├── web-ci.yml
-│       └── mobile-ci.yml
+│       └── android-ci.yml
 ├── .gitignore
 ├── LICENSE
 ├── README.md

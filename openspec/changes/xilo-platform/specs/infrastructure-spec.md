@@ -12,7 +12,7 @@ Fully containerized deployment with Docker and Kubernetes. Monitoring with Prome
 **All services** are Dockerized with multi-stage builds:
 - Go backend: scratch-based minimal image (< 20MB)
 - Next.js frontend: standalone output image
-- Flutter: not containerized (build via CI, distribute via stores)
+- Native Android: not containerized; build, test, sign, and distribute through Android CI and approved store/internal-test tracks. The legacy Flutter tree is not built or validated.
 
 **Docker Compose** for local development spins up:
 ```yaml
@@ -47,10 +47,10 @@ Tag release → Build → Test → Build Images → Deploy to Production (canary
 ```
 
 **Pipeline steps:**
-1. Checkout + Setup Go/Node/Flutter
+1. Checkout + Setup Go/Node/JDK/Android SDK
 2. Run unit tests (all services)
 3. Run integration tests
-4. Lint (golangci-lint, ESLint, dart analyze)
+4. Lint (golangci-lint, ESLint, Android Lint, Kotlin formatting/static analysis)
 5. Build Docker images
 6. Push to container registry
 7. Deploy to Kubernetes (kubectl apply / Helm)

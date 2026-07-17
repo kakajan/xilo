@@ -1,0 +1,6 @@
+EditText: text='EmulatorPostTitle' desc='' click=true [44,286][1036,440]
+EditText: text='BodyFromEmulatorTest' desc='' click=true [44,484][1036,939]
+View: text='' desc='بستن' click=false [970,121][1036,187]
+TextView: text='ایجاد پست جدید' desc='' click=false [598,116][926,192]
+TextView: text='انتشار' desc='' click=false [99,125][199,184]
+TextView: text='Unauthorized. Please sign in.' desc='' click=false [543,2031][948,2079]

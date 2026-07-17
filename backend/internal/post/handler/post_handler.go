@@ -58,7 +58,8 @@ func (h *PostHandler) Create(c *fiber.Ctx) error {
 // @Router       /posts/{slug} [get]
 func (h *PostHandler) GetBySlug(c *fiber.Ctx) error {
 	slug := c.Params("slug")
-	post, err := h.svc.GetBySlug(c.UserContext(), slug)
+	viewerID, _ := c.Locals("userID").(string)
+	post, err := h.svc.GetBySlug(c.UserContext(), slug, viewerID)
 	if err != nil {
 		if errors.Is(err, repository.ErrPostNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{

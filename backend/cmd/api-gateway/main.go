@@ -26,13 +26,14 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/contrib/websocket"
+	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
 	"github.com/jmoiron/sqlx"
@@ -46,6 +47,11 @@ import (
 	analyticshandler "github.com/xilo-platform/xilo/internal/analytics/handler"
 
 	billinghandler "github.com/xilo-platform/xilo/internal/billing/handler"
+
+	chathandler "github.com/xilo-platform/xilo/internal/chat/handler"
+	chatrealtime "github.com/xilo-platform/xilo/internal/chat/realtime"
+	chatrepo "github.com/xilo-platform/xilo/internal/chat/repository"
+	chatsvc "github.com/xilo-platform/xilo/internal/chat/service"
 
 	commenthandler "github.com/xilo-platform/xilo/internal/comment/handler"
 	commentrepo "github.com/xilo-platform/xilo/internal/comment/repository"
@@ -68,13 +74,16 @@ import (
 
 	userhandler "github.com/xilo-platform/xilo/internal/user/handler"
 
+	platformhandler "github.com/xilo-platform/xilo/internal/platform/handler"
+
+	"github.com/xilo-platform/xilo/pkg/i18n"
 	"github.com/xilo-platform/xilo/pkg/jwt"
 	"github.com/xilo-platform/xilo/pkg/payment/zarinpal"
+	pkgrealtime "github.com/xilo-platform/xilo/pkg/realtime"
 	pkgredis "github.com/xilo-platform/xilo/pkg/redis"
 	smsfactory "github.com/xilo-platform/xilo/pkg/sms/factory"
 	storagefactory "github.com/xilo-platform/xilo/pkg/storage/factory"
 	wshub "github.com/xilo-platform/xilo/pkg/websocket"
-	"github.com/xilo-platform/xilo/pkg/i18n"
 
 	_ "github.com/xilo-platform/xilo/docs"
 )
@@ -105,10 +114,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	hub := wshub.NewHub(rdb.Client, jwtMgr)
-	go hub.ListenRedis("post:*")
-	go hub.ListenRedis("user:*")
-
 	authRepo := authrepo.NewUserRepo(db)
 	authSvc := authsvc.NewAuthServiceWithSMS(authRepo, jwtMgr, smsDriver)
 	authH := authhandler.NewAuthHandler(authSvc)
@@ -120,6 +125,20 @@ func main() {
 	commentRepo := commentrepo.NewCommentRepo(db)
 	commentSvc := commentsvc.NewCommentService(commentRepo)
 	commentH := commenthandler.NewCommentHandler(commentSvc)
+
+	realtimePublisher := pkgrealtime.NewRedisPublisher(rdb.Client)
+	chatRepo := chatrepo.NewChatRepoWithStorage(db, storageDriver)
+	folderRepo := chatrepo.NewFolderRepo(db)
+	chatSvc := chatsvc.NewChatServiceWithPublisher(chatRepo, realtimePublisher)
+	folderSvc := chatsvc.NewFolderService(folderRepo)
+	chatH := chathandler.NewChatHandler(chatSvc)
+	folderH := chathandler.NewFolderHandler(folderSvc)
+	chatGateway := chatrealtime.NewGateway(chatSvc)
+
+	hub := wshub.NewHubWithDependencies(rdb.Client, jwtMgr, chatGateway, realtimePublisher)
+	go hub.ListenRedis("post:*")
+	go hub.ListenRedis("user:*")
+	go hub.ListenRedis("chat:*")
 
 	mediaRepo := mediarepo.NewMediaRepo(db)
 	mediaSvc := mediasvc.NewMediaService(mediaRepo, storageDriver)
@@ -149,6 +168,7 @@ func main() {
 	billingH := billinghandler.NewBillingHandler(db, zarinpalDriver, baseURL)
 	paymentH := billinghandler.NewPaymentHandler(db, zarinpalDriver, baseURL)
 	settingsH := billinghandler.NewSettingsHandler(db)
+	platformSettingsH := platformhandler.NewSettingsHandler(db)
 
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  10 * time.Second,
@@ -159,18 +179,28 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOriginsFunc: func(origin string) bool { return true },
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, Idempotency-Key, X-Device-Name, X-Device-Platform, X-Refresh-Token",
 	}))
 
 	app.Get("/api/languages", func(c *fiber.Ctx) error {
+		defaults, err := platformSettingsH.LoadCalendarDefaults(c)
+		if err != nil {
+			defaults = i18n.DefaultCalendarDefaults
+		}
 		return c.JSON(fiber.Map{
-			"languages": i18n.ListLanguages(),
-			"default":   i18n.DefaultLanguage,
+			"languages":         i18n.ListLanguages(),
+			"default":           i18n.DefaultLanguage,
+			"calendar_defaults": defaults,
 		})
 	})
 
+	platform := app.Group("/api/platform")
+	platform.Get("/settings", platformSettingsH.GetSettings)
+	platform.Patch("/settings", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), platformSettingsH.UpdateSettings)
+
 	applyPublicRateLimit := limiter.New(limiter.Config{Max: 30, Expiration: 1 * time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.IP() }})
-	applyAuthRateLimit := limiter.New(limiter.Config{Max: 5, Expiration: 1 * time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.IP() }})
+	// Local/dev-friendly auth budget; production should tighten via env/config later.
+	applyAuthRateLimit := limiter.New(limiter.Config{Max: 60, Expiration: 1 * time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.IP() }})
 
 	auth := app.Group("/api/auth")
 	auth.Post("/register", applyAuthRateLimit, authH.Register)
@@ -179,6 +209,8 @@ func main() {
 	auth.Post("/logout", authmw.AuthRequired(jwtMgr), authH.Logout)
 	auth.Get("/me", authmw.AuthRequired(jwtMgr), authH.Me)
 	auth.Patch("/me", authmw.AuthRequired(jwtMgr), authH.UpdateProfile)
+	auth.Get("/sessions", authmw.AuthRequired(jwtMgr), authH.ListSessions)
+	auth.Delete("/sessions/:id", authmw.AuthRequired(jwtMgr), authH.RevokeSession)
 	auth.Post("/avatar", authmw.AuthRequired(jwtMgr), mediaH.UploadAvatar)
 	auth.Post("/otp/request", applyAuthRateLimit, authH.RequestOTP)
 	auth.Post("/otp/verify-login", applyAuthRateLimit, authH.VerifyOTPLogin)
@@ -186,16 +218,46 @@ func main() {
 
 	posts := app.Group("/api/posts")
 	posts.Get("/", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.List)
-	posts.Get("/:slug", postH.GetBySlug)
-	posts.Post("/", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin"), postH.Create)
+	// Static subpaths before /:slug so "repost" is not captured as a slug.
+	posts.Post("/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
+	posts.Delete("/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
+	posts.Get("/:slug", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.GetBySlug)
+	// Registered readers may publish; author/editor/admin remain elevated roles for moderation.
+	posts.Post("/", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("reader", "author", "editor", "admin"), postH.Create)
 	posts.Patch("/:id", authmw.AuthRequired(jwtMgr), postH.Update)
 	posts.Delete("/:id", authmw.AuthRequired(jwtMgr), postH.Delete)
 
 	comments := app.Group("/api/posts/:postId/comments")
-	comments.Get("/", commentH.List)
+	comments.Get("/", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), commentH.List)
 	comments.Post("/", authmw.AuthRequired(jwtMgr), commentH.Create)
 	comments.Patch("/:id", authmw.AuthRequired(jwtMgr), commentH.Update)
 	comments.Delete("/:id", authmw.AuthRequired(jwtMgr), commentH.Delete)
+
+	chats := app.Group("/api/chats", authmw.AuthRequired(jwtMgr))
+	chats.Get("/", chatH.ListChats)
+	chats.Post("/", chatH.CreateChat)
+	chats.Get("/saved", chatH.GetSavedMessages)
+	chats.Get("/:id", chatH.GetChat)
+	chats.Patch("/:id", chatH.UpdateChat)
+	chats.Delete("/:id", chatH.LeaveChat)
+	chats.Post("/:id/members", chatH.AddMembers)
+	chats.Delete("/:id/members/:userId", chatH.RemoveMember)
+	chats.Get("/:id/messages", chatH.ListMessages)
+	chats.Post("/:id/messages", chatH.CreateMessage)
+	chats.Get("/:id/search", chatH.SearchMessages)
+
+	messages := app.Group("/api/messages", authmw.AuthRequired(jwtMgr))
+	messages.Patch("/:id", chatH.UpdateMessage)
+	messages.Delete("/:id", chatH.DeleteMessage)
+	messages.Post("/:id/read", chatH.MarkRead)
+	messages.Post("/:id/reactions", chatH.ToggleReaction)
+
+	chatFolders := app.Group("/api/chat-folders", authmw.AuthRequired(jwtMgr))
+	chatFolders.Get("/", folderH.ListFolders)
+	chatFolders.Post("/", folderH.CreateFolder)
+	chatFolders.Patch("/:id", folderH.UpdateFolder)
+	chatFolders.Delete("/:id", folderH.DeleteFolder)
+	chatFolders.Put("/:id/chats", folderH.SetFolderChats)
 
 	react := app.Group("/api")
 	react.Post("/:type/:id/reactions", authmw.AuthRequired(jwtMgr), commentH.ToggleReaction)
@@ -223,11 +285,19 @@ func main() {
 	social := app.Group("/api")
 	social.Post("/posts/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleBookmark)
 	social.Delete("/posts/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleBookmark)
+	// Keep /api/posts/:id/repost aliases for clients that call the social group path.
+	social.Post("/posts/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
+	social.Delete("/posts/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
 	social.Get("/bookmarks", authmw.AuthRequired(jwtMgr), socialH.ListBookmarks)
+	social.Get("/bookmarks/comments", authmw.AuthRequired(jwtMgr), socialH.ListCommentBookmarks)
+	social.Post("/comments/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleCommentBookmark)
+	social.Delete("/comments/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleCommentBookmark)
 	social.Get("/users/:username", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.GetPublicProfile)
 	social.Get("/users/:username/posts", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.ListUserPosts)
 	social.Get("/users/:username/replies", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.ListUserReplies)
 	social.Get("/users/:username/likes", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.ListUserLikes)
+	social.Get("/users/:username/followers", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.ListUserFollowers)
+	social.Get("/users/:username/following", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), profileH.ListUserFollowing)
 	social.Post("/users/:username/follow", authmw.AuthRequired(jwtMgr), socialH.ToggleFollow)
 	social.Delete("/users/:username/follow", authmw.AuthRequired(jwtMgr), socialH.ToggleFollow)
 
@@ -263,6 +333,14 @@ func main() {
 
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		hub.HandleWebSocket(c)
+	}, websocket.Config{
+		HandshakeTimeout: 10 * time.Second,
+		Origins: splitCSV(requireEnvOr(
+			"WS_ALLOWED_ORIGINS",
+			"http://localhost:3000,http://127.0.0.1:3000",
+		)),
+		ReadBufferSize:  4 << 10,
+		WriteBufferSize: 4 << 10,
 	}))
 
 	app.Get("/swagger/*", swagger.HandlerDefault)
@@ -303,6 +381,7 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 		slog.Info("shutting down...")
+		hub.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := app.ShutdownWithContext(ctx); err != nil {
@@ -383,4 +462,14 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func splitCSV(value string) []string {
+	values := make([]string, 0)
+	for _, item := range strings.Split(value, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			values = append(values, item)
+		}
+	}
+	return values
 }

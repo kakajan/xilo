@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"strings"
@@ -40,7 +41,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
-	resp, err := h.svc.Register(c.UserContext(), &req)
+	resp, err := h.svc.Register(authContextWithDevice(c), &req)
 	if err != nil {
 		slog.Warn("register failed", "error", err)
 		return writeAuthError(c, fiber.StatusBadRequest, err)
@@ -66,7 +67,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
-	resp, err := h.svc.Login(c.UserContext(), &req)
+	resp, err := h.svc.Login(authContextWithDevice(c), &req)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid email or password"})
@@ -100,7 +101,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		}
 	}
 
-	resp, err := h.svc.Refresh(c.UserContext(), req.RefreshToken)
+	resp, err := h.svc.Refresh(authContextWithDevice(c), req.RefreshToken)
 	if err != nil {
 		if errors.Is(err, service.ErrTokenReused) {
 			clearAuthCookies(c)
@@ -181,7 +182,7 @@ func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 	user, err := h.svc.UpdateProfile(c.UserContext(), userID, &req)
 	if err != nil {
 		slog.Warn("update profile failed", "error", err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "update failed"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(user)
 }
@@ -228,7 +229,7 @@ func (h *AuthHandler) VerifyOTPLogin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
-	resp, err := h.svc.VerifyOTPLogin(c.UserContext(), &req)
+	resp, err := h.svc.VerifyOTPLogin(authContextWithDevice(c), &req)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidOTP) {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid or expired otp"})
@@ -256,7 +257,7 @@ func (h *AuthHandler) VerifyOTPRegister(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
-	resp, err := h.svc.VerifyOTPRegister(c.UserContext(), &req)
+	resp, err := h.svc.VerifyOTPRegister(authContextWithDevice(c), &req)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidOTP) {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid or expired otp"})
@@ -267,6 +268,82 @@ func (h *AuthHandler) VerifyOTPRegister(c *fiber.Ctx) error {
 
 	setAuthCookies(c, resp.AccessToken, resp.RefreshToken, resp.ExpiresIn)
 	return c.Status(fiber.StatusCreated).JSON(resp)
+}
+
+// @Summary      List active auth sessions
+// @Description  List non-revoked, non-expired refresh-token sessions for the current user
+// @Tags         auth
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Refresh-Token header string false "Current refresh token to mark is_current"
+// @Param        refresh_token query string false "Current refresh token to mark is_current"
+// @Success      200  {array}  model.SessionResponse
+// @Failure      401  {object}  map[string]string
+// @Router       /auth/sessions [get]
+func (h *AuthHandler) ListSessions(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	currentRefresh := strings.TrimSpace(c.Get("X-Refresh-Token"))
+	if currentRefresh == "" {
+		currentRefresh = strings.TrimSpace(c.Query("refresh_token"))
+	}
+	if currentRefresh == "" {
+		currentRefresh = c.Cookies(cookieRefresh)
+	}
+
+	sessions, err := h.svc.ListSessions(c.UserContext(), userID, currentRefresh)
+	if err != nil {
+		slog.Error("list sessions failed", "error", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+	}
+	return c.JSON(sessions)
+}
+
+// @Summary      Revoke an auth session
+// @Description  Revoke all refresh tokens in the session family
+// @Tags         auth
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Session ID"
+// @Success      200  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Router       /auth/sessions/{id} [delete]
+func (h *AuthHandler) RevokeSession(c *fiber.Ctx) error {
+	userID, ok := c.Locals("userID").(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	if err := h.svc.RevokeSession(c.UserContext(), userID, c.Params("id")); err != nil {
+		if errors.Is(err, repository.ErrSessionNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "session not found"})
+		}
+		slog.Error("revoke session failed", "error", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+	}
+	return c.JSON(fiber.Map{"message": "session revoked"})
+}
+
+func authContextWithDevice(c *fiber.Ctx) context.Context {
+	meta := &model.DeviceMetadata{
+		DeviceName: optionalTrimmedString(c.Get("X-Device-Name")),
+		Platform:   optionalTrimmedString(c.Get("X-Device-Platform")),
+		UserAgent:  optionalTrimmedString(c.Get("User-Agent")),
+		IP:         optionalTrimmedString(c.IP()),
+	}
+	return service.ContextWithDeviceMetadata(c.UserContext(), meta)
+}
+
+func optionalTrimmedString(value string) *string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return &value
 }
 
 func setAuthCookies(c *fiber.Ctx, access, refresh string, expiresIn int) {

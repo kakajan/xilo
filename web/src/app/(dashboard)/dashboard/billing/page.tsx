@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, CreditCard, AlertCircle, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/utils";
 
 interface Plan {
   id: string;
@@ -51,11 +52,6 @@ function formatPrice(cents: number, currency: string): string {
     return cents.toLocaleString("en-US") + " IRR";
   }
   return `$${(cents / 100).toFixed(2)} ${currency}`;
-}
-
-function formatDate(d: string | null): string {
-  if (!d) return "-";
-  return new Date(d).toLocaleDateString();
 }
 
 function formatInterval(interval: string): string {

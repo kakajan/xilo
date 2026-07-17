@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/xilo-platform/xilo/internal/auth/model"
+	"github.com/xilo-platform/xilo/internal/auth/repository"
 	"github.com/xilo-platform/xilo/pkg/jwt"
 )
 
@@ -54,10 +55,65 @@ func (m *mockUserRepo) FindByPhone(ctx context.Context, phone string) (*model.Us
 func (m *mockUserRepo) CreateWithPhone(ctx context.Context, email, username, phone, passwordHash string) (*model.User, error) { return nil, nil }
 func (m *mockUserRepo) UpdatePhone(ctx context.Context, userID, phone string) error                { return nil }
 func (m *mockUserRepo) UpdateProfile(ctx context.Context, userID string, req *model.UpdateProfileRequest) (*model.User, error) { return nil, nil }
-func (m *mockUserRepo) SaveRefreshToken(ctx context.Context, userID, family string, tokenHash string, expiresAt time.Time) error { return nil }
-func (m *mockUserRepo) FindRefreshToken(ctx context.Context, tokenHash string) (*model.RefreshToken, error) { return nil, nil }
-func (m *mockUserRepo) RevokeRefreshToken(ctx context.Context, tokenHash string) error { return nil }
-func (m *mockUserRepo) RevokeTokenFamily(ctx context.Context, family string) error     { return nil }
+func (m *mockUserRepo) SaveRefreshToken(ctx context.Context, userID, family string, tokenHash string, expiresAt time.Time, device *model.DeviceMetadata) error {
+	m.tokens[tokenHash] = &model.RefreshToken{
+		ID:         tokenHash,
+		UserID:     userID,
+		TokenHash:  tokenHash,
+		Family:     family,
+		ExpiresAt:  expiresAt,
+		DeviceName: deviceDeviceName(device),
+		Platform:   devicePlatform(device),
+		LastSeenAt: time.Now(),
+		CreatedAt:  time.Now(),
+	}
+	return nil
+}
+func (m *mockUserRepo) FindRefreshToken(ctx context.Context, tokenHash string) (*model.RefreshToken, error) {
+	rt, ok := m.tokens[tokenHash]
+	if !ok {
+		return nil, nil
+	}
+	return rt, nil
+}
+func (m *mockUserRepo) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
+	if rt, ok := m.tokens[tokenHash]; ok {
+		rt.Revoked = true
+	}
+	return nil
+}
+func (m *mockUserRepo) RevokeTokenFamily(ctx context.Context, family string) error {
+	for _, rt := range m.tokens {
+		if rt.Family == family {
+			rt.Revoked = true
+		}
+	}
+	return nil
+}
+func (m *mockUserRepo) ListActiveSessions(ctx context.Context, userID string) ([]model.RefreshToken, error) {
+	seen := map[string]struct{}{}
+	sessions := make([]model.RefreshToken, 0)
+	for _, rt := range m.tokens {
+		if rt.UserID != userID || rt.Revoked || time.Now().After(rt.ExpiresAt) {
+			continue
+		}
+		if _, ok := seen[rt.Family]; ok {
+			continue
+		}
+		seen[rt.Family] = struct{}{}
+		sessions = append(sessions, *rt)
+	}
+	return sessions, nil
+}
+func (m *mockUserRepo) FindSessionByID(ctx context.Context, userID, sessionID string) (*model.RefreshToken, error) {
+	for _, rt := range m.tokens {
+		if rt.ID == sessionID && rt.UserID == userID {
+			return rt, nil
+		}
+	}
+	return nil, repository.ErrSessionNotFound
+}
+func (m *mockUserRepo) UpdateSessionLastSeen(ctx context.Context, tokenHash string) error { return nil }
 func (m *mockUserRepo) SaveSMSOTP(ctx context.Context, phone, code, purpose string, expiresAt time.Time) error { return nil }
 func (m *mockUserRepo) VerifySMSOTP(ctx context.Context, phone, code, purpose string) (bool, error) { return true, nil }
 
@@ -121,5 +177,99 @@ func TestRegister_WeakPassword(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for weak password")
+	}
+}
+
+func deviceDeviceName(device *model.DeviceMetadata) *string {
+	if device == nil {
+		return nil
+	}
+	return device.DeviceName
+}
+
+func devicePlatform(device *model.DeviceMetadata) *string {
+	if device == nil {
+		return nil
+	}
+	return device.Platform
+}
+
+func TestListSessions_MarksCurrentFamily(t *testing.T) {
+	repo := newMockUserRepo()
+	repo.users["user-1"] = &model.User{ID: "user-1", Email: "a@example.com", Username: "a", Role: "reader"}
+	repo.tokens[repository.HashRefreshToken("current-token")] = &model.RefreshToken{
+		ID:         "session-current",
+		UserID:     "user-1",
+		TokenHash:  repository.HashRefreshToken("current-token"),
+		Family:     "family-current",
+		ExpiresAt:  time.Now().Add(time.Hour),
+		CreatedAt:  time.Now(),
+		LastSeenAt: time.Now(),
+	}
+	repo.tokens["other-hash"] = &model.RefreshToken{
+		ID:        "session-other",
+		UserID:    "user-1",
+		TokenHash: "other-hash",
+		Family:    "family-other",
+		ExpiresAt: time.Now().Add(time.Hour),
+		CreatedAt: time.Now(),
+		LastSeenAt: time.Now(),
+	}
+
+	svc := NewAuthService(repo, &mockJWTManager{})
+	sessions, err := svc.ListSessions(context.Background(), "user-1", "current-token")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(sessions) != 2 {
+		t.Fatalf("expected 2 sessions, got %d", len(sessions))
+	}
+
+	currentMarked := false
+	for _, session := range sessions {
+		if session.ID == "session-current" && session.IsCurrent {
+			currentMarked = true
+		}
+		if session.ID == "session-other" && session.IsCurrent {
+			t.Fatal("other session should not be current")
+		}
+	}
+	if !currentMarked {
+		t.Fatal("expected current session to be marked")
+	}
+}
+
+func TestRevokeSession_RevokesFamily(t *testing.T) {
+	repo := newMockUserRepo()
+	repo.tokens["hash-1"] = &model.RefreshToken{
+		ID:        "session-1",
+		UserID:    "user-1",
+		TokenHash: "hash-1",
+		Family:    "family-1",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	repo.tokens["hash-2"] = &model.RefreshToken{
+		ID:        "session-2",
+		UserID:    "user-1",
+		TokenHash: "hash-2",
+		Family:    "family-1",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+
+	svc := NewAuthService(repo, &mockJWTManager{})
+	if err := svc.RevokeSession(context.Background(), "user-1", "session-1"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !repo.tokens["hash-1"].Revoked || !repo.tokens["hash-2"].Revoked {
+		t.Fatal("expected all tokens in family to be revoked")
+	}
+}
+
+func TestRevokeSession_NotFound(t *testing.T) {
+	repo := newMockUserRepo()
+	svc := NewAuthService(repo, &mockJWTManager{})
+	err := svc.RevokeSession(context.Background(), "user-1", "missing")
+	if err != repository.ErrSessionNotFound {
+		t.Fatalf("expected ErrSessionNotFound, got %v", err)
 	}
 }

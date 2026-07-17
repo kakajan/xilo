@@ -170,8 +170,8 @@ The user's language preference SHALL be persisted and restored.
 
 #### Scenario: Authenticated user
 - GIVEN an authenticated user selects a language
-- THEN the preference is sent to the backend via `PATCH /api/users/me`
-- AND restored from the user profile on login
+- THEN the preference is sent to the backend via `PATCH /api/auth/me`
+- AND restored from `GET /api/auth/me` on login
 - AND synced across devices
 
 ---

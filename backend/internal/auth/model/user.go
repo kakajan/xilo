@@ -16,6 +16,7 @@ type User struct {
 	Role          string     `json:"role" db:"role"`
 	EmailVerified bool       `json:"email_verified" db:"email_verified"`
 	PreferredLanguage string `json:"preferred_language" db:"preferred_language"`
+	PreferredCalendar string `json:"preferred_calendar" db:"preferred_calendar"`
 	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 	DeletedAt     *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
@@ -24,13 +25,37 @@ type User struct {
 }
 
 type RefreshToken struct {
-	ID        string    `json:"id" db:"id"`
-	UserID    string    `json:"user_id" db:"user_id"`
-	TokenHash string    `json:"-" db:"token_hash"`
-	Family    string    `json:"family" db:"family"`
-	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
-	Revoked   bool      `json:"revoked" db:"revoked"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	ID         string    `json:"id" db:"id"`
+	UserID     string    `json:"user_id" db:"user_id"`
+	TokenHash  string    `json:"-" db:"token_hash"`
+	Family     string    `json:"family" db:"family"`
+	ExpiresAt  time.Time `json:"expires_at" db:"expires_at"`
+	Revoked    bool      `json:"revoked" db:"revoked"`
+	DeviceName *string   `json:"device_name,omitempty" db:"device_name"`
+	Platform   *string   `json:"platform,omitempty" db:"platform"`
+	UserAgent  *string   `json:"user_agent,omitempty" db:"user_agent"`
+	IP         *string   `json:"ip,omitempty" db:"ip"`
+	LastSeenAt time.Time `json:"last_seen_at" db:"last_seen_at"`
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
+}
+
+type DeviceMetadata struct {
+	DeviceName *string
+	Platform   *string
+	UserAgent  *string
+	IP         *string
+}
+
+type SessionResponse struct {
+	ID         string    `json:"id"`
+	Family     string    `json:"family"`
+	DeviceName *string   `json:"device_name,omitempty"`
+	Platform   *string   `json:"platform,omitempty"`
+	UserAgent  *string   `json:"user_agent,omitempty"`
+	IP         *string   `json:"ip,omitempty"`
+	LastSeenAt time.Time `json:"last_seen_at"`
+	CreatedAt  time.Time `json:"created_at"`
+	IsCurrent  bool      `json:"is_current"`
 }
 
 type RegisterRequest struct {
@@ -56,10 +81,11 @@ type RefreshRequest struct {
 }
 
 type UpdateProfileRequest struct {
-	DisplayName     string `json:"display_name"`
-	Bio             string `json:"bio"`
-	AvatarURL       string `json:"avatar_url"`
+	DisplayName       string `json:"display_name"`
+	Bio               string `json:"bio"`
+	AvatarURL         string `json:"avatar_url"`
 	PreferredLanguage string `json:"preferred_language"`
+	PreferredCalendar string `json:"preferred_calendar"`
 }
 
 type RequestOTPRequest struct {

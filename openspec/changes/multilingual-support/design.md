@@ -6,12 +6,12 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                        Client Layer                          │
 ├──────────────────────────┬──────────────────────────────────┤
-│       Web (Next.js)      │       Mobile (Flutter)            │
+│       Web (Next.js)      │       Android (Kotlin/Compose)    │
 │  ┌────────────────────┐  │  ┌────────────────────────────┐  │
-│  │ next-intl          │  │  │ flutter_localizations      │  │
+│  │ next-intl          │  │  │ Android resources/Compose  │  │
 │  │ locale routing     │  │  │ intl / ARB files           │  │
 │  │ RTL via dir attr   │  │  │ Directionality widget      │  │
-│  │ localStorage/API   │  │  │ Hive + API sync            │  │
+│  │ localStorage/API   │  │  │ DataStore + API sync       │  │
 │  └─────────┬──────────┘  │  └────────────┬───────────────┘  │
 └────────────┼─────────────┴───────────────┼───────────────────┘
              │                             │
@@ -313,7 +313,9 @@ Usage in components:
 </div>
 ```
 
-## 5. Mobile App Architecture
+## 5. Historical Flutter Mobile Notes (Legacy / Out of Scope)
+
+> The retained Flutter examples in this section are non-normative historical context only. They MUST NOT guide active implementation, testing, or task completion. The active Android implementation is specified by `openspec/changes/android-native-production/specs/android-i18n/spec.md`, which uses Android resources, Compose layout direction, and DataStore.
 
 ### Localization Setup
 
@@ -518,7 +520,7 @@ Response includes `language` field on each post:
 }
 ```
 
-### PATCH /api/users/me — Language Preference
+### PATCH /api/auth/me — Language Preference
 
 ```json
 {
@@ -587,24 +589,9 @@ const fontClass = locale === 'fa' ? vazirmatn.variable
 return <html className={fontClass} ...>
 ```
 
-### Mobile App
+### Mobile App (Native Android)
 
-```dart
-// lib/core/theme/fonts.dart
-class AppFonts {
-  static const Map<String, String> fontFamilyByLocale = {
-    'fa': 'Vazirmatn',
-    'ar': 'NotoSansArabic',
-    'en': 'Inter',
-    'ru': 'Inter',
-    'tr': 'Inter',
-  };
-
-  static String getFontFamily(Locale locale) {
-    return fontFamilyByLocale[locale.languageCode] ?? 'Vazirmatn';
-  }
-}
-```
+The active Android application SHALL package locale-appropriate fonts in Android resources and apply them through Compose typography. Its locale, direction, fallback, and persistence behavior is defined by `REQ-AND-014` through `REQ-AND-016` in the Android Native Production change.
 
 ## 9. Translation Key Conventions
 

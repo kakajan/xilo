@@ -4,6 +4,8 @@
 
 Complete UI/UX design system for Xilo web and mobile platforms. Inspired by X/Twitter (structure, profiles, actions) and Telegram (chat bubbles, simplicity, smooth animations). Minimalist, content-first, with generous whitespace and modern typography.
 
+This file is the normative visual authority for Xilo. Other proposals, designs, and domain specifications SHALL reference these tokens and patterns rather than define conflicting visual values.
+
 ---
 
 ## 1. Design Principles
@@ -14,6 +16,10 @@ Complete UI/UX design system for Xilo web and mobile platforms. Inspired by X/Tw
 4. **Meaningful motion**: Animations guide, never distract
 5. **Accessible by default**: WCAG 2.1 AA minimum
 6. **Mobile-first**: Design for small, enhance for large
+
+### 1.1 Icon-and-Title Heading Pattern
+
+Whenever an icon accompanies a heading or title, the icon and title SHALL appear on the same horizontal row and SHALL never be stacked with the icon above the title. The row SHALL center-align its items with an 8px gap (12px for a larger icon container); the icon SHALL not shrink, and the title SHALL be allowed to shrink/wrap safely for long Persian text. Supporting description text SHALL remain below the icon-title row.
 
 ---
 
@@ -178,22 +184,8 @@ const vazirmatn = Vazirmatn({
 })
 ```
 
-**Mobile (Flutter):**
-```dart
-// pubspec.yaml
-fonts:
-  - family: Inter
-    fonts:
-      - asset: assets/fonts/Inter-Regular.ttf
-      - asset: assets/fonts/Inter-Medium.ttf (weight: 500)
-      - asset: assets/fonts/Inter-SemiBold.ttf (weight: 600)
-      - asset: assets/fonts/Inter-Bold.ttf (weight: 700)
-  - family: Vazirmatn
-    fonts:
-      - asset: assets/fonts/Vazirmatn-Regular.ttf
-      - asset: assets/fonts/Vazirmatn-Medium.ttf (weight: 500)
-      - asset: assets/fonts/Vazirmatn-Bold.ttf (weight: 700)
-```
+**Mobile (Native Android):**
+The active Android app SHALL package Inter and Vazirmatn through Android resources and apply them through its Compose typography. Font selection, locale behavior, and RTL requirements are governed by `openspec/changes/android-native-production/specs/android-i18n/spec.md`. The Flutter mobile tree is legacy and does not define active UI implementation.
 
 ---
 
@@ -434,17 +426,18 @@ Label
 | Own bubble bg | `bubbleOwn` (#E8F5FE light, #1E3A5F dark) |
 | Others bubble bg | `bubbleOthers` (#F7F9FA light, #2C2C2E dark) |
 | Highlighted bg | `bubbleHighlighted` (#FFF9C4 light, #3E3A2F dark) |
-| Thread indent | 24px per level |
-| Max visible depth | 3 levels |
+| Thread indent | Avatar-column aligned (Twitter-style); no heavy side indent |
+| Max visible depth | 2 levels relative to focus root |
 | Avatar size | 32px (mobile), 40px (desktop) |
 | Reaction row gap | 6-8px below bubble |
-| Thread line | 2px `border`, rounded |
+| Thread line | 2px `border` / outline, rounded, centered under avatars |
 
-**Thread collapse:**
-- "View N more replies" button
+**Thread drill-down:**
+- Beyond the 2 visible levels: "**N پاسخ**" / "View N replies" (direct child count)
 - Color: `primary`
 - Padding: 8px 16px
 - Font: 13px, 500 weight
+- Click enters that comment as focus root; back returns to previous focus
 
 ### 8.6 Chat Bubble (Telegram-Style)
 

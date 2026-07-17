@@ -1,3 +1,5 @@
+export type PreferredCalendar = "auto" | "jalali" | "gregorian";
+
 export interface User {
   id: string;
   email: string;
@@ -7,6 +9,8 @@ export interface User {
   bio: string;
   role: "reader" | "author" | "editor" | "admin" | "superadmin";
   email_verified: boolean;
+  preferred_language?: string;
+  preferred_calendar?: PreferredCalendar;
   created_at: string;
   updated_at: string;
 }

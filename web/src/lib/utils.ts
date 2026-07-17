@@ -1,16 +1,15 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { formatDateString, resolveCalendar, DEFAULT_CALENDAR_DEFAULTS } from "@/lib/format-date";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+/** Sync formatter for server components; defaults to fa → jalali. */
+export function formatDate(date: string, preferredCalendar?: string) {
+  const calendar = resolveCalendar(preferredCalendar, "fa", DEFAULT_CALENDAR_DEFAULTS);
+  return formatDateString(date, { calendar, locale: "fa" });
 }
 
 export function readingTimeText(minutes: number) {

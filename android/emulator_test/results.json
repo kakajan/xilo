@@ -1,0 +1,82 @@
+[
+  [
+    "onboarding_skip_0",
+    "OK",
+    "رد شدن"
+  ],
+  [
+    "main_after_onboarding",
+    "OK",
+    "Bob Coder | @bob | · مه ۱۸ | Docker Compose for Beginners | Learn how to use Docker Compose to manage multi-container applications | 3 | 12 | 0 | 0 | Bob Coder | @bob | · مه ۱۸ | Flutter State Managem"
+  ],
+  [
+    "tab_خانه",
+    "SKIP",
+    "not found"
+  ],
+  [
+    "tab_فید",
+    "OK",
+    "Bob Coder | @bob | · مه ۱۸ | Docker Compose for Beginners | Learn how to use Docker Compose to manage multi-container applications | 3 | 12 | 0 | 0 | Bob Coder | @bob | · مه ۱۸ | F"
+  ],
+  [
+    "tab_کشف",
+    "SKIP",
+    "not found"
+  ],
+  [
+    "tab_جستجو",
+    "OK",
+    "Bob Coder | @bob | · مه ۱۸ | Docker Compose for Beginners | Learn how to use Docker Compose to manage multi-container applications | 3 | 12 | 0 | 0 | Bob Coder | @bob | · مه ۱۸ | F"
+  ],
+  [
+    "tab_گفتگو",
+    "SKIP",
+    "not found"
+  ],
+  [
+    "tab_چت",
+    "SKIP",
+    "not found"
+  ],
+  [
+    "tab_پیام‌ها",
+    "OK",
+    "پیام‌ها | + | داستان من | آرش | ثنا | نیما | تارا | پویا | همه گفتگوها | جدید | خانواده | دوستان | کاری | پیام‌ها"
+  ],
+  [
+    "tab_پیامها",
+    "SKIP",
+    "not found"
+  ],
+  [
+    "tab_پروفایل",
+    "OK",
+    "پروفایل"
+  ],
+  [
+    "tab_من",
+    "SKIP",
+    "not found"
+  ],
+  [
+    "tab_تنظیمات",
+    "SKIP",
+    "not found"
+  ],
+  [
+    "chat_list",
+    "INFO",
+    "پروفایل"
+  ],
+  [
+    "emulator_to_api",
+    "FAIL",
+    ""
+  ],
+  [
+    "fatal_log",
+    "FAIL",
+    "27"
+  ]
+]

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Search, PlusCircle, Bell, Menu, LogIn, UserPlus, LayoutDashboard } from "lucide-react";
+import { Search, PlusCircle, Bell, LogIn, UserPlus, LayoutDashboard, Settings } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -54,6 +54,9 @@ export function Navbar() {
               </Button>
               <Button variant="ghost" size="icon" onClick={() => router.push("/notifications")}>
                 <Bell className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => router.push("/settings")}>
+                <Settings className="h-5 w-5" />
               </Button>
               <Button variant="ghost" size="icon" onClick={() => router.push(`/${user?.username}`)}>
                 <Avatar className="h-8 w-8">
