@@ -12,6 +12,8 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@fontsource-variable/vazirmatn": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-avatar": "^1.1.3",
     "@radix-ui/react-dialog": "^1.1.6",

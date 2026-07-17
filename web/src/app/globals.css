@@ -27,6 +27,8 @@
   --color-bubble-others: var(--xilo-bubble-others);
   --color-chat-bubble-own: var(--xilo-chat-bubble-own);
   --color-chat-bubble-others: var(--xilo-chat-bubble-others);
+  --font-vazirmatn: "Vazirmatn Variable", "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-vazirmatn), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
