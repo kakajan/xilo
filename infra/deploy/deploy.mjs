@@ -125,10 +125,33 @@ function rsyncToRemote(localDir, remoteDir, target = "iran") {
       console.log("[dry-run] tar pipe");
       return "";
     }
-    const tar = spawn("tar", ["-czf", "-", "-C", localDir, "."], { stdio: ["ignore", "pipe", "inherit"] });
+    // Keep the same excludes as rsync — full-tree tar is too large (android/, node_modules/, …).
+    const tar = spawn(
+      "tar",
+      [
+        "-czf",
+        "-",
+        "-C",
+        localDir,
+        "--exclude=.git",
+        "--exclude=node_modules",
+        "--exclude=.next",
+        "--exclude=android",
+        "--exclude=mobile",
+        "--exclude=infra/deploy/.env.deploy",
+        "--exclude=infra/proxy/clients",
+        "--exclude=infra/proxy/secrets",
+        "--exclude=**/build",
+        "--exclude=**/.gradle",
+        ".",
+      ],
+      { stdio: ["ignore", "pipe", "inherit"] }
+    );
     const remote = spawn("ssh", tarArgs, { stdio: [tar.stdout, "inherit", "inherit"] });
     return new Promise((resolveP, reject) => {
       remote.on("close", (code) => (code === 0 ? resolveP("") : reject(new Error(`ssh tar exit ${code}`))));
+      tar.on("error", reject);
+      remote.on("error", reject);
     });
   }
 }
