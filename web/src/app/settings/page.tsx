@@ -16,21 +16,11 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarCropDialog } from "@/components/settings/avatar-crop-dialog";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiUpload } from "@/lib/api-client";
-import { APP_LANGUAGES, applyDocumentLanguage, type AppLanguageCode } from "@/lib/languages";
 import { getInitials } from "@/lib/utils";
-import type { PreferredCalendar } from "@/types/user";
-
-const CALENDAR_OPTIONS: { value: PreferredCalendar; label: string; hint: string }[] = [
-  { value: "auto", label: "خودکار", hint: "بر اساس پیش‌فرض زبان از پنل مدیریت" },
-  { value: "jalali", label: "شمسی", hint: "همیشه تقویم شمسی" },
-  { value: "gregorian", label: "میلادی", hint: "حتی با رابط فارسی" },
-];
-
-const USERNAME_RE = /^[a-zA-Z0-9_]{3,32}$/;
 
 export default function UserSettingsPage() {
   return (
@@ -51,115 +41,30 @@ function UserSettingsContent() {
   const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading, authChecked, fetchMe, updateProfile, logout } =
     useAuthStore();
-  const [calendar, setCalendar] = useState<PreferredCalendar>("auto");
-  const [language, setLanguage] = useState<AppLanguageCode>("fa");
-  const [usernameDraft, setUsernameDraft] = useState("");
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [showLanguage, setShowLanguage] = useState(false);
-  const [showUsername, setShowUsername] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savingLang, setSavingLang] = useState(false);
-  const [savingUsername, setSavingUsername] = useState(false);
   const [walletMsg, setWalletMsg] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   );
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (authChecked && !isAuthenticated) router.replace("/login");
   }, [authChecked, isAuthenticated, router]);
 
+  // Backward-compatible redirect from older /settings?username=1 links
   useEffect(() => {
-    if (user?.preferred_calendar) setCalendar(user.preferred_calendar);
-  }, [user?.preferred_calendar]);
+    if (searchParams.get("username") === "1") {
+      router.replace("/settings/username");
+    }
+  }, [searchParams, router]);
 
-  useEffect(() => {
-    if (user?.preferred_language) {
-      setLanguage(user.preferred_language as AppLanguageCode);
-      applyDocumentLanguage(user.preferred_language);
-    }
-  }, [user?.preferred_language]);
-
-  useEffect(() => {
-    if (!user) return;
-    if (!user.username_pending) {
-      setUsernameDraft(user.username);
-    } else {
-      setUsernameDraft("");
-    }
-  }, [user?.username, user?.username_pending]);
-
-  useEffect(() => {
-    if (searchParams.get("username") === "1" || user?.username_pending) {
-      setShowUsername(true);
-      setShowLanguage(false);
-      setShowCalendar(false);
-    }
-  }, [searchParams, user?.username_pending]);
-
-  const onSaveCalendar = async () => {
-    setSaving(true);
-    setMessage(null);
-    try {
-      await updateProfile({ preferred_calendar: calendar });
-      setMessage({ type: "success", text: "ترجیح تقویم ذخیره شد" });
-      setShowCalendar(false);
-    } catch (e) {
-      setMessage({ type: "error", text: e instanceof Error ? e.message : "ذخیره ناموفق بود" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const onSaveLanguage = async () => {
-    setSavingLang(true);
-    setMessage(null);
-    try {
-      await updateProfile({ preferred_language: language });
-      applyDocumentLanguage(language);
-      setMessage({ type: "success", text: "زبان رابط ذخیره شد" });
-      setShowLanguage(false);
-    } catch (e) {
-      setMessage({ type: "error", text: e instanceof Error ? e.message : "ذخیره ناموفق بود" });
-    } finally {
-      setSavingLang(false);
-    }
-  };
-
-  const onSaveUsername = async () => {
-    const next = usernameDraft.trim();
-    if (!USERNAME_RE.test(next)) {
-      setMessage({
-        type: "error",
-        text: "نام کاربری باید ۳ تا ۳۲ کاراکتر و فقط شامل حروف انگلیسی، عدد و _ باشد",
-      });
-      return;
-    }
-    if (next.startsWith("tmp_")) {
-      setMessage({ type: "error", text: "این پیشوند رزرو شده است" });
-      return;
-    }
-    setSavingUsername(true);
-    setMessage(null);
-    try {
-      await updateProfile({ username: next });
-      await fetchMe({ force: true });
-      setMessage({ type: "success", text: "نام کاربری ذخیره شد" });
-      setShowUsername(false);
-      if (searchParams.get("username") === "1") {
-        router.replace("/settings");
-      }
-    } catch (e) {
-      setMessage({ type: "error", text: e instanceof Error ? e.message : "ذخیره ناموفق بود" });
-    } finally {
-      setSavingUsername(false);
-    }
-  };
-
-  const onAvatar = async (file: File) => {
+  const onAvatarCropped = async (blob: Blob) => {
+    setCropFile(null);
+    setUploadingAvatar(true);
     const fd = new FormData();
-    fd.append("file", file);
+    fd.append("file", blob, "avatar.png");
     try {
       const res = await apiUpload<{ url?: string; avatar_url?: string }>("/api/auth/avatar", fd);
       const url = res.avatar_url || res.url;
@@ -168,6 +73,8 @@ function UserSettingsContent() {
       setMessage({ type: "success", text: "عکس پروفایل به‌روز شد" });
     } catch (e) {
       setMessage({ type: "error", text: e instanceof Error ? e.message : "آپلود ناموفق بود" });
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -184,17 +91,15 @@ function UserSettingsContent() {
       title: "تغییر عکس",
       icon: Camera,
       tint: "text-primary",
-      onClick: () => fileRef.current?.click(),
+      onClick: () => {
+        if (!uploadingAvatar) fileRef.current?.click();
+      },
     },
     {
       title: user.username_pending ? "انتخاب نام کاربری" : "نام کاربری",
       icon: AtSign,
       tint: "text-rose-600",
-      onClick: () => {
-        setShowUsername((v) => !v);
-        setShowLanguage(false);
-        setShowCalendar(false);
-      },
+      onClick: () => router.push("/settings/username"),
     },
     {
       title: "پروفایل من",
@@ -233,21 +138,13 @@ function UserSettingsContent() {
       title: "زبان رابط",
       icon: Languages,
       tint: "text-indigo-600",
-      onClick: () => {
-        setShowLanguage((v) => !v);
-        setShowCalendar(false);
-        setShowUsername(false);
-      },
+      onClick: () => router.push("/settings/language"),
     },
     {
       title: "تقویم نمایش تاریخ",
       icon: Calendar,
       tint: "text-orange-600",
-      onClick: () => {
-        setShowCalendar((v) => !v);
-        setShowLanguage(false);
-        setShowUsername(false);
-      },
+      onClick: () => router.push("/settings/calendar"),
     },
   ];
 
@@ -279,9 +176,18 @@ function UserSettingsContent() {
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) void onAvatar(f);
+          e.target.value = "";
+          if (f) setCropFile(f);
         }}
       />
+
+      {cropFile && (
+        <AvatarCropDialog
+          file={cropFile}
+          onDismiss={() => setCropFile(null)}
+          onConfirm={(blob) => void onAvatarCropped(blob)}
+        />
+      )}
 
       {message && (
         <div
@@ -329,117 +235,6 @@ function UserSettingsContent() {
           </button>
         </li>
       </ul>
-
-      {showUsername && (
-        <section className="mt-6 rounded-2xl border p-4">
-          <div className="mb-1 flex items-center gap-2">
-            <AtSign className="h-4 w-4 shrink-0 text-violet-600" />
-            <h2 className="min-w-0 text-sm font-semibold">نام کاربری</h2>
-          </div>
-          <p className="mb-4 text-sm text-muted-foreground">
-            {user.username_pending || user.username.startsWith("tmp_")
-              ? "یک نام کاربری یکتا انتخاب کنید؛ آدرس پروفایل شماست و از ایمیل ساخته نمی‌شود."
-              : "می‌توانید نام کاربری را تغییر دهید (حروف انگلیسی، عدد و _)."}
-          </p>
-          <label className="mb-3 block space-y-1 text-sm">
-            <span className="text-muted-foreground">نام کاربری</span>
-            <div className="flex items-center gap-2" dir="ltr">
-              <span className="text-muted-foreground">@</span>
-              <input
-                type="text"
-                className="min-h-11 w-full rounded-lg border bg-background px-3 py-2 font-mono"
-                value={usernameDraft}
-                onChange={(e) => setUsernameDraft(e.target.value.replace(/\s/g, ""))}
-                placeholder="your_name"
-                autoComplete="username"
-              />
-            </div>
-          </label>
-          <Button
-            className="min-h-11"
-            disabled={savingUsername}
-            onClick={() => void onSaveUsername()}
-          >
-            {savingUsername ? "در حال ذخیره..." : "ذخیره نام کاربری"}
-          </Button>
-        </section>
-      )}
-
-      {showLanguage && (
-        <section className="mt-6 rounded-2xl border p-4">
-          <div className="mb-1 flex items-center gap-2">
-            <Languages className="h-4 w-4 shrink-0 text-indigo-600" />
-            <h2 className="min-w-0 text-sm font-semibold">زبان رابط</h2>
-          </div>
-          <p className="mb-4 text-sm text-muted-foreground">
-            جهت صفحه (راست‌به‌چپ / چپ‌به‌راست) با زبان انتخابی تنظیم می‌شود.
-          </p>
-          <div className="mb-4 space-y-2">
-            {APP_LANGUAGES.map((opt) => (
-              <label
-                key={opt.code}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-colors ${
-                  language === opt.code ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="language"
-                  className="mt-1"
-                  checked={language === opt.code}
-                  onChange={() => setLanguage(opt.code)}
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">{opt.nameNative}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {opt.nameEnglish} · {opt.direction.toUpperCase()}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
-          <Button className="min-h-11" disabled={savingLang} onClick={() => void onSaveLanguage()}>
-            {savingLang ? "در حال ذخیره…" : "ذخیره زبان"}
-          </Button>
-        </section>
-      )}
-
-      {showCalendar && (
-        <section className="mt-6 rounded-2xl border p-4">
-          <div className="mb-1 flex items-center gap-2">
-            <Calendar className="h-4 w-4 shrink-0 text-orange-600" />
-            <h2 className="min-w-0 text-sm font-semibold">تقویم نمایش تاریخ</h2>
-          </div>
-          <p className="mb-4 text-sm text-muted-foreground">
-            می‌توانید حتی با زبان فارسی، تقویم میلادی را انتخاب کنید.
-          </p>
-          <div className="mb-4 space-y-2">
-            {CALENDAR_OPTIONS.map((opt) => (
-              <label
-                key={opt.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-colors ${
-                  calendar === opt.value ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="calendar"
-                  className="mt-1"
-                  checked={calendar === opt.value}
-                  onChange={() => setCalendar(opt.value)}
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">{opt.label}</span>
-                  <span className="block text-xs text-muted-foreground">{opt.hint}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-          <Button className="min-h-11" disabled={saving} onClick={() => void onSaveCalendar()}>
-            {saving ? "در حال ذخیره..." : "ذخیره"}
-          </Button>
-        </section>
-      )}
     </div>
   );
 }

@@ -36,7 +36,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     try {
       await registerUser({ email: data.email, password: data.password });
-      router.push("/settings?username=1");
+      router.push("/settings/username");
     } catch (err) {
       const mapped = mapAuthApiError((err as Error).message || "");
       if (mapped.field) {
