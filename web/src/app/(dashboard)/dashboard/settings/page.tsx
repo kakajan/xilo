@@ -22,6 +22,7 @@ import {
   DEFAULT_THEME,
   THEME_FIELD_LABELS,
   isHexColor,
+  mergeTheme,
   type PlatformTheme,
   type ThemePalette,
 } from "@/lib/theme";
@@ -66,10 +67,10 @@ export default function PlatformSettingsPage() {
       const data = await apiFetch<PlatformSettings>("/api/platform/settings");
       setLocalDefaults(data.calendar_defaults ?? {});
       setDefaults(data.calendar_defaults ?? {});
-      const nextTheme = data.theme ?? DEFAULT_THEME;
+      const nextTheme = mergeTheme(data.theme);
       setLocalTheme(nextTheme);
       setTheme(nextTheme);
-      const nextBrand = data.brand ?? DEFAULT_BRAND;
+      const nextBrand = { ...DEFAULT_BRAND, ...(data.brand ?? {}) };
       setLocalBrand(nextBrand);
       setBrand(nextBrand);
     } catch {
@@ -112,7 +113,7 @@ export default function PlatformSettingsPage() {
         method: "PATCH",
         body: JSON.stringify({ theme }),
       });
-      const next = data.theme ?? theme;
+      const next = mergeTheme(data.theme ?? theme);
       setLocalTheme(next);
       setTheme(next);
       setMessage({ type: "success", text: "تم پلتفرم ذخیره شد" });
@@ -135,7 +136,7 @@ export default function PlatformSettingsPage() {
   };
 
   const onSaveBrand = async () => {
-    if (!brand.name_fa.trim() || !brand.name_en.trim() || !brand.display.trim()) {
+    if (!brand.name_fa?.trim() || !brand.name_en?.trim() || !brand.display?.trim()) {
       setMessage({ type: "error", text: "همهٔ فیلدهای برند لازم است" });
       return;
     }
@@ -215,7 +216,7 @@ export default function PlatformSettingsPage() {
                 <input
                   type="text"
                   className="min-h-11 w-full rounded-lg border bg-background px-3 py-2"
-                  value={brand.name_fa}
+                  value={brand.name_fa ?? ""}
                   onChange={(e) => setLocalBrand((prev) => ({ ...prev, name_fa: e.target.value }))}
                 />
               </label>
@@ -225,7 +226,7 @@ export default function PlatformSettingsPage() {
                   type="text"
                   className="min-h-11 w-full rounded-lg border bg-background px-3 py-2"
                   dir="ltr"
-                  value={brand.name_en}
+                  value={brand.name_en ?? ""}
                   onChange={(e) => setLocalBrand((prev) => ({ ...prev, name_en: e.target.value }))}
                 />
               </label>
@@ -234,7 +235,7 @@ export default function PlatformSettingsPage() {
                 <input
                   type="text"
                   className="min-h-11 w-full rounded-lg border bg-background px-3 py-2"
-                  value={brand.display}
+                  value={brand.display ?? ""}
                   onChange={(e) => setLocalBrand((prev) => ({ ...prev, display: e.target.value }))}
                   placeholder="آیله | aile"
                 />
@@ -326,7 +327,7 @@ export default function PlatformSettingsPage() {
                   <input
                     type="text"
                     className="w-[7.5rem] shrink-0 rounded-lg border bg-background px-2 py-1.5 font-mono text-xs uppercase"
-                    value={theme[themeMode][key]}
+                    value={theme[themeMode][key] ?? ""}
                     onChange={(e) => updateColor(key, e.target.value)}
                     spellCheck={false}
                   />
@@ -382,6 +383,6 @@ export default function PlatformSettingsPage() {
   );
 }
 
-function normalizeColorInput(value: string): string {
-  return isHexColor(value) ? value : "#000000";
+function normalizeColorInput(value: string | undefined): string {
+  return isHexColor(value) ? value! : "#000000";
 }

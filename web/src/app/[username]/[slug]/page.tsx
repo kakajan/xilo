@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "@/components/comment/comment-section";
 import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
+import { PostBody } from "@/components/post/post-body";
 
 async function getPost(slug: string): Promise<Post | null> {
   try {
@@ -79,11 +80,11 @@ export default async function PostPage({
         )}
       </header>
 
-      <div className="prose dark:prose-invert mb-8 max-w-none">
-        <p className="whitespace-pre-wrap leading-relaxed">
-          {post.content_md || post.content || post.excerpt}
-        </p>
-      </div>
+      <PostBody
+        content={post.content}
+        content_md={post.content_md}
+        excerpt={post.excerpt}
+      />
 
       <StickyReactionBar postId={post.id} reactions={post.reactions} />
 

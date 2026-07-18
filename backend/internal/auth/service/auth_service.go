@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/xilo-platform/xilo/internal/auth/model"
@@ -18,6 +20,8 @@ import (
 	"github.com/xilo-platform/xilo/pkg/sms"
 	"github.com/xilo-platform/xilo/pkg/validator"
 )
+
+const provisionalUsernamePrefix = "tmp_"
 
 var (
 	ErrInvalidCredentials = fmt.Errorf("invalid email or password")
@@ -71,12 +75,23 @@ func (s *AuthService) Register(ctx context.Context, req *model.RegisterRequest) 
 	if verr := validator.ValidateEmail(req.Email); verr != nil {
 		return nil, fmt.Errorf("%s: %s", verr.Field, verr.Message)
 	}
-	if verr := validator.ValidateUsername(req.Username); verr != nil {
-		return nil, fmt.Errorf("%s: %s", verr.Field, verr.Message)
-	}
 	if verrs := validator.ValidatePassword(req.Password); len(verrs) > 0 {
 		return nil, fmt.Errorf("password: %s", verrs[0].Message)
 	}
+
+	username := strings.TrimSpace(req.Username)
+	if username == "" {
+		generated, err := generateProvisionalUsername()
+		if err != nil {
+			return nil, fmt.Errorf("generate username: %w", err)
+		}
+		username = generated
+	} else if verr := validator.ValidateUsername(username); verr != nil {
+		return nil, fmt.Errorf("%s: %s", verr.Field, verr.Message)
+	} else if strings.HasPrefix(username, provisionalUsernamePrefix) {
+		return nil, fmt.Errorf("username: reserved prefix")
+	}
+	req.Username = username
 
 	passwordHash, err := hash.Hash(req.Password)
 	if err != nil {
@@ -143,7 +158,12 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 }
 
 func (s *AuthService) Me(ctx context.Context, userID string) (*model.User, error) {
-	return s.repo.FindByID(ctx, userID)
+	user, err := s.repo.FindByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	annotateUsernamePending(user)
+	return user, nil
 }
 
 func (s *AuthService) UpdateProfile(ctx context.Context, userID string, req *model.UpdateProfileRequest) (*model.User, error) {
@@ -153,7 +173,22 @@ func (s *AuthService) UpdateProfile(ctx context.Context, userID string, req *mod
 	if req.PreferredCalendar != "" && !i18n.IsValidCalendarPreference(req.PreferredCalendar) {
 		return nil, fmt.Errorf("invalid preferred calendar: %s", req.PreferredCalendar)
 	}
-	return s.repo.UpdateProfile(ctx, userID, req)
+	if req.Username != "" {
+		username := strings.TrimSpace(req.Username)
+		if verr := validator.ValidateUsername(username); verr != nil {
+			return nil, fmt.Errorf("%s: %s", verr.Field, verr.Message)
+		}
+		if strings.HasPrefix(username, provisionalUsernamePrefix) {
+			return nil, fmt.Errorf("username: reserved prefix")
+		}
+		req.Username = username
+	}
+	user, err := s.repo.UpdateProfile(ctx, userID, req)
+	if err != nil {
+		return nil, err
+	}
+	annotateUsernamePending(user)
+	return user, nil
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
@@ -298,9 +333,15 @@ func (s *AuthService) VerifyOTPRegister(ctx context.Context, req *model.VerifyOT
 	if email == "" {
 		email = req.Phone + "@sms.xilo.local"
 	}
-	username := req.Username
+	username := strings.TrimSpace(req.Username)
 	if username == "" {
-		username = "user" + req.Phone[len(req.Phone)-8:]
+		generated, err := generateProvisionalUsername()
+		if err != nil {
+			return nil, fmt.Errorf("generate username: %w", err)
+		}
+		username = generated
+	} else if strings.HasPrefix(username, provisionalUsernamePrefix) {
+		return nil, fmt.Errorf("username: reserved prefix")
 	}
 
 	user, err := s.repo.CreateWithPhone(ctx, email, username, req.Phone, passwordHash)
@@ -312,6 +353,8 @@ func (s *AuthService) VerifyOTPRegister(ctx context.Context, req *model.VerifyOT
 }
 
 func (s *AuthService) generateAuthResponse(ctx context.Context, user *model.User) (*model.AuthResponse, error) {
+	annotateUsernamePending(user)
+
 	accessToken, err := s.jwtMgr.GenerateAccessToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
@@ -333,8 +376,23 @@ func (s *AuthService) generateAuthResponse(ctx context.Context, user *model.User
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    900,
-		User:        user,
+		User:         user,
 	}, nil
+}
+
+func annotateUsernamePending(user *model.User) {
+	if user == nil {
+		return
+	}
+	user.UsernamePending = strings.HasPrefix(user.Username, provisionalUsernamePrefix)
+}
+
+func generateProvisionalUsername() (string, error) {
+	buf := make([]byte, 6)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return provisionalUsernamePrefix + hex.EncodeToString(buf), nil
 }
 
 func generateOTP() (string, error) {

@@ -19,6 +19,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { getInitials } from "@/lib/utils";
 
 interface NavbarProps {
@@ -67,6 +68,7 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
         </form>
 
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           {isAuthenticated ? (
             <>
               {(user?.role === "admin" || user?.role === "superadmin") && (

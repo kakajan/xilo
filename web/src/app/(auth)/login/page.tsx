@@ -70,11 +70,7 @@ export default function LoginPage() {
         method: "POST",
         body: JSON.stringify({ email: otpEmail, code: otpCode }),
       });
-      useAuthStore.setState({
-        user: res.user,
-        isAuthenticated: true,
-        isLoading: false,
-      });
+      useAuthStore.getState().applyAuthResponse(res);
       router.push("/");
     } catch (e) {
       setOtpError(e instanceof Error ? e.message : "تأیید کد ناموفق بود");

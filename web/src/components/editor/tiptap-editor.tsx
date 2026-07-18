@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect, type MutableRefObject } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -13,20 +13,33 @@ import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorToolbar } from "./editor-toolbar";
 import { apiUpload } from "@/lib/api-client";
-import { useDebounce } from "@/hooks/use-debounce";
-import { useEditorStore } from "@/stores/editor-store";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface TiptapEditorProps {
   content?: string;
   onSave?: (html: string, json: string) => void;
+  /** Imperative flush of current editor state (e.g. before publish). */
+  contentRef?: MutableRefObject<{ html: string; json: string } | null>;
 }
 
-export function TiptapEditor({ content, onSave }: TiptapEditorProps) {
+export function TiptapEditor({ content, onSave, contentRef }: TiptapEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [wordCount, setWordCount] = useState(0);
   const { isAuthenticated } = useAuthStore();
-  const { title } = useEditorStore();
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+
+  const syncContent = useCallback(
+    (editor: NonNullable<ReturnType<typeof useEditor>>) => {
+      const html = editor.getHTML();
+      const json = JSON.stringify(editor.getJSON());
+      if (contentRef) contentRef.current = { html, json };
+      onSaveRef.current?.(html, json);
+      const text = editor.state.doc.textContent;
+      setWordCount(text.trim() ? text.split(/\s+/).length : 0);
+    },
+    [contentRef]
+  );
 
   const editor = useEditor({
     extensions: [
@@ -40,30 +53,38 @@ export function TiptapEditor({ content, onSave }: TiptapEditorProps) {
       TableRow,
       TableCell,
       TableHeader,
-      Placeholder.configure({ placeholder: "Tell your story..." }),
+      Placeholder.configure({ placeholder: "داستان خود را بنویسید..." }),
     ],
-    content: content ? JSON.parse(content) : "",
-    onUpdate: ({ editor }) => {
-      const text = editor.state.doc.textContent;
-      setWordCount(text.trim() ? text.split(/\s+/).length : 0);
+    content: parseInitialContent(content),
+    immediatelyRender: false,
+    onUpdate: ({ editor: ed }) => {
+      syncContent(ed);
+    },
+    onCreate: ({ editor: ed }) => {
+      syncContent(ed);
     },
     editorProps: {
       attributes: {
-        class: "prose dark:prose-invert max-w-none focus:outline-none min-h-[400px] px-6 py-4",
+        // Padding lives in globals.css (.tiptap-editor .ProseMirror) so toolbar never covers text.
+        class: "tiptap-prose prose dark:prose-invert max-w-none focus:outline-none",
       },
     },
   });
 
-  const autoSave = useDebounce(
-    useCallback(() => {
-      if (editor && onSave) {
-        const html = editor.getHTML();
-        const json = JSON.stringify(editor.getJSON());
-        onSave(html, json);
+  // Load async content into an already-mounted editor (edit page).
+  useEffect(() => {
+    if (!editor || !content?.trim()) return;
+    try {
+      const parsed = JSON.parse(content);
+      const current = JSON.stringify(editor.getJSON());
+      if (current !== content) {
+        editor.commands.setContent(parsed);
+        syncContent(editor);
       }
-    }, [editor, onSave]),
-    3000
-  );
+    } catch {
+      // ignore invalid JSON
+    }
+  }, [content, editor, syncContent]);
 
   const handleImageUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,11 +126,14 @@ export function TiptapEditor({ content, onSave }: TiptapEditorProps) {
   );
 
   return (
-    <div className="border rounded-xl overflow-hidden bg-background">
-      <EditorToolbar
-        editor={editor}
-        onImageClick={() => fileInputRef.current?.click()}
-      />
+    <div className="tiptap-editor flex flex-col rounded-xl border bg-background">
+      {/* Document flow only — never sticky/absolute over the body. */}
+      <div className="tiptap-editor__toolbar shrink-0 border-b bg-background">
+        <EditorToolbar
+          editor={editor}
+          onImageClick={() => fileInputRef.current?.click()}
+        />
+      </div>
 
       <input
         ref={fileInputRef}
@@ -120,19 +144,27 @@ export function TiptapEditor({ content, onSave }: TiptapEditorProps) {
       />
 
       <div
+        className="tiptap-editor__body relative z-0 min-h-0 flex-1 overflow-y-auto"
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
-        onChange={autoSave}
       >
         <EditorContent editor={editor} />
       </div>
 
-      <div className="border-t px-6 py-2 flex items-center justify-between text-xs text-muted-foreground">
-        <span>{wordCount} words · ~{Math.max(1, Math.ceil(wordCount / 200))} min read</span>
-        <span className="flex items-center gap-2">
-          {editor && title && <span className="text-muted-foreground">Auto-saving…</span>}
+      <div className="flex shrink-0 items-center justify-between border-t px-6 py-2 text-xs text-muted-foreground">
+        <span>
+          {wordCount} واژه · ~{Math.max(1, Math.ceil(wordCount / 200))} دقیقه مطالعه
         </span>
       </div>
     </div>
   );
+}
+
+function parseInitialContent(content?: string) {
+  if (!content?.trim() || content.trim() === "{}") return "";
+  try {
+    return JSON.parse(content);
+  } catch {
+    return content;
+  }
 }

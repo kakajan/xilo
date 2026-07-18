@@ -14,12 +14,12 @@ type Tab = "posts" | "comments";
 
 export default function SavedHubPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, authChecked } = useAuthStore();
   const [tab, setTab] = useState<Tab>("posts");
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.replace("/login");
-  }, [authLoading, isAuthenticated, router]);
+    if (authChecked && !isAuthenticated) router.replace("/login");
+  }, [authChecked, isAuthenticated, router]);
 
   const postsQ = useQuery({
     queryKey: ["bookmarks-posts"],

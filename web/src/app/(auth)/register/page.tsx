@@ -10,7 +10,6 @@ import { useBrandStore } from "@/stores/brand-store";
 import { Button } from "@/components/ui/button";
 
 const registerSchema = z.object({
-  username: z.string().min(3, "حداقل ۳ کاراکتر").max(32),
   email: z.string().email("ایمیل نامعتبر است"),
   password: z.string().min(8, "حداقل ۸ کاراکتر"),
 });
@@ -30,8 +29,8 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterForm) => {
     try {
-      await registerUser(data);
-      router.push("/");
+      await registerUser({ email: data.email, password: data.password });
+      router.push("/settings?username=1");
     } catch (err) {
       setError("root", { message: (err as Error).message });
     }
@@ -39,20 +38,11 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto mt-16 max-w-md">
-      <h1 className="mb-6 text-2xl font-bold">ساخت حساب {brandName}</h1>
+      <h1 className="mb-2 text-2xl font-bold">ساخت حساب {brandName}</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        فقط ایمیل و رمز کافی است. نام کاربری را بعد از ورود خودتان انتخاب می‌کنید.
+      </p>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium">نام کاربری</label>
-          <input
-            {...register("username")}
-            className="w-full min-h-11 rounded-lg border bg-background px-3 py-2"
-            placeholder="alice"
-            dir="ltr"
-          />
-          {errors.username && (
-            <p className="mt-1 text-sm text-destructive">{errors.username.message}</p>
-          )}
-        </div>
         <div>
           <label className="mb-1 block text-sm font-medium">ایمیل</label>
           <input

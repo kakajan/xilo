@@ -18,6 +18,27 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
+enum class ThemeMode {
+    SYSTEM,
+    LIGHT,
+    DARK,
+    ;
+
+    companion object {
+        fun fromStorage(value: String?): ThemeMode = when (value) {
+            "light" -> LIGHT
+            "dark" -> DARK
+            else -> SYSTEM
+        }
+    }
+
+    fun storageValue(): String = when (this) {
+        SYSTEM -> "system"
+        LIGHT -> "light"
+        DARK -> "dark"
+    }
+}
+
 @Singleton
 class ThemeRepository @Inject constructor(
     @ApplicationContext context: Context,
@@ -29,6 +50,17 @@ class ThemeRepository @Inject constructor(
 
     private val _theme = MutableStateFlow(loadCachedOrDefault())
     val theme: StateFlow<PlatformTheme> = _theme.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(loadThemeMode())
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    fun setThemeMode(mode: ThemeMode) {
+        prefs.edit().putString(KEY_THEME_MODE, mode.storageValue()).apply()
+        _themeMode.value = mode
+    }
+
+    private fun loadThemeMode(): ThemeMode =
+        ThemeMode.fromStorage(prefs.getString(KEY_THEME_MODE, null))
 
     suspend fun syncTheme(): Result<PlatformTheme> {
         return try {
@@ -92,5 +124,6 @@ class ThemeRepository @Inject constructor(
     companion object {
         private const val PREFS_NAME = "xilo_theme"
         private const val KEY_THEME_JSON = "platform_theme_json"
+        private const val KEY_THEME_MODE = "theme_mode"
     }
 }

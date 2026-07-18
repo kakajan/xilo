@@ -15,11 +15,11 @@ import { getInitials } from "@/lib/utils";
 export default function ContactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading, authChecked } = useAuthStore();
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.replace("/login");
-  }, [authLoading, isAuthenticated, router]);
+    if (authChecked && !isAuthenticated) router.replace("/login");
+  }, [authChecked, isAuthenticated, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["chats"],

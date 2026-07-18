@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -149,6 +150,25 @@ func TestRegister_ValidInput(t *testing.T) {
 	}
 	if resp.User.Email != "test@example.com" {
 		t.Errorf("expected email test@example.com, got %s", resp.User.Email)
+	}
+}
+
+func TestRegister_WithoutUsername_AssignsProvisional(t *testing.T) {
+	repo := newMockUserRepo()
+	svc := NewAuthService(repo, &mockJWTManager{})
+
+	resp, err := svc.Register(context.Background(), &model.RegisterRequest{
+		Email:    "auto@example.com",
+		Password: "Str0ng!Pass",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if resp.User == nil || !strings.HasPrefix(resp.User.Username, "tmp_") {
+		t.Fatalf("expected provisional tmp_ username, got %#v", resp.User)
+	}
+	if !resp.User.UsernamePending {
+		t.Fatal("expected username_pending true")
 	}
 }
 

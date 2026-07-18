@@ -181,6 +181,9 @@ func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 
 	user, err := h.svc.UpdateProfile(c.UserContext(), userID, &req)
 	if err != nil {
+		if errors.Is(err, repository.ErrUsernameExists) {
+			return writeAuthError(c, fiber.StatusConflict, err)
+		}
 		slog.Warn("update profile failed", "error", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -347,13 +350,16 @@ func optionalTrimmedString(value string) *string {
 }
 
 func setAuthCookies(c *fiber.Ctx, access, refresh string, expiresIn int) {
+	// Lax (not Strict): SPA on aile.ir calls API on brain.aile.ir (same-site,
+	// cross-origin). Strict refresh cookies are easy to drop on those fetches.
+	secure := c.Secure() || strings.EqualFold(c.Get("X-Forwarded-Proto"), "https")
 	c.Cookie(&fiber.Cookie{
 		Name:     cookieAccess,
 		Value:    access,
 		Path:     "/",
 		Expires:  time.Now().Add(time.Duration(expiresIn) * time.Second),
 		HTTPOnly: true,
-		Secure:   c.Secure(),
+		Secure:   secure,
 		SameSite: "Lax",
 	})
 
@@ -363,19 +369,20 @@ func setAuthCookies(c *fiber.Ctx, access, refresh string, expiresIn int) {
 		Path:     "/api/auth/refresh",
 		Expires:  time.Now().Add(7 * 24 * time.Hour),
 		HTTPOnly: true,
-		Secure:   c.Secure(),
-		SameSite: "Strict",
+		Secure:   secure,
+		SameSite: "Lax",
 	})
 }
 
 func clearAuthCookies(c *fiber.Ctx) {
+	secure := c.Secure() || strings.EqualFold(c.Get("X-Forwarded-Proto"), "https")
 	c.Cookie(&fiber.Cookie{
 		Name:     cookieAccess,
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Now().Add(-1 * time.Hour),
 		HTTPOnly: true,
-		Secure:   c.Secure(),
+		Secure:   secure,
 		SameSite: "Lax",
 	})
 
@@ -385,8 +392,8 @@ func clearAuthCookies(c *fiber.Ctx) {
 		Path:     "/api/auth/refresh",
 		Expires:  time.Now().Add(-1 * time.Hour),
 		HTTPOnly: true,
-		Secure:   c.Secure(),
-		SameSite: "Strict",
+		Secure:   secure,
+		SameSite: "Lax",
 	})
 }
 

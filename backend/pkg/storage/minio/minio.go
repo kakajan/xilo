@@ -16,9 +16,13 @@ type Driver struct {
 	endpoint       string
 	publicEndpoint string
 	useSSL         bool
+	publicUseSSL   bool
 }
 
-func New(endpoint, accessKey, secretKey, bucket string, useSSL bool, publicEndpoint string) (*Driver, error) {
+// New creates a MinIO driver.
+// useSSL is for the internal client connection (usually false for docker minio:9000).
+// publicUseSSL controls the scheme of browser-facing GetURL links.
+func New(endpoint, accessKey, secretKey, bucket string, useSSL bool, publicEndpoint string, publicUseSSL bool) (*Driver, error) {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:        minioCreds.NewStaticV4(accessKey, secretKey, ""),
 		Secure:       useSSL,
@@ -51,6 +55,7 @@ func New(endpoint, accessKey, secretKey, bucket string, useSSL bool, publicEndpo
 		endpoint:       endpoint,
 		publicEndpoint: publicEndpoint,
 		useSSL:         useSSL,
+		publicUseSSL:   publicUseSSL,
 	}, nil
 }
 
@@ -91,7 +96,7 @@ func (d *Driver) Delete(ctx context.Context, key string) error {
 
 func (d *Driver) GetURL(key string) string {
 	protocol := "http"
-	if d.useSSL {
+	if d.publicUseSSL {
 		protocol = "https"
 	}
 	return fmt.Sprintf("%s://%s/%s/%s", protocol, d.publicEndpoint, d.bucket, key)

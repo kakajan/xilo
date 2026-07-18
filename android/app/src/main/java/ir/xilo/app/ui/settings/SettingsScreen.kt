@@ -45,11 +45,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import android.net.Uri
 import ir.xilo.app.R
 import ir.xilo.app.core.util.CalendarPreference
+import ir.xilo.app.data.repository.ThemeMode
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
+import ir.xilo.app.ui.components.XiloTextField
 import ir.xilo.app.ui.components.XiloTopAppBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -65,7 +67,17 @@ private data class SettingsMenuItem(
 )
 
 private enum class SettingsAction {
-    ChangePhoto, MyProfile, Wallet, SavedMessages, Devices, ChatFolder, Calendar, Logout
+    ChangePhoto,
+    Username,
+    MyProfile,
+    Language,
+    Theme,
+    Wallet,
+    SavedMessages,
+    Devices,
+    ChatFolder,
+    Calendar,
+    Logout,
 }
 
 @Composable
@@ -85,8 +97,17 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showCalendarDialog by remember { mutableStateOf(false) }
+    var showUsernameDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var cropImageUri by remember { mutableStateOf<Uri?>(null) }
     var isPreparingCrop by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.usernamePending) {
+        if (uiState.usernamePending) {
+            showUsernameDialog = true
+        }
+    }
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -214,9 +235,159 @@ fun SettingsScreen(
         )
     }
 
+    if (showUsernameDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!uiState.usernamePending) showUsernameDialog = false
+            },
+            title = {
+                Text(
+                    if (uiState.usernamePending) "انتخاب نام کاربری" else "نام کاربری",
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column {
+                    if (uiState.usernamePending) {
+                        Text(
+                            text = "برای ادامه یک نام کاربری دائمی انتخاب کنید.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+                    }
+                    XiloTextField(
+                        value = uiState.usernameDraft,
+                        onValueChange = viewModel::onUsernameDraftChange,
+                        placeholder = "مثلاً aile_user",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = "۳ تا ۳۲ کاراکتر؛ فقط حروف انگلیسی، عدد و _",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.updateUsername() },
+                    enabled = !uiState.isLoading,
+                ) {
+                    Text("ذخیره")
+                }
+            },
+            dismissButton = {
+                if (!uiState.usernamePending) {
+                    TextButton(onClick = { showUsernameDialog = false }) {
+                        Text("انصراف")
+                    }
+                }
+            },
+        )
+    }
+
+    LaunchedEffect(uiState.usernamePending, uiState.infoMessage) {
+        if (!uiState.usernamePending && uiState.infoMessage == "نام کاربری ذخیره شد") {
+            showUsernameDialog = false
+        }
+    }
+
+    if (showLanguageDialog) {
+        val languages = uiState.languages.ifEmpty {
+            listOf(
+                ir.xilo.app.data.remote.dto.LanguageInfo("fa", "فارسی", "Persian", "rtl"),
+                ir.xilo.app.data.remote.dto.LanguageInfo("en", "English", "English", "ltr"),
+                ir.xilo.app.data.remote.dto.LanguageInfo("ar", "العربية", "Arabic", "rtl"),
+                ir.xilo.app.data.remote.dto.LanguageInfo("ru", "Русский", "Russian", "ltr"),
+                ir.xilo.app.data.remote.dto.LanguageInfo("tr", "Türkçe", "Turkish", "ltr"),
+            )
+        }
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text("زبان رابط", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    languages.forEach { lang ->
+                        val selected = uiState.preferredLanguage == lang.code
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showLanguageDialog = false
+                                    viewModel.updatePreferredLanguage(lang.code)
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = if (selected) "●  ${lang.nameNative}" else "○  ${lang.nameNative}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text("بستن")
+                }
+            },
+        )
+    }
+
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("حالت نمایش", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    ThemeMode.entries.forEach { mode ->
+                        val label = when (mode) {
+                            ThemeMode.SYSTEM -> "مطابق سیستم"
+                            ThemeMode.LIGHT -> "روشن"
+                            ThemeMode.DARK -> "تاریک"
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showThemeDialog = false
+                                    viewModel.updateThemeMode(mode)
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = if (uiState.themeMode == mode) "●  $label" else "○  $label",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (uiState.themeMode == mode) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("بستن")
+                }
+            },
+        )
+    }
+
     val menuItems = listOf(
         SettingsMenuItem("تغییر عکس پروفایل", XiloIcons.Camera, XiloBlue, action = SettingsAction.ChangePhoto),
+        SettingsMenuItem(
+            if (uiState.usernamePending) "انتخاب نام کاربری" else "نام کاربری",
+            XiloIcons.UserAdd,
+            Color(0xFFE53935),
+            action = SettingsAction.Username,
+        ),
         SettingsMenuItem("پروفایل من", XiloIcons.User, Color(0xFFE53935), action = SettingsAction.MyProfile),
+        SettingsMenuItem("زبان", XiloIcons.Sms, Color(0xFF5E35B1), action = SettingsAction.Language),
+        SettingsMenuItem("حالت نمایش", XiloIcons.Eye, Color(0xFF3949AB), action = SettingsAction.Theme),
         SettingsMenuItem("تقویم", XiloIcons.Calendar, Color(0xFF00897B), action = SettingsAction.Calendar),
         SettingsMenuItem("کیف پول", XiloIcons.Wallet, Color(0xFF8E24AA), action = SettingsAction.Wallet),
         SettingsMenuItem("پیام‌های ذخیره‌شده", XiloIcons.Bookmark, XiloBlue, action = SettingsAction.SavedMessages),
@@ -280,8 +451,12 @@ fun SettingsScreen(
                                 append(uiState.phone)
                                 append(" • ")
                             }
-                            append("@")
-                            append(uiState.username)
+                            if (uiState.usernamePending) {
+                                append("نام کاربری انتخاب نشده")
+                            } else {
+                                append("@")
+                                append(uiState.username)
+                            }
                         }
                         Text(
                             text = subtitle,
@@ -303,7 +478,10 @@ fun SettingsScreen(
                                         )
                                     )
                                 }
+                                SettingsAction.Username -> showUsernameDialog = true
                                 SettingsAction.MyProfile -> viewModel.onMyProfile()
+                                SettingsAction.Language -> showLanguageDialog = true
+                                SettingsAction.Theme -> showThemeDialog = true
                                 SettingsAction.Calendar -> showCalendarDialog = true
                                 SettingsAction.Wallet -> viewModel.onWalletComingSoon()
                                 SettingsAction.SavedMessages -> viewModel.onSavedMessages()

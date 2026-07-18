@@ -91,6 +91,7 @@ fun MainScreen(
         val selectedTab = pagerState.currentPage
         val coroutineScope = rememberCoroutineScope()
         val pendingTab by viewModel.pendingTab.collectAsState()
+        val openSettingsForUsername by viewModel.openSettingsForUsername.collectAsState()
 
         val navItems = listOf(
             NavigationItem("فید", XiloIcons.FeedSelected, XiloIcons.FeedUnselected),
@@ -109,6 +110,12 @@ fun MainScreen(
             val tab = pendingTab ?: return@LaunchedEffect
             pagerState.animateScrollToPage(tab)
             viewModel.consumePendingTab()
+        }
+
+        LaunchedEffect(openSettingsForUsername) {
+            if (!openSettingsForUsername) return@LaunchedEffect
+            onItemClick(SettingsKey)
+            viewModel.consumeOpenSettingsForUsername()
         }
 
         CompositionLocalProvider(LocalChromeVisibility provides chromeState) {

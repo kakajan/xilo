@@ -6,13 +6,28 @@ import { ThemeProvider } from "next-themes";
 import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
 import { useThemeStore } from "@/stores/theme-store";
+import { applyDocumentLanguage } from "@/lib/languages";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { staleTime: 30_000, retry: 1 },
+          queries: {
+            staleTime: 30_000,
+            retry: (count, err) => {
+              const msg = err instanceof Error ? err.message : "";
+              if (
+                msg.includes("(429)") ||
+                msg.includes("Too Many") ||
+                msg.includes("session expired")
+              ) {
+                return false;
+              }
+              return count < 1;
+            },
+            refetchOnWindowFocus: false,
+          },
         },
       })
   );
@@ -41,13 +56,16 @@ function PlatformThemeInitializer({ children }: { children: React.ReactNode }) {
 }
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {
-  const { fetchMe, isAuthenticated, isLoading } = useAuthStore();
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const preferredLanguage = useAuthStore((s) => s.user?.preferred_language);
 
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      fetchMe();
-    }
-  }, []);
+    void fetchMe();
+  }, [fetchMe]);
+
+  useEffect(() => {
+    if (preferredLanguage) applyDocumentLanguage(preferredLanguage);
+  }, [preferredLanguage]);
 
   return <>{children}</>;
 }

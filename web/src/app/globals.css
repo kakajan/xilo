@@ -120,3 +120,40 @@
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
+
+/* TipTap: keep body text fully below the toolbar (RTL-safe). */
+.tiptap-editor .tiptap-editor__toolbar {
+  position: relative;
+  z-index: 2;
+  background: var(--xilo-background);
+}
+
+.tiptap-editor .tiptap-editor__body {
+  position: relative;
+  z-index: 0;
+}
+
+.tiptap-editor .ProseMirror {
+  position: relative;
+  min-height: 400px;
+  padding: 1.5rem 1.5rem 1rem;
+  outline: none;
+}
+
+.tiptap-editor .ProseMirror > *:first-child {
+  margin-top: 0 !important;
+}
+
+/*
+  TipTap Placeholder defaults to float:left;height:0 which pulls the first
+  line under the toolbar in RTL. Keep placeholder in normal flow.
+*/
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before,
+.tiptap-editor .ProseMirror p.is-empty:first-child::before {
+  float: none !important;
+  height: auto !important;
+  display: block;
+  pointer-events: none;
+  color: var(--xilo-muted-foreground);
+  content: attr(data-placeholder);
+}

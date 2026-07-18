@@ -1,29 +1,42 @@
 import { create } from "zustand";
 import type { User, AuthResponse, LoginRequest, RegisterRequest } from "@/types/user";
 import { apiFetch } from "@/lib/api-client";
+import { clearAuthTokens, setAuthTokens } from "@/lib/auth-tokens";
 
 interface AuthState {
   user: User | null;
   isLoading: boolean;
+  /** True after the first /me (or failed) bootstrap attempt. */
+  authChecked: boolean;
   isAuthenticated: boolean;
 
   login: (req: LoginRequest) => Promise<void>;
   register: (req: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
-  fetchMe: () => Promise<void>;
+  fetchMe: (opts?: { force?: boolean }) => Promise<void>;
+  applyAuthResponse: (res: AuthResponse) => void;
   updateProfile: (data: {
     display_name?: string;
     bio?: string;
     avatar_url?: string;
     preferred_language?: string;
     preferred_calendar?: string;
+    username?: string;
   }) => Promise<void>;
 }
 
+let bootstrapPromise: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>()((set, get) => ({
   user: null,
-  isLoading: false,
+  isLoading: true,
+  authChecked: false,
   isAuthenticated: false,
+
+  applyAuthResponse: (res) => {
+    setAuthTokens(res.access_token, res.refresh_token);
+    set({ user: res.user, isAuthenticated: true, isLoading: false, authChecked: true });
+  },
 
   login: async (req) => {
     set({ isLoading: true });
@@ -32,9 +45,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         method: "POST",
         body: JSON.stringify(req),
       });
-      set({ user: res.user, isAuthenticated: true, isLoading: false });
+      get().applyAuthResponse(res);
     } catch {
-      set({ isLoading: false });
+      set({ isLoading: false, authChecked: true });
       throw new Error("login failed");
     }
   },
@@ -46,32 +59,59 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         method: "POST",
         body: JSON.stringify(req),
       });
-      set({ user: res.user, isAuthenticated: true, isLoading: false });
+      get().applyAuthResponse(res);
     } catch {
-      set({ isLoading: false });
+      set({ isLoading: false, authChecked: true });
       throw new Error("registration failed");
     }
   },
 
   logout: async () => {
+    const wasAuthenticated = get().isAuthenticated;
     try {
-      await apiFetch("/api/auth/logout", { method: "POST" });
-    } catch {}
-    set({ user: null, isAuthenticated: false });
-    if (typeof window !== "undefined") {
+      if (wasAuthenticated) {
+        await apiFetch("/api/auth/logout", { method: "POST" });
+      }
+    } catch {
+      // ignore network errors on logout
+    }
+    clearAuthTokens();
+    set({ user: null, isAuthenticated: false, isLoading: false, authChecked: true });
+    if (wasAuthenticated && typeof window !== "undefined") {
       window.location.href = "/";
     }
   },
 
-  fetchMe: async () => {
-    if (get().isLoading || get().isAuthenticated) return;
-    set({ isLoading: true });
-    try {
-      const user = await apiFetch<User>("/api/auth/me");
-      set({ user, isAuthenticated: true, isLoading: false });
-    } catch {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+  fetchMe: async (opts) => {
+    const force = opts?.force === true;
+    if (!force && get().authChecked) return;
+    if (!force && bootstrapPromise) return bootstrapPromise;
+
+    const run = async () => {
+      if (!force) set({ isLoading: true });
+      try {
+        const user = await apiFetch<User>("/api/auth/me");
+        set({ user, isAuthenticated: true, isLoading: false, authChecked: true });
+      } catch {
+        if (force) {
+          // Keep existing session UI; caller handles errors.
+          set({ isLoading: false, authChecked: true });
+          throw new Error("failed to refresh profile");
+        }
+        clearAuthTokens();
+        set({ user: null, isAuthenticated: false, isLoading: false, authChecked: true });
+      }
+    };
+
+    if (force) {
+      await run();
+      return;
     }
+
+    bootstrapPromise = run().finally(() => {
+      bootstrapPromise = null;
+    });
+    return bootstrapPromise;
   },
 
   updateProfile: async (data) => {
@@ -85,6 +125,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
 if (typeof window !== "undefined") {
   window.addEventListener("auth:logout", () => {
-    useAuthStore.getState().logout();
+    const state = useAuthStore.getState();
+    if (state.isAuthenticated) {
+      void state.logout();
+    } else {
+      clearAuthTokens();
+      useAuthStore.setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        authChecked: true,
+      });
+    }
   });
 }

@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { MetadataSidebar } from "@/components/editor/metadata-sidebar";
 import { useEditorStore } from "@/stores/editor-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
+import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BackButton } from "@/components/shared/back-button";
 import type { Post } from "@/types/post";
 
 export default function EditPage() {
@@ -16,8 +18,10 @@ export default function EditPage() {
   const { id } = useParams<{ id: string }>();
   const { isAuthenticated } = useAuthStore();
   const store = useEditorStore();
-  const [html, setHtml] = useState("");
+  const contentRef = useRef<{ html: string; json: string } | null>(null);
   const [json, setJson] = useState("");
+  const [authorUsername, setAuthorUsername] = useState("");
+  const [postSlug, setPostSlug] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -35,22 +39,31 @@ export default function EditPage() {
         store.setStatus(post.status as "draft" | "published");
         store.setIsPremium(post.is_premium);
         store.setHasUnsaved(false);
+        setJson(post.content && post.content !== "{}" ? post.content : "");
+        setAuthorUsername(post.author?.username || "");
+        setPostSlug(post.slug);
       } catch {
-        setError("Failed to load post");
+        setError("بارگذاری پست ناموفق بود");
       }
       setLoading(false);
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per id
   }, [id]);
 
   const handleSave = useCallback((newHtml: string, newJson: string) => {
-    setHtml(newHtml);
     setJson(newJson);
   }, []);
 
   const handleSubmit = async () => {
     if (!store.title.trim()) {
-      setError("Title is required");
+      setError("عنوان لازم است");
+      return;
+    }
+
+    const payloadJson = contentRef.current?.json || json;
+    if (!payloadJson || payloadJson === "{}") {
+      setError("متن پست خالی است");
       return;
     }
 
@@ -58,14 +71,14 @@ export default function EditPage() {
     setError("");
 
     try {
-      await apiFetch(`/api/posts/${id}`, {
+      const post = await apiFetch<Post>(`/api/posts/${id}`, {
         method: "PATCH",
         body: JSON.stringify({
           title: store.title,
           slug: store.slug || undefined,
           excerpt: store.excerpt || undefined,
-          content: json,
-          content_md: extractText(json),
+          content: payloadJson,
+          content_md: extractTextFromTipTapJSON(payloadJson),
           cover_image_url: store.coverImageUrl || undefined,
           category: store.category || undefined,
           tags: store.tags.length > 0 ? store.tags : undefined,
@@ -75,7 +88,9 @@ export default function EditPage() {
       });
 
       store.reset();
-      router.push("/");
+      const username = post.author?.username || authorUsername;
+      const slug = post.slug || postSlug || store.slug;
+      router.push(username && slug ? `/${username}/${slug}` : "/");
     } catch (err) {
       setError((err as Error).message);
     }
@@ -94,10 +109,10 @@ export default function EditPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="text-center py-20">
-        <p className="text-lg text-muted-foreground">Sign in to edit</p>
+      <div className="py-20 text-center">
+        <p className="text-lg text-muted-foreground">برای ویرایش وارد شوید</p>
         <Button className="mt-4" onClick={() => router.push("/login")}>
-          Sign in
+          ورود
         </Button>
       </div>
     );
@@ -105,41 +120,31 @@ export default function EditPage() {
 
   return (
     <div className="lg:flex lg:gap-8">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">Edit Post</h1>
-          <Button onClick={handleSubmit} disabled={saving}>
+      <div className="min-w-0 flex-1">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <BackButton fallbackHref="/" />
+            <h1 className="min-w-0 text-xl font-bold">ویرایش پست</h1>
+          </div>
+          <Button className="shrink-0" onClick={handleSubmit} disabled={saving}>
             {store.status === "published"
-              ? saving ? "Republishing..." : "Republish"
-              : saving ? "Saving..." : "Save Draft"}
+              ? saving
+                ? "در حال انتشار..."
+                : "انتشار مجدد"
+              : saving
+                ? "در حال ذخیره..."
+                : "ذخیره پیش‌نویس"}
           </Button>
         </div>
 
-        {error && <p className="text-sm text-destructive mb-3">{error}</p>}
+        {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
-        <TiptapEditor content={json} onSave={handleSave} />
+        <TiptapEditor content={json} onSave={handleSave} contentRef={contentRef} />
       </div>
 
-      <aside className="w-64 shrink-0 mt-8 lg:mt-0">
+      <aside className="mt-8 w-64 shrink-0 lg:mt-0">
         <MetadataSidebar />
       </aside>
     </div>
   );
-}
-
-function extractText(json: string): string {
-  try {
-    const obj = JSON.parse(json);
-    const texts: string[] = [];
-    const walk = (node: Record<string, unknown>) => {
-      if (node.text) texts.push(node.text as string);
-      if (node.content && Array.isArray(node.content)) {
-        (node.content as Record<string, unknown>[]).forEach(walk);
-      }
-    };
-    walk(obj);
-    return texts.join(" ");
-  } catch {
-    return "";
-  }
 }

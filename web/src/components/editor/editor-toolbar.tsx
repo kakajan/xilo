@@ -59,17 +59,24 @@ export function EditorToolbar({ editor, onImageClick }: EditorToolbarProps) {
   ];
 
   return (
-    <div className="flex items-center gap-1 flex-wrap border-b px-2 py-1 bg-background sticky top-14 z-40">
+    <div
+      className="flex max-w-full items-center gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:thin]"
+      role="toolbar"
+      aria-label="نوار ابزار ویرایشگر"
+    >
       {items.map((item, i) => {
-        if (!item) return <div key={i} className="w-px h-6 bg-border mx-1" />;
+        if (!item) {
+          return <div key={i} className="mx-1 h-6 w-px shrink-0 bg-border" aria-hidden />;
+        }
         return (
           <Button
             key={item.label}
             variant="ghost"
             size="icon"
-            className={cn("h-8 w-8", item.active && "bg-accent text-accent-foreground")}
+            className={cn("h-8 w-8 shrink-0", item.active && "bg-accent text-accent-foreground")}
             onClick={item.action}
             title={item.label}
+            type="button"
           >
             <item.icon className="h-4 w-4" />
           </Button>

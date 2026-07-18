@@ -42,13 +42,13 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun register(
-        username: String,
         email: String,
         password: String,
-        displayName: String?
+        displayName: String? = null,
+        username: String = "",
     ): Result<UserResponse> {
         return try {
-            val authResp = apiService.register(RegisterRequest(email, username, password, displayName))
+            val authResp = apiService.register(RegisterRequest(email, password, username, displayName))
             tokenManager.saveTokens(authResp.accessToken, authResp.refreshToken)
             val userProfile = try {
                 apiService.getMe()
@@ -158,6 +158,42 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun updateUsername(username: String): Result<UserResponse> {
+        return try {
+            val updated = apiService.updateProfile(
+                UpdateProfileRequest(username = username.trim())
+            )
+            saveUserLocal(updated)
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updatePreferredLanguage(language: String): Result<UserResponse> {
+        return try {
+            val updated = apiService.updateProfile(
+                UpdateProfileRequest(preferredLanguage = language.trim())
+            )
+            saveUserLocal(updated)
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun listLanguages(): Result<List<ir.xilo.app.data.remote.dto.LanguageInfo>> {
+        return try {
+            Result.success(apiService.getLanguages().languages)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun isUsernamePending(): Boolean = tokenManager.isUsernamePending()
+
+    fun getPreferredLanguage(): String = tokenManager.getPreferredLanguage()
+
     suspend fun uploadAndSetAvatar(uri: Uri): Result<UserResponse> {
         return try {
             val part = uriToMultipart(uri) ?: return Result.failure(IllegalArgumentException("Unable to read image"))
@@ -233,6 +269,11 @@ class AuthRepository @Inject constructor(
         val calendar = user.preferredCalendar?.takeIf { it.isNotBlank() } ?: "auto"
         tokenManager.setPreferredCalendar(calendar)
         DateFormatter.setUserPreferenceFromApi(calendar)
+        val pending = user.usernamePending || user.username.startsWith("tmp_")
+        tokenManager.setUsernamePending(pending)
+        user.preferredLanguage?.takeIf { it.isNotBlank() }?.let {
+            tokenManager.setPreferredLanguage(it)
+        }
         userDao.insertUser(
             UserEntity(
                 id = user.id,

@@ -118,6 +118,8 @@ class TokenManager @Inject constructor(
             .remove("user_id")
             .remove("username")
             .remove("user_role")
+            .remove(USERNAME_PENDING_KEY)
+            .remove(PREFERRED_LANGUAGE_KEY)
             .apply()
     }
 
@@ -147,6 +149,20 @@ class TokenManager @Inject constructor(
 
     fun setPreferredCalendar(value: String) {
         prefs.edit().putString(PREFERRED_CALENDAR_KEY, value).apply()
+    }
+
+    fun isUsernamePending(): Boolean =
+        prefs.getBoolean(USERNAME_PENDING_KEY, false)
+
+    fun setUsernamePending(pending: Boolean) {
+        prefs.edit().putBoolean(USERNAME_PENDING_KEY, pending).apply()
+    }
+
+    fun getPreferredLanguage(): String =
+        prefs.getString(PREFERRED_LANGUAGE_KEY, "fa") ?: "fa"
+
+    fun setPreferredLanguage(value: String) {
+        prefs.edit().putString(PREFERRED_LANGUAGE_KEY, value.ifBlank { "fa" }).apply()
     }
 
     private fun readTokensLocked(): AuthTokens? {
@@ -266,6 +282,8 @@ class TokenManager @Inject constructor(
         const val LEGACY_ACCESS_TOKEN_KEY = "access_token"
         const val LEGACY_REFRESH_TOKEN_KEY = "refresh_token"
         const val PREFERRED_CALENDAR_KEY = "preferred_calendar"
+        const val USERNAME_PENDING_KEY = "username_pending"
+        const val PREFERRED_LANGUAGE_KEY = "preferred_language"
         const val BLOB_VERSION = 1
 
         private val sessionJson = Json {

@@ -11,6 +11,7 @@ export interface User {
   email_verified: boolean;
   preferred_language?: string;
   preferred_calendar?: PreferredCalendar;
+  username_pending?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -24,8 +25,8 @@ export interface AuthResponse {
 
 export interface RegisterRequest {
   email: string;
-  username: string;
   password: string;
+  username?: string;
 }
 
 export interface LoginRequest {

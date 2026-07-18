@@ -49,11 +49,8 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun register(username: String, email: String, passwordHash: String, displayName: String?) {
+    fun register(email: String, passwordHash: String, displayName: String?) {
         val fieldErrors = buildMap {
-            InputValidator.validateUsername(username)?.let {
-                put(AuthField.Username, errorMessageResolver.string(it))
-            }
             InputValidator.validateEmail(email)?.let {
                 put(AuthField.Email, errorMessageResolver.string(it))
             }
@@ -68,7 +65,7 @@ class AuthViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
-            authRepository.register(username, email, passwordHash, displayName)
+            authRepository.register(email, passwordHash, displayName)
                 .onSuccess {
                     _uiState.value = AuthUiState.Success
                 }

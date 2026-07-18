@@ -175,6 +175,10 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
+		// Nginx sets X-Forwarded-For; without this, c.IP() is the proxy and all
+		// clients share one rate-limit bucket → widespread 429s.
+		ProxyHeader:             fiber.HeaderXForwardedFor,
+		EnableTrustedProxyCheck: false,
 	})
 
 	app.Use(logger.New())
@@ -211,9 +215,27 @@ func main() {
 	admin.Get("/users", adminH.ListUsers)
 	admin.Patch("/users/:id/role", adminH.UpdateUserRole)
 
-	applyPublicRateLimit := limiter.New(limiter.Config{Max: 30, Expiration: 1 * time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.IP() }})
-	// Local/dev-friendly auth budget; production should tighten via env/config later.
-	applyAuthRateLimit := limiter.New(limiter.Config{Max: 60, Expiration: 1 * time.Minute, KeyGenerator: func(c *fiber.Ctx) string { return c.IP() }})
+	clientIP := func(c *fiber.Ctx) string {
+		if ip := c.IP(); ip != "" {
+			return ip
+		}
+		return c.Get("X-Real-IP", "unknown")
+	}
+	// Read-heavy public feeds (home, profiles, search) need a higher budget than auth.
+	applyPublicRateLimit := limiter.New(limiter.Config{
+		Max:        300,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return "pub:" + clientIP(c)
+		},
+	})
+	applyAuthRateLimit := limiter.New(limiter.Config{
+		Max:        60,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return "auth:" + clientIP(c)
+		},
+	})
 
 	auth := app.Group("/api/auth")
 	auth.Post("/register", applyAuthRateLimit, authH.Register)

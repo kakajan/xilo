@@ -22,6 +22,8 @@ type User struct {
 	DeletedAt     *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 
 	IsVerified bool `json:"is_verified" db:"-"`
+	// UsernamePending is true when the account still uses an auto-assigned tmp_* handle.
+	UsernamePending bool `json:"username_pending" db:"-"`
 }
 
 type RefreshToken struct {
@@ -60,7 +62,7 @@ type SessionResponse struct {
 
 type RegisterRequest struct {
 	Email    string `json:"email"`
-	Username string `json:"username"`
+	Username string `json:"username,omitempty"` // optional; server assigns tmp_* if empty
 	Password string `json:"password"`
 }
 
@@ -86,6 +88,7 @@ type UpdateProfileRequest struct {
 	AvatarURL         string `json:"avatar_url"`
 	PreferredLanguage string `json:"preferred_language"`
 	PreferredCalendar string `json:"preferred_calendar"`
+	Username          string `json:"username,omitempty"`
 }
 
 type RequestOTPRequest struct {

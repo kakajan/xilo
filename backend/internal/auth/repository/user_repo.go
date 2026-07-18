@@ -35,8 +35,11 @@ func (r *UserRepo) Create(ctx context.Context, req *model.RegisterRequest, passw
 	err := r.db.GetContext(ctx, &user, `
 		INSERT INTO users (email, username, password_hash)
 		VALUES ($1, $2, $3)
-		RETURNING id, email, username, phone, password_hash, display_name, avatar_url,
-		          bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
+		RETURNING id, email, username, phone, password_hash,
+		          COALESCE(display_name, '') AS display_name,
+		          COALESCE(avatar_url, '') AS avatar_url,
+		          COALESCE(bio, '') AS bio,
+		          role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 	`, req.Email, req.Username, passwordHash)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -52,8 +55,11 @@ func (r *UserRepo) CreateWithPhone(ctx context.Context, email, username, phone, 
 	err := r.db.GetContext(ctx, &user, `
 		INSERT INTO users (email, username, phone, password_hash)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, email, username, phone, password_hash, display_name, avatar_url,
-		          bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
+		RETURNING id, email, username, phone, password_hash,
+		          COALESCE(display_name, '') AS display_name,
+		          COALESCE(avatar_url, '') AS avatar_url,
+		          COALESCE(bio, '') AS bio,
+		          role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 	`, email, username, phone, passwordHash)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -67,8 +73,11 @@ func (r *UserRepo) CreateWithPhone(ctx context.Context, email, username, phone, 
 func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
-		SELECT id, email, username, phone, password_hash, display_name, avatar_url,
-		       bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
+		SELECT id, email, username, phone, password_hash,
+		       COALESCE(display_name, '') AS display_name,
+		       COALESCE(avatar_url, '') AS avatar_url,
+		       COALESCE(bio, '') AS bio,
+		       role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 		FROM users
 		WHERE email = $1 AND deleted_at IS NULL
 	`, email)
@@ -84,8 +93,11 @@ func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*model.User, 
 func (r *UserRepo) FindByID(ctx context.Context, id string) (*model.User, error) {
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
-		SELECT id, email, username, phone, password_hash, display_name, avatar_url,
-		       bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
+		SELECT id, email, username, phone, password_hash,
+		       COALESCE(display_name, '') AS display_name,
+		       COALESCE(avatar_url, '') AS avatar_url,
+		       COALESCE(bio, '') AS bio,
+		       role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 		FROM users
 		WHERE id = $1 AND deleted_at IS NULL
 	`, id)
@@ -101,8 +113,11 @@ func (r *UserRepo) FindByID(ctx context.Context, id string) (*model.User, error)
 func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*model.User, error) {
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
-		SELECT id, email, username, phone, password_hash, display_name, avatar_url,
-		       bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
+		SELECT id, email, username, phone, password_hash,
+		       COALESCE(display_name, '') AS display_name,
+		       COALESCE(avatar_url, '') AS avatar_url,
+		       COALESCE(bio, '') AS bio,
+		       role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 		FROM users
 		WHERE username = $1 AND deleted_at IS NULL
 	`, username)
@@ -124,14 +139,21 @@ func (r *UserRepo) UpdateProfile(ctx context.Context, userID string, req *model.
 		    avatar_url = COALESCE(NULLIF($4, ''), avatar_url),
 		    preferred_language = COALESCE(NULLIF($5, ''), preferred_language),
 		    preferred_calendar = COALESCE(NULLIF($6, ''), preferred_calendar),
+		    username = COALESCE(NULLIF($7, ''), username),
 		    updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
-		RETURNING id, email, username, phone, password_hash, display_name, avatar_url,
-		          bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
-	`, userID, req.DisplayName, req.Bio, req.AvatarURL, req.PreferredLanguage, req.PreferredCalendar)
+		RETURNING id, email, username, phone, password_hash,
+		          COALESCE(display_name, '') AS display_name,
+		          COALESCE(avatar_url, '') AS avatar_url,
+		          COALESCE(bio, '') AS bio,
+		          role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
+	`, userID, req.DisplayName, req.Bio, req.AvatarURL, req.PreferredLanguage, req.PreferredCalendar, req.Username)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrUserNotFound
+		}
+		if isUniqueViolation(err) {
+			return nil, ErrUsernameExists
 		}
 		return nil, fmt.Errorf("update user profile: %w", err)
 	}
@@ -255,8 +277,11 @@ func isUniqueViolation(err error) bool {
 func (r *UserRepo) FindByPhone(ctx context.Context, phone string) (*model.User, error) {
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
-		SELECT id, email, username, phone, password_hash, display_name, avatar_url,
-		       bio, role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
+		SELECT id, email, username, phone, password_hash,
+		       COALESCE(display_name, '') AS display_name,
+		       COALESCE(avatar_url, '') AS avatar_url,
+		       COALESCE(bio, '') AS bio,
+		       role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
 		FROM users
 		WHERE phone = $1 AND deleted_at IS NULL
 	`, phone)

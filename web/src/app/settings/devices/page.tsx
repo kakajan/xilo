@@ -12,13 +12,13 @@ import { useFormatDate } from "@/hooks/use-format-date";
 
 export default function DevicesPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, logout } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, authChecked, logout } = useAuthStore();
   const queryClient = useQueryClient();
   const formatDate = useFormatDate();
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.replace("/login");
-  }, [authLoading, isAuthenticated, router]);
+    if (authChecked && !isAuthenticated) router.replace("/login");
+  }, [authChecked, isAuthenticated, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["sessions"],

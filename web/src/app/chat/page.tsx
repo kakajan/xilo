@@ -16,15 +16,15 @@ import type { Chat } from "@/types/chat";
 
 export default function ChatListPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, user } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, authChecked, user } = useAuthStore();
   const setChatsCache = useChatStore((s) => s.setChatsCache);
   const [q, setQ] = useState("");
   const [folderId, setFolderId] = useState<string | "all">("all");
   const formatDate = useFormatDate();
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.replace("/login");
-  }, [authLoading, isAuthenticated, router]);
+    if (authChecked && !isAuthenticated) router.replace("/login");
+  }, [authChecked, isAuthenticated, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["chats"],

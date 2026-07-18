@@ -16,15 +16,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ChatFoldersPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, authChecked } = useAuthStore();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.replace("/login");
-  }, [authLoading, isAuthenticated, router]);
+    if (authChecked && !isAuthenticated) router.replace("/login");
+  }, [authChecked, isAuthenticated, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["chat-folders"],

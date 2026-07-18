@@ -43,7 +43,7 @@ func (h *AnalyticsDashboardHandler) AuthorDashboard(c *fiber.Ctx) error {
 		Views int64  `db:"views" json:"views"`
 		Reads int64  `db:"reads" json:"reads"`
 	}
-	var dailyStats []DailyStat
+	dailyStats := make([]DailyStat, 0)
 	h.db.Select(&dailyStats, `
 		SELECT
 			TO_CHAR(created_at, 'YYYY-MM-DD') as day,
@@ -61,7 +61,7 @@ func (h *AnalyticsDashboardHandler) AuthorDashboard(c *fiber.Ctx) error {
 		Title string `db:"title" json:"title"`
 		Views int64  `db:"views" json:"views"`
 	}
-	var topPosts []TopPost
+	topPosts := make([]TopPost, 0)
 	h.db.Select(&topPosts, `
 		SELECT
 			properties->>'post_id' as post_id,
@@ -102,7 +102,7 @@ func (h *AnalyticsDashboardHandler) AdminDashboard(c *fiber.Ctx) error {
 		Day   string `db:"day" json:"day"`
 		Users int64  `db:"users" json:"users"`
 	}
-	var active []DailyActive
+	active := make([]DailyActive, 0)
 	h.db.Select(&active, `
 		SELECT TO_CHAR(created_at, 'YYYY-MM-DD') as day, COUNT(DISTINCT user_id) as users
 		FROM analytics_events

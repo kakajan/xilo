@@ -34,6 +34,9 @@ class MainScreenViewModel @Inject constructor(
     private val _pendingTab = MutableStateFlow<Int?>(null)
     val pendingTab: StateFlow<Int?> = _pendingTab.asStateFlow()
 
+    private val _openSettingsForUsername = MutableStateFlow(false)
+    val openSettingsForUsername: StateFlow<Boolean> = _openSettingsForUsername.asStateFlow()
+
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -43,6 +46,10 @@ class MainScreenViewModel @Inject constructor(
 
     fun consumePendingTab() {
         _pendingTab.value = null
+    }
+
+    fun consumeOpenSettingsForUsername() {
+        _openSettingsForUsername.value = false
     }
 
     fun completeOnboarding() {
@@ -61,12 +68,16 @@ class MainScreenViewModel @Inject constructor(
         if (!authRepository.isAuthenticated()) {
             _currentUsername.value = null
             _canCreatePost.value = false
+            _openSettingsForUsername.value = false
             webSocketManager.disconnect()
             return
         }
         refreshUsername()
         refreshPermissions()
         connectRealtime()
+        if (authRepository.isUsernamePending()) {
+            _openSettingsForUsername.value = true
+        }
     }
 
     /** Re-read persisted username (and hydrate from Room /me when prefs are empty). */

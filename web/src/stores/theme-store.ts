@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api-client";
 import {
   applyThemeToDocument,
   DEFAULT_THEME,
+  mergeTheme,
   type PlatformTheme,
 } from "@/lib/theme";
 
@@ -25,7 +26,7 @@ export const useThemeStore = create<ThemeState>((set) => ({
   fetchTheme: async () => {
     try {
       const data = await apiFetch<{ theme?: PlatformTheme }>("/api/platform/settings");
-      const theme = data.theme ?? DEFAULT_THEME;
+      const theme = mergeTheme(data.theme);
       applyThemeToDocument(theme);
       set({ theme, loaded: true });
     } catch {

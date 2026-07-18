@@ -20,7 +20,7 @@ export default function ChatConversationPage() {
   const searchParams = useSearchParams();
   const isSaved = searchParams.get("saved") === "1";
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading, authChecked } = useAuthStore();
   const setActiveChat = useChatStore((s) => s.setActiveChat);
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -29,8 +29,8 @@ export default function ChatConversationPage() {
   const { addHandler } = useWebSocket();
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.replace("/login");
-  }, [authLoading, isAuthenticated, router]);
+    if (authChecked && !isAuthenticated) router.replace("/login");
+  }, [authChecked, isAuthenticated, router]);
 
   useEffect(() => {
     setActiveChat(id);

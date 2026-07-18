@@ -74,8 +74,17 @@ export const DEFAULT_THEME: PlatformTheme = {
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
-export function isHexColor(value: string): boolean {
+export function isHexColor(value: string | null | undefined): boolean {
+  if (typeof value !== "string") return false;
   return HEX_RE.test(value.trim());
+}
+
+/** Fill missing palette keys from defaults (older API payloads omit newer fields). */
+export function mergeTheme(partial?: Partial<PlatformTheme> | null): PlatformTheme {
+  return {
+    light: { ...DEFAULT_THEME.light, ...(partial?.light ?? {}) },
+    dark: { ...DEFAULT_THEME.dark, ...(partial?.dark ?? {}) },
+  };
 }
 
 /** Map palette fields onto --xilo-* CSS variables consumed by globals.css. */

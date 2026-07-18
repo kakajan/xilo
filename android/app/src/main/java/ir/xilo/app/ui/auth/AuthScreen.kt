@@ -112,46 +112,18 @@ fun AuthScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
-                    } else {
+                    } else if (isLoginMode) {
                         XiloTextField(
                             value = username,
                             onValueChange = {
                                 username = it
                                 viewModel.clearFieldError(AuthField.Username)
                             },
-                            placeholder = if (isLoginMode) "نام کاربری یا ایمیل" else "نام کاربری",
+                            placeholder = "ایمیل",
                             modifier = Modifier.fillMaxWidth(),
                             isError = fieldErrors.containsKey(AuthField.Username),
                             errorText = fieldErrors[AuthField.Username],
                         )
-
-                        if (!isLoginMode) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            XiloTextField(
-                                value = email,
-                                onValueChange = {
-                                    email = it
-                                    viewModel.clearFieldError(AuthField.Email)
-                                },
-                                placeholder = "نشانی ایمیل",
-                                modifier = Modifier.fillMaxWidth(),
-                                isError = fieldErrors.containsKey(AuthField.Email),
-                                errorText = fieldErrors[AuthField.Email],
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            XiloTextField(
-                                value = displayName,
-                                onValueChange = {
-                                    displayName = it
-                                    viewModel.clearFieldError(AuthField.DisplayName)
-                                },
-                                placeholder = "نام نمایشی (اختیاری)",
-                                modifier = Modifier.fillMaxWidth(),
-                                isError = fieldErrors.containsKey(AuthField.DisplayName),
-                                errorText = fieldErrors[AuthField.DisplayName],
-                            )
-                        }
-
                         Spacer(modifier = Modifier.height(12.dp))
                         XiloTextField(
                             value = password,
@@ -165,21 +137,55 @@ fun AuthScreen(
                             isError = fieldErrors.containsKey(AuthField.Password),
                             errorText = fieldErrors[AuthField.Password],
                         )
-
-                        if (!isLoginMode) {
-                            Text(
-                                text = "رمز عبور باید حداقل ۸ کاراکتر و شامل حرف بزرگ انگلیسی، عدد و کاراکتر ویژه باشد.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                            Text(
-                                text = "نام کاربری فقط با حروف انگلیسی، عدد و زیرخط (۳ تا ۳۲ کاراکتر).",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        }
+                    } else {
+                        XiloTextField(
+                            value = email,
+                            onValueChange = {
+                                email = it
+                                viewModel.clearFieldError(AuthField.Email)
+                            },
+                            placeholder = "نشانی ایمیل",
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = fieldErrors.containsKey(AuthField.Email),
+                            errorText = fieldErrors[AuthField.Email],
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        XiloTextField(
+                            value = displayName,
+                            onValueChange = {
+                                displayName = it
+                                viewModel.clearFieldError(AuthField.DisplayName)
+                            },
+                            placeholder = "نام نمایشی (اختیاری)",
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = fieldErrors.containsKey(AuthField.DisplayName),
+                            errorText = fieldErrors[AuthField.DisplayName],
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        XiloTextField(
+                            value = password,
+                            onValueChange = {
+                                password = it
+                                viewModel.clearFieldError(AuthField.Password)
+                            },
+                            placeholder = "رمز عبور",
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = fieldErrors.containsKey(AuthField.Password),
+                            errorText = fieldErrors[AuthField.Password],
+                        )
+                        Text(
+                            text = "رمز عبور باید حداقل ۸ کاراکتر و شامل حرف بزرگ انگلیسی، عدد و کاراکتر ویژه باشد.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        Text(
+                            text = "نام کاربری را بعد از ورود در تنظیمات انتخاب می‌کنید.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -208,7 +214,11 @@ fun AuthScreen(
                                     if (isLoginMode) {
                                         viewModel.login(username, password)
                                     } else {
-                                        viewModel.register(username, email, password, displayName.takeIf { it.isNotBlank() })
+                                        viewModel.register(
+                                            email,
+                                            password,
+                                            displayName.takeIf { it.isNotBlank() },
+                                        )
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()

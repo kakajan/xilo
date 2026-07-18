@@ -33,10 +33,18 @@ func New() (storage.Driver, error) {
 	}
 	useSSL := os.Getenv("STORAGE_USE_SSL") == "true"
 	publicEndpoint := os.Getenv("STORAGE_PUBLIC_ENDPOINT")
+	// Browser-facing URLs: default to HTTPS when public host differs from the
+	// internal docker endpoint (minio:9000), even if STORAGE_USE_SSL=false.
+	publicUseSSL := useSSL
+	if v := os.Getenv("STORAGE_PUBLIC_USE_SSL"); v != "" {
+		publicUseSSL = v == "true"
+	} else if publicEndpoint != "" && publicEndpoint != endpoint {
+		publicUseSSL = true
+	}
 
 	switch driver {
 	case "minio":
-		return minio.New(endpoint, accessKey, secretKey, bucket, useSSL, publicEndpoint)
+		return minio.New(endpoint, accessKey, secretKey, bucket, useSSL, publicEndpoint, publicUseSSL)
 	case "s3":
 		region := os.Getenv("STORAGE_REGION")
 		if region == "" {

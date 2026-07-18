@@ -5,8 +5,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.core.util.CalendarPreference
+import ir.xilo.app.data.remote.dto.LanguageInfo
 import ir.xilo.app.data.repository.AuthRepository
+import ir.xilo.app.data.repository.ThemeMode
+import ir.xilo.app.data.repository.ThemeRepository
 import ir.xilo.app.util.ErrorMessageResolver
+import ir.xilo.app.util.InputValidator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -20,9 +24,14 @@ import javax.inject.Inject
 data class SettingsUiState(
     val displayName: String = "کاربر",
     val username: String = "user",
+    val usernamePending: Boolean = false,
+    val usernameDraft: String = "",
     val phone: String = "",
     val avatarUrl: String? = null,
     val preferredCalendar: CalendarPreference = CalendarPreference.AUTO,
+    val preferredLanguage: String = "fa",
+    val languages: List<LanguageInfo> = emptyList(),
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val isLoading: Boolean = false,
     val isUploadingAvatar: Boolean = false,
     val logoutComplete: Boolean = false,
@@ -40,10 +49,17 @@ sealed interface SettingsNavEvent {
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val themeRepository: ThemeRepository,
     private val errorMessageResolver: ErrorMessageResolver,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsUiState(
+            themeMode = themeRepository.themeMode.value,
+            preferredLanguage = authRepository.getPreferredLanguage(),
+            usernamePending = authRepository.isUsernamePending(),
+        )
+    )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     private val _navEvents = MutableSharedFlow<SettingsNavEvent>(extraBufferCapacity = 1)
@@ -52,6 +68,17 @@ class SettingsViewModel @Inject constructor(
     init {
         loadProfile()
         viewModelScope.launch { authRepository.syncCalendarDefaults() }
+        viewModelScope.launch {
+            themeRepository.themeMode.collect { mode ->
+                _uiState.update { it.copy(themeMode = mode) }
+            }
+        }
+        viewModelScope.launch {
+            authRepository.listLanguages()
+                .onSuccess { langs ->
+                    _uiState.update { it.copy(languages = langs) }
+                }
+        }
     }
 
     private fun loadProfile() {
@@ -59,16 +86,20 @@ class SettingsViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = true,
-                    preferredCalendar = authRepository.getPreferredCalendar()
+                    preferredCalendar = authRepository.getPreferredCalendar(),
+                    preferredLanguage = authRepository.getPreferredLanguage(),
+                    usernamePending = authRepository.isUsernamePending(),
                 )
             }
             val local = authRepository.getLocalProfile()
             applyProfile(
                 displayName = local?.displayName ?: local?.username ?: authRepository.getUsername() ?: "کاربر",
                 username = local?.username ?: authRepository.getUsername() ?: "user",
+                usernamePending = authRepository.isUsernamePending(),
                 phone = local?.phone.orEmpty(),
                 avatarUrl = local?.avatarUrl,
                 preferredCalendar = authRepository.getPreferredCalendar(),
+                preferredLanguage = authRepository.getPreferredLanguage(),
                 loading = true
             )
             authRepository.refreshMe()
@@ -76,9 +107,12 @@ class SettingsViewModel @Inject constructor(
                     applyProfile(
                         displayName = me.displayName ?: me.username,
                         username = me.username,
+                        usernamePending = me.usernamePending || me.username.startsWith("tmp_"),
                         phone = me.phone.orEmpty(),
                         avatarUrl = me.avatarUrl,
                         preferredCalendar = CalendarPreference.fromApi(me.preferredCalendar),
+                        preferredLanguage = me.preferredLanguage?.takeIf { it.isNotBlank() }
+                            ?: authRepository.getPreferredLanguage(),
                         loading = false
                     )
                 }
@@ -91,9 +125,11 @@ class SettingsViewModel @Inject constructor(
     private fun applyProfile(
         displayName: String,
         username: String,
+        usernamePending: Boolean,
         phone: String,
         avatarUrl: String?,
         preferredCalendar: CalendarPreference,
+        preferredLanguage: String,
         loading: Boolean
     ) {
         _uiState.update {
@@ -101,11 +137,88 @@ class SettingsViewModel @Inject constructor(
                 isLoading = loading,
                 displayName = displayName.ifBlank { "کاربر" },
                 username = username.ifBlank { "user" },
+                usernamePending = usernamePending,
+                usernameDraft = if (usernamePending) "" else username,
                 phone = formatPhone(phone),
                 avatarUrl = avatarUrl,
-                preferredCalendar = preferredCalendar
+                preferredCalendar = preferredCalendar,
+                preferredLanguage = preferredLanguage,
             )
         }
+    }
+
+    fun onUsernameDraftChange(value: String) {
+        _uiState.update { it.copy(usernameDraft = value, errorMessage = null) }
+    }
+
+    fun updateUsername() {
+        val draft = _uiState.value.usernameDraft.trim()
+        InputValidator.validateUsername(draft)?.let { resId ->
+            _uiState.update {
+                it.copy(errorMessage = errorMessageResolver.string(resId))
+            }
+            return
+        }
+        if (draft.startsWith("tmp_")) {
+            _uiState.update { it.copy(errorMessage = "این پیشوند رزرو شده است") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            authRepository.updateUsername(draft)
+                .onSuccess { user ->
+                    applyProfile(
+                        displayName = user.displayName ?: user.username,
+                        username = user.username,
+                        usernamePending = user.usernamePending || user.username.startsWith("tmp_"),
+                        phone = user.phone.orEmpty(),
+                        avatarUrl = user.avatarUrl,
+                        preferredCalendar = CalendarPreference.fromApi(user.preferredCalendar),
+                        preferredLanguage = user.preferredLanguage?.takeIf { it.isNotBlank() }
+                            ?: _uiState.value.preferredLanguage,
+                        loading = false
+                    )
+                    _uiState.update { it.copy(infoMessage = "نام کاربری ذخیره شد") }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                        )
+                    }
+                }
+        }
+    }
+
+    fun updatePreferredLanguage(code: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            authRepository.updatePreferredLanguage(code)
+                .onSuccess { user ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            preferredLanguage = user.preferredLanguage?.takeIf { lang -> lang.isNotBlank() }
+                                ?: code,
+                            infoMessage = "زبان رابط ذخیره شد"
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                        )
+                    }
+                }
+        }
+    }
+
+    fun updateThemeMode(mode: ThemeMode) {
+        themeRepository.setThemeMode(mode)
+        _uiState.update { it.copy(themeMode = mode, infoMessage = "حالت نمایش به‌روزرسانی شد") }
     }
 
     fun updatePreferredCalendar(preference: CalendarPreference) {
@@ -148,6 +261,7 @@ class SettingsViewModel @Inject constructor(
                             avatarUrl = user.avatarUrl,
                             displayName = user.displayName ?: user.username,
                             username = user.username,
+                            usernamePending = user.usernamePending || user.username.startsWith("tmp_"),
                             phone = formatPhone(user.phone.orEmpty()),
                             infoMessage = "عکس پروفایل به‌روزرسانی شد"
                         )

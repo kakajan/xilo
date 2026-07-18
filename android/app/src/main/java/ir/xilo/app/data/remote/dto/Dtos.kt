@@ -17,8 +17,9 @@ data class CursorPage<T>(
 @Serializable
 data class RegisterRequest(
     val email: String,
-    val username: String,
     val password: String,
+    /** Optional; server assigns a temporary tmp_* handle when blank. */
+    val username: String = "",
     val displayName: String? = null
 )
 
@@ -56,7 +57,8 @@ data class UpdateProfileRequest(
     val bio: String = "",
     val avatarUrl: String = "",
     val preferredLanguage: String = "",
-    val preferredCalendar: String = ""
+    val preferredCalendar: String = "",
+    val username: String = "",
 )
 
 @Serializable
@@ -169,6 +171,8 @@ data class UserResponse(
     val isVerified: Boolean = false,
     val preferredLanguage: String? = null,
     val preferredCalendar: String? = null,
+    @SerialName("username_pending")
+    val usernamePending: Boolean = false,
     val followerCount: Int = 0,
     val followingCount: Int = 0,
     val postCount: Int = 0,
