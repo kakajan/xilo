@@ -9,6 +9,7 @@ import ir.xilo.app.data.local.entity.MessageEntity
 import ir.xilo.app.data.local.entity.OutboxOperationEntity
 import ir.xilo.app.data.local.entity.OutboxOperationType
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.remote.dto.ChatMemberResponse
 import ir.xilo.app.data.remote.dto.ChatType
 import ir.xilo.app.data.remote.dto.ChatResponse
 import ir.xilo.app.data.remote.dto.CreateChatRequest
@@ -152,8 +153,9 @@ class ChatRepository @Inject constructor(
     ): Result<CursorPage<ChatResponse>> {
         return try {
             val page = apiService.listChats(cursor = cursor, limit = limit)
+            val currentUserId = authRepository.getUserId()
             val entities = page.data.map { dto ->
-                dto.toChatEntity(::parseDateToEpoch)
+                dto.toChatEntity(currentUserId, ::parseDateToEpoch)
             }
             chatDao.insertChats(entities)
             Result.success(page)
@@ -471,11 +473,23 @@ class ChatRepository @Inject constructor(
 
     suspend fun getChatById(chatId: String): ChatEntity? = chatDao.getChatById(chatId)
 
+    /** Fetch a single chat from the API and cache it locally. */
+    suspend fun fetchAndCacheChat(chatId: String): Result<ChatEntity> {
+        return try {
+            val dto = apiService.getChat(chatId)
+            val entity = dto.toChatEntity(authRepository.getUserId(), ::parseDateToEpoch)
+            chatDao.insertChat(entity)
+            Result.success(entity)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /** Get or create the per-user Saved Messages chat via `GET /api/chats/saved`. */
     suspend fun getOrCreateSavedMessages(): Result<ChatEntity> {
         return try {
             val dto = apiService.getSavedMessagesChat()
-            val entity = dto.toChatEntity(::parseDateToEpoch)
+            val entity = dto.toChatEntity(authRepository.getUserId(), ::parseDateToEpoch)
             chatDao.insertChat(entity)
             Result.success(entity)
         } catch (e: Exception) {
@@ -499,9 +513,11 @@ class ChatRepository @Inject constructor(
 }
 
 internal fun ChatResponse.toChatEntity(
+    currentUserId: String? = null,
     parseTimestamp: (String) -> Long
 ): ChatEntity {
     val lastMessageTimestamp = lastMessageAt ?: lastMessage?.createdAt
+    val peer = resolvePeerMember(currentUserId)
     return ChatEntity(
         id = id,
         type = type,
@@ -511,8 +527,24 @@ internal fun ChatResponse.toChatEntity(
         lastMessageTime = lastMessageTimestamp?.let(parseTimestamp),
         unreadCount = unreadCount.coerceIn(0, Int.MAX_VALUE.toLong()).toInt(),
         isMuted = isMuted,
-        isArchived = isArchived
+        isArchived = isArchived,
+        peerUserId = peer?.userId,
+        peerUsername = peer?.username?.takeIf { it.isNotBlank() },
+        peerDisplayName = peer?.displayName?.takeIf { it.isNotBlank() },
+        peerAvatarUrl = peer?.avatarUrl?.takeIf { it.isNotBlank() }
     )
+}
+
+internal fun ChatResponse.resolvePeerMember(
+    currentUserId: String?
+): ChatMemberResponse? {
+    if (type != "direct" && type != "group") return null
+    if (members.isEmpty()) return null
+    val selfId = currentUserId?.takeIf { it.isNotBlank() }
+    if (selfId != null) {
+        members.firstOrNull { it.userId != selfId }?.let { return it }
+    }
+    return members.firstOrNull { it.username.isNotBlank() } ?: members.firstOrNull()
 }
 
 internal fun MessageResponse.toMessageEntity(

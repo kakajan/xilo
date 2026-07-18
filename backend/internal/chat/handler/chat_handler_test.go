@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -53,6 +56,95 @@ func (r *handlerReplayRepository) CreateMessage(
 ) (*pkgidempotency.MutationResult[model.Message], error) {
 	r.receivedAt = request.ReceivedAt
 	return r.messageResult, nil
+}
+
+func TestWriteErrorLogsCauseAndRawForInternalFailures(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	cause := errors.New("list chats: db unavailable")
+	app := fiber.New()
+	app.Get("/with-cause", func(c *fiber.Ctx) error {
+		return writeError(c, &service.Error{
+			Code:    service.CodeInternal,
+			Message: "internal server error",
+			Cause:   cause,
+		})
+	})
+	app.Get("/nil-cause", func(c *fiber.Ctx) error {
+		return writeError(c, &service.Error{
+			Code:    service.CodeInternal,
+			Message: "internal server error",
+		})
+	})
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/with-cause", nil))
+	if err != nil {
+		t.Fatalf("with-cause request: %v", err)
+	}
+	_ = resp.Body.Close()
+	if !strings.Contains(buf.String(), "chat request failed") {
+		t.Fatalf("missing chat request failed log: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "list chats") {
+		t.Fatalf("missing cause in log: %s", buf.String())
+	}
+
+	buf.Reset()
+	resp, err = app.Test(httptest.NewRequest(http.MethodGet, "/nil-cause", nil))
+	if err != nil {
+		t.Fatalf("nil-cause request: %v", err)
+	}
+	_ = resp.Body.Close()
+	if !strings.Contains(buf.String(), "chat request failed") {
+		t.Fatalf("missing chat request failed log for nil Cause: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "raw=") {
+		t.Fatalf("expected raw= attr when Cause is nil: %s", buf.String())
+	}
+}
+
+func TestListChatsEmptyReturnsJSONArray(t *testing.T) {
+	repo := &listChatsRepository{chats: nil}
+	handler := NewChatHandler(service.NewChatService(repo))
+	app := fiber.New()
+	app.Use(func(c *fiber.Ctx) error {
+		c.Locals("userID", handlerActor)
+		return c.Next()
+	})
+	app.Get("/api/chats", handler.ListChats)
+
+	response, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chats", nil))
+	if err != nil {
+		t.Fatalf("perform request: %v", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != fiber.StatusOK {
+		t.Fatalf("status = %d, want %d", response.StatusCode, fiber.StatusOK)
+	}
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	if !strings.Contains(string(body), `"data":[]`) {
+		t.Fatalf("body = %s, want data:[]", body)
+	}
+}
+
+type listChatsRepository struct {
+	service.ChatRepository
+	chats []*model.Chat
+}
+
+func (r *listChatsRepository) ListChats(
+	_ context.Context,
+	_ string,
+	_ model.ListParams,
+) ([]*model.Chat, string, error) {
+	return r.chats, "", nil
 }
 
 func TestRetryableErrorReturnsServiceUnavailable(t *testing.T) {

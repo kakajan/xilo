@@ -46,9 +46,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         body: JSON.stringify(req),
       });
       get().applyAuthResponse(res);
-    } catch {
+    } catch (err) {
       set({ isLoading: false, authChecked: true });
-      throw new Error("login failed");
+      throw err instanceof Error ? err : new Error("login failed");
     }
   },
 
@@ -60,11 +60,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         body: JSON.stringify(req),
       });
       get().applyAuthResponse(res);
-    } catch {
+    } catch (err) {
       set({ isLoading: false, authChecked: true });
-      throw new Error("registration failed");
+      throw err instanceof Error ? err : new Error("registration failed");
     }
   },
+
 
   logout: async () => {
     const wasAuthenticated = get().isAuthenticated;

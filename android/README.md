@@ -42,11 +42,23 @@ Examples:
 # Debug against a LAN device
 ./gradlew :app:assembleDebug -Pxilo.apiBaseUrl=http://192.168.1.10:8888/ -Pxilo.wsBaseUrl=ws://192.168.1.10:8888/ws
 
+# Debug / emulator testing against production API (do not hardcode secrets)
+./gradlew :app:assembleDebug \
+  -Pxilo.apiBaseUrl=https://brain.aile.ir/ \
+  -Pxilo.wsBaseUrl=wss://brain.aile.ir/ws
+
+# Or installDebug for a connected emulator/device:
+./gradlew :app:installDebug \
+  -Pxilo.apiBaseUrl=https://brain.aile.ir/ \
+  -Pxilo.wsBaseUrl=wss://brain.aile.ir/ws
+
 # Release against production (aile.ir)
 ./gradlew :app:assembleRelease \
   -Pxilo.apiBaseUrl=https://brain.aile.ir/ \
   -Pxilo.wsBaseUrl=wss://brain.aile.ir/ws
 ```
+
+For visual emulator checks after install, capture a screenshot to `android/emulator_test.png` (see `run-on-emulator.sh`). When pointing at production, use the Gradle properties above — never commit API keys or tokens.
 
 Or with env vars (Windows `cmd`):
 

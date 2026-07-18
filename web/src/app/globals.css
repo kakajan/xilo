@@ -37,28 +37,29 @@
 }
 
 :root {
-  --xilo-background: #ffffff;
-  --xilo-foreground: #0f1419;
-  --xilo-card: #ffffff;
-  --xilo-card-foreground: #0f1419;
-  --xilo-popover: #ffffff;
-  --xilo-popover-foreground: #0f1419;
-  --xilo-primary: #1d9bf0;
-  --xilo-primary-foreground: #ffffff;
-  --xilo-secondary: #f7f9fa;
-  --xilo-secondary-foreground: #0f1419;
-  --xilo-muted: #eff3f4;
-  --xilo-muted-foreground: #536471;
-  --xilo-accent: #e8f5fe;
-  --xilo-accent-foreground: #0f1419;
-  --xilo-destructive: #f4212e;
-  --xilo-border: #eff3f4;
-  --xilo-input: #eff3f4;
-  --xilo-ring: #1d9bf0;
-  --xilo-bubble-own: #e8f5fe;
-  --xilo-bubble-others: #f7f9fa;
-  --xilo-chat-bubble-own: #e8f5fe;
-  --xilo-chat-bubble-others: #f0f2f5;
+  /* Light palette sources (overridden at runtime by applyThemeToDocument) */
+  --xilo-light-background: #ffffff;
+  --xilo-light-foreground: #0f1419;
+  --xilo-light-card: #ffffff;
+  --xilo-light-card-foreground: #0f1419;
+  --xilo-light-popover: #ffffff;
+  --xilo-light-popover-foreground: #0f1419;
+  --xilo-light-primary: #1d9bf0;
+  --xilo-light-primary-foreground: #ffffff;
+  --xilo-light-secondary: #f7f9fa;
+  --xilo-light-secondary-foreground: #0f1419;
+  --xilo-light-muted: #eff3f4;
+  --xilo-light-muted-foreground: #536471;
+  --xilo-light-accent: #e8f5fe;
+  --xilo-light-accent-foreground: #0f1419;
+  --xilo-light-destructive: #f4212e;
+  --xilo-light-border: #eff3f4;
+  --xilo-light-input: #eff3f4;
+  --xilo-light-ring: #1d9bf0;
+  --xilo-light-bubble-own: #e8f5fe;
+  --xilo-light-bubble-others: #f7f9fa;
+  --xilo-light-chat-bubble-own: #e8f5fe;
+  --xilo-light-chat-bubble-others: #f0f2f5;
 
   --xilo-dark-background: #15202b;
   --xilo-dark-foreground: #e7e9ea;
@@ -82,6 +83,30 @@
   --xilo-dark-bubble-others: #2c2c2e;
   --xilo-dark-chat-bubble-own: #1e3a5f;
   --xilo-dark-chat-bubble-others: #2c2c2e;
+
+  /* Active tokens — light by default; .dark remaps to dark sources */
+  --xilo-background: var(--xilo-light-background);
+  --xilo-foreground: var(--xilo-light-foreground);
+  --xilo-card: var(--xilo-light-card);
+  --xilo-card-foreground: var(--xilo-light-card-foreground);
+  --xilo-popover: var(--xilo-light-popover);
+  --xilo-popover-foreground: var(--xilo-light-popover-foreground);
+  --xilo-primary: var(--xilo-light-primary);
+  --xilo-primary-foreground: var(--xilo-light-primary-foreground);
+  --xilo-secondary: var(--xilo-light-secondary);
+  --xilo-secondary-foreground: var(--xilo-light-secondary-foreground);
+  --xilo-muted: var(--xilo-light-muted);
+  --xilo-muted-foreground: var(--xilo-light-muted-foreground);
+  --xilo-accent: var(--xilo-light-accent);
+  --xilo-accent-foreground: var(--xilo-light-accent-foreground);
+  --xilo-destructive: var(--xilo-light-destructive);
+  --xilo-border: var(--xilo-light-border);
+  --xilo-input: var(--xilo-light-input);
+  --xilo-ring: var(--xilo-light-ring);
+  --xilo-bubble-own: var(--xilo-light-bubble-own);
+  --xilo-bubble-others: var(--xilo-light-bubble-others);
+  --xilo-chat-bubble-own: var(--xilo-light-chat-bubble-own);
+  --xilo-chat-bubble-others: var(--xilo-light-chat-bubble-others);
 }
 
 .dark {
@@ -107,6 +132,7 @@
   --xilo-bubble-others: var(--xilo-dark-bubble-others);
   --xilo-chat-bubble-own: var(--xilo-dark-chat-bubble-own);
   --xilo-chat-bubble-others: var(--xilo-dark-chat-bubble-others);
+  color-scheme: dark;
 }
 
 @layer base {

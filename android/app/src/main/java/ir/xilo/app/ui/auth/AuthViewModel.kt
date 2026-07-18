@@ -23,10 +23,10 @@ class AuthViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    fun login(username: String, passwordHash: String) {
+    fun login(email: String, passwordHash: String) {
         val fieldErrors = buildMap {
-            if (username.isBlank()) {
-                put(AuthField.Username, errorMessageResolver.string(R.string.validation_username_required))
+            InputValidator.validateEmail(email)?.let {
+                put(AuthField.Email, errorMessageResolver.string(it))
             }
             if (passwordHash.isBlank()) {
                 put(AuthField.Password, errorMessageResolver.string(R.string.validation_password_required))
@@ -39,7 +39,7 @@ class AuthViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
-            authRepository.login(username, passwordHash)
+            authRepository.login(email.trim(), passwordHash)
                 .onSuccess {
                     _uiState.value = AuthUiState.Success
                 }
@@ -87,9 +87,30 @@ class AuthViewModel @Inject constructor(
                     _uiState.value = AuthUiState.OtpSent
                 }
                 .onFailure { error ->
-                    _uiState.value = error.toAuthErrorState(R.string.error_login_failed)
+                    if (isSmsUnavailable(error)) {
+                        _uiState.value = AuthUiState.Error(
+                            generalError = errorMessageResolver.string(R.string.error_otp_sms_unavailable),
+                        )
+                    } else {
+                        _uiState.value = error.toAuthErrorState(R.string.error_login_failed)
+                    }
                 }
         }
+    }
+
+    private fun isSmsUnavailable(error: Throwable): Boolean {
+        val haystack = buildString {
+            var current: Throwable? = error
+            while (current != null) {
+                append(current.message.orEmpty())
+                append(' ')
+                current = current.cause
+            }
+        }.lowercase()
+        return haystack.contains("sms") ||
+            haystack.contains("not initialized") ||
+            haystack.contains("unavailable") ||
+            haystack.contains("failed to send otp")
     }
 
     fun verifyOtpLogin(phone: String, code: String) {

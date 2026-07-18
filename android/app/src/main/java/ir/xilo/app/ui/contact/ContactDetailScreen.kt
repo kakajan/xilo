@@ -156,19 +156,27 @@ fun ContactDetailScreen(
                 }
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(XiloSpacing.horizontal)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .padding(16.dp)
-            ) {
-                Text("موبایل", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-                Text(contact.phone, style = MaterialTheme.typography.bodyLarge, color = XiloBlue)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("نام کاربری", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-                Text(contact.username, style = MaterialTheme.typography.bodyLarge, color = XiloBlue)
+            if (contact.phone.isNotBlank() || contact.username.isNotBlank()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(XiloSpacing.horizontal)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(16.dp)
+                ) {
+                    if (contact.phone.isNotBlank()) {
+                        Text("موبایل", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        Text(contact.phone, style = MaterialTheme.typography.bodyLarge, color = XiloBlue)
+                        if (contact.username.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                    if (contact.username.isNotBlank()) {
+                        Text("نام کاربری", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        Text(contact.username, style = MaterialTheme.typography.bodyLarge, color = XiloBlue)
+                    }
+                }
             }
 
             ScrollableTabRow(

@@ -100,7 +100,12 @@ data class ChatEntity(
     val lastMessageTime: Long?,
     val unreadCount: Int = 0,
     val isMuted: Boolean = false,
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+    /** Other participant for direct/group chats (not the current user). */
+    val peerUserId: String? = null,
+    val peerUsername: String? = null,
+    val peerDisplayName: String? = null,
+    val peerAvatarUrl: String? = null
 )
 
 @Entity(

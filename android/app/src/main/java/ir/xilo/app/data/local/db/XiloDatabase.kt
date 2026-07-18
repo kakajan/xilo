@@ -29,7 +29,7 @@ import ir.xilo.app.data.local.entity.UserEntity
         ChatFolderEntity::class,
         ChatFolderItemEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class XiloDatabase : RoomDatabase() {

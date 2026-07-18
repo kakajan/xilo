@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/xilo-platform/xilo/internal/auth/model"
 	"github.com/xilo-platform/xilo/internal/auth/repository"
+	"github.com/xilo-platform/xilo/pkg/hash"
 	"github.com/xilo-platform/xilo/pkg/jwt"
 )
 
@@ -40,7 +42,7 @@ func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*model.Us
 			return u, nil
 		}
 	}
-	return nil, nil
+	return nil, repository.ErrUserNotFound
 }
 
 func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*model.User, error) {
@@ -51,7 +53,14 @@ func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*model.User, er
 	return u, nil
 }
 
-func (m *mockUserRepo) FindByUsername(ctx context.Context, username string) (*model.User, error) { return nil, nil }
+func (m *mockUserRepo) FindByUsername(ctx context.Context, username string) (*model.User, error) {
+	for _, u := range m.users {
+		if u.Username == username {
+			return u, nil
+		}
+	}
+	return nil, repository.ErrUserNotFound
+}
 func (m *mockUserRepo) FindByPhone(ctx context.Context, phone string) (*model.User, error)        { return nil, nil }
 func (m *mockUserRepo) CreateWithPhone(ctx context.Context, email, username, phone, passwordHash string) (*model.User, error) { return nil, nil }
 func (m *mockUserRepo) UpdatePhone(ctx context.Context, userID, phone string) error                { return nil }
@@ -197,6 +206,83 @@ func TestRegister_WeakPassword(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for weak password")
+	}
+}
+
+func seedUserWithPassword(t *testing.T, repo *mockUserRepo, email, username, password string) {
+	t.Helper()
+	h, err := hash.Hash(password)
+	if err != nil {
+		t.Fatalf("hash: %v", err)
+	}
+	u := &model.User{
+		ID:           "user-" + username,
+		Email:        email,
+		Username:     username,
+		PasswordHash: h,
+		Role:         "reader",
+	}
+	repo.users[u.ID] = u
+}
+
+func TestLogin_ByEmail(t *testing.T) {
+	repo := newMockUserRepo()
+	seedUserWithPassword(t, repo, "a@example.com", "alice", "Str0ng!Pass")
+	svc := NewAuthService(repo, &mockJWTManager{})
+
+	resp, err := svc.Login(context.Background(), &model.LoginRequest{
+		Email:    "a@example.com",
+		Password: "Str0ng!Pass",
+	})
+	if err != nil {
+		t.Fatalf("login by email: %v", err)
+	}
+	if resp.User.Username != "alice" {
+		t.Fatalf("expected alice, got %s", resp.User.Username)
+	}
+}
+
+func TestLogin_ByUsername(t *testing.T) {
+	repo := newMockUserRepo()
+	seedUserWithPassword(t, repo, "a@example.com", "alice", "Str0ng!Pass")
+	svc := NewAuthService(repo, &mockJWTManager{})
+
+	resp, err := svc.Login(context.Background(), &model.LoginRequest{
+		Email:    "alice",
+		Password: "Str0ng!Pass",
+	})
+	if err != nil {
+		t.Fatalf("login by username: %v", err)
+	}
+	if resp.User.Email != "a@example.com" {
+		t.Fatalf("expected a@example.com, got %s", resp.User.Email)
+	}
+}
+
+func TestLogin_WrongPassword(t *testing.T) {
+	repo := newMockUserRepo()
+	seedUserWithPassword(t, repo, "a@example.com", "alice", "Str0ng!Pass")
+	svc := NewAuthService(repo, &mockJWTManager{})
+
+	_, err := svc.Login(context.Background(), &model.LoginRequest{
+		Email:    "a@example.com",
+		Password: "Wrong!Pass1",
+	})
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected ErrInvalidCredentials, got %v", err)
+	}
+}
+
+func TestLogin_UnknownUser(t *testing.T) {
+	repo := newMockUserRepo()
+	svc := NewAuthService(repo, &mockJWTManager{})
+
+	_, err := svc.Login(context.Background(), &model.LoginRequest{
+		Email:    "nobody@example.com",
+		Password: "Str0ng!Pass",
+	})
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected ErrInvalidCredentials, got %v", err)
 	}
 }
 

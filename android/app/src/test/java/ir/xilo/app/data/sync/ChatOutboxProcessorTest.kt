@@ -10,6 +10,7 @@ import ir.xilo.app.data.local.entity.MessageEntity
 import ir.xilo.app.data.local.entity.OutboxOperationEntity
 import ir.xilo.app.data.local.entity.OutboxOperationType
 import ir.xilo.app.data.local.entity.OutboxState
+import ir.xilo.app.data.local.prefs.TokenManager
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.MessageResponse
 import ir.xilo.app.data.remote.dto.MessageType
@@ -33,6 +34,9 @@ class ChatOutboxProcessorTest {
     private val messageDao = mockk<MessageDao>()
     private val api = mockk<XiloApiService>()
     private val transactionRunner = mockk<OutboxTransactionRunner>()
+    private val tokenManager = mockk<TokenManager> {
+        every { getUserId() } returns "user-1"
+    }
     private val clock = mockk<OutboxClock> {
         every { nowMillis() } returns NOW
     }
@@ -310,7 +314,8 @@ class ChatOutboxProcessorTest {
         apiService = api,
         payloadCodec = codec,
         retryPolicy = OutboxRetryPolicy(),
-        clock = clock
+        clock = clock,
+        tokenManager = tokenManager
     )
 
     private fun operation(request: SendMessageRequest) = OutboxOperationEntity(

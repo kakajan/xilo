@@ -29,7 +29,6 @@ fun AuthScreen(
     val state by viewModel.uiState.collectAsState()
     var isLoginMode by remember { mutableStateOf(true) }
     var isOtpMode by remember { mutableStateOf(false) }
-    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
@@ -114,15 +113,15 @@ fun AuthScreen(
                         }
                     } else if (isLoginMode) {
                         XiloTextField(
-                            value = username,
+                            value = email,
                             onValueChange = {
-                                username = it
-                                viewModel.clearFieldError(AuthField.Username)
+                                email = it
+                                viewModel.clearFieldError(AuthField.Email)
                             },
                             placeholder = "ایمیل",
                             modifier = Modifier.fillMaxWidth(),
-                            isError = fieldErrors.containsKey(AuthField.Username),
-                            errorText = fieldErrors[AuthField.Username],
+                            isError = fieldErrors.containsKey(AuthField.Email),
+                            errorText = fieldErrors[AuthField.Email],
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         XiloTextField(
@@ -212,7 +211,7 @@ fun AuthScreen(
                                 text = if (isLoginMode) "ورود به حساب" else "ساخت حساب کاربری",
                                 onClick = {
                                     if (isLoginMode) {
-                                        viewModel.login(username, password)
+                                        viewModel.login(email, password)
                                     } else {
                                         viewModel.register(
                                             email,

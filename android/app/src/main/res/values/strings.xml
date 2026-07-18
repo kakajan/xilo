@@ -29,6 +29,7 @@
     <string name="error_search">جستجو با خطا مواجه شد</string>
     <string name="error_login_failed">ورود انجام نشد</string>
     <string name="error_registration_failed">ثبت‌نام انجام نشد</string>
+    <string name="error_otp_sms_unavailable">ورود با پیامک موقتاً در دسترس نیست</string>
 
     <!-- Reply compose (Twitter-style) -->
     <string name="reply_compose_submit">پاسخ</string>

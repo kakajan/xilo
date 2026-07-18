@@ -418,6 +418,43 @@ class XiloDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migrate10To11_addsNullablePeerIdentityColumns() {
+        helper.createDatabase(V10_TO_V11_DB, 10).apply {
+            execSQL(
+                """
+                INSERT INTO chats (
+                    id, type, name, avatarUrl, lastMessageContent, lastMessageTime,
+                    unreadCount, isMuted, isArchived
+                ) VALUES ('chat-1', 'direct', 'Alice', NULL, 'hi', 100, 0, 0, 0)
+                """.trimIndent()
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(
+            V10_TO_V11_DB,
+            11,
+            true,
+            XiloMigrations.MIGRATION_10_11
+        ).apply {
+            query(
+                """
+                SELECT name, peerUserId, peerUsername, peerDisplayName, peerAvatarUrl
+                FROM chats WHERE id = 'chat-1'
+                """.trimIndent()
+            ).use {
+                it.moveToFirst()
+                assertEquals("Alice", it.getString(0))
+                assertNull(it.getString(1))
+                assertNull(it.getString(2))
+                assertNull(it.getString(3))
+                assertNull(it.getString(4))
+            }
+            close()
+        }
+    }
+
     private fun androidx.sqlite.db.SupportSQLiteDatabase.insertV1Chat() {
         execSQL(
             """
@@ -471,5 +508,6 @@ class XiloDatabaseMigrationTest {
         const val V7_TO_V8_DB = "migration-7-8-test"
         const val V8_TO_V9_DB = "migration-8-9-test"
         const val V9_TO_V10_DB = "migration-9-10-test"
+        const val V10_TO_V11_DB = "migration-10-11-test"
     }
 }

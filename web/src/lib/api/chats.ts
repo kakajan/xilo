@@ -11,6 +11,10 @@ export function listChats(cursor?: string, limit = 20) {
   return apiFetch<CursorPage<Chat>>(`/api/chats?${q}`);
 }
 
+export function getChat(id: string) {
+  return apiFetch<Chat>(`/api/chats/${id}`);
+}
+
 export function getSavedMessagesChat() {
   return apiFetch<Chat>("/api/chats/saved");
 }

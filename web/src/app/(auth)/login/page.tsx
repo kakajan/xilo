@@ -10,10 +10,12 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
+import { mapAuthApiError } from "@/lib/auth-errors";
 import type { AuthResponse } from "@/types/user";
 
 const loginSchema = z.object({
-  email: z.string().email("ایمیل نامعتبر است"),
+  // Backend accepts email or username in the `email` JSON field.
+  email: z.string().min(1, "ایمیل یا نام کاربری لازم است"),
   password: z.string().min(1, "رمز عبور لازم است"),
 });
 
@@ -42,7 +44,8 @@ export default function LoginPage() {
       await login(data);
       router.push("/");
     } catch (err) {
-      setError("root", { message: (err as Error).message || "ورود ناموفق بود" });
+      const mapped = mapAuthApiError((err as Error).message || "");
+      setError("root", { message: mapped.message || "ورود ناموفق بود" });
     }
   };
 
@@ -56,7 +59,19 @@ export default function LoginPage() {
       });
       setOtpSent(true);
     } catch (e) {
-      setOtpError(e instanceof Error ? e.message : "ارسال کد ناموفق بود");
+      const raw = e instanceof Error ? e.message : "";
+      const lower = raw.toLowerCase();
+      if (
+        lower.includes("sms") ||
+        lower.includes("ippanel") ||
+        lower.includes("not initialized") ||
+        lower.includes("not configured") ||
+        lower.includes("unavailable")
+      ) {
+        setOtpError("ورود با پیامک موقتاً در دسترس نیست.");
+      } else {
+        setOtpError(mapAuthApiError(raw).message || "ارسال کد ناموفق بود");
+      }
     } finally {
       setOtpBusy(false);
     }
@@ -82,7 +97,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto mt-16 max-w-md">
       <h1 className="mb-2 text-2xl font-bold">ورود به {brandName}</h1>
-      <p className="mb-6 text-sm text-muted-foreground">با ایمیل و رمز، یا کد یک‌بارمصرف</p>
+      <p className="mb-6 text-sm text-muted-foreground">با ایمیل یا نام کاربری و رمز، یا کد یک‌بارمصرف</p>
 
       <div className="mb-4 flex gap-2">
         <Button
@@ -106,13 +121,14 @@ export default function LoginPage() {
       {mode === "password" ? (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">ایمیل</label>
+            <label className="mb-1 block text-sm font-medium">ایمیل یا نام کاربری</label>
             <input
               {...register("email")}
-              type="email"
+              type="text"
               className="w-full min-h-11 rounded-lg border bg-background px-3 py-2"
-              placeholder="you@example.com"
+              placeholder="you@example.com یا username"
               dir="ltr"
+              autoComplete="username"
             />
             {errors.email && (
               <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>

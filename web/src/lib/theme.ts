@@ -87,11 +87,44 @@ export function mergeTheme(partial?: Partial<PlatformTheme> | null): PlatformThe
   };
 }
 
-/** Map palette fields onto --xilo-* CSS variables consumed by globals.css. */
+const ACTIVE_TOKEN_SUFFIXES = [
+  "background",
+  "foreground",
+  "card",
+  "card-foreground",
+  "popover",
+  "popover-foreground",
+  "primary",
+  "primary-foreground",
+  "secondary",
+  "secondary-foreground",
+  "muted",
+  "muted-foreground",
+  "accent",
+  "accent-foreground",
+  "destructive",
+  "border",
+  "input",
+  "ring",
+  "bubble-own",
+  "bubble-others",
+  "chat-bubble-own",
+  "chat-bubble-others",
+] as const;
+
+/**
+ * Map platform palettes onto --xilo-light-* / --xilo-dark-* only.
+ * Do NOT write active --xilo-* as inline styles — that overrides the
+ * `.dark { --xilo-*: var(--xilo-dark-*) }` rules and breaks next-themes.
+ */
 export function applyThemeToDocument(theme: PlatformTheme): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  setPaletteVars(root, "xilo", theme.light);
+  // Clear legacy inline active tokens from older clients.
+  for (const suffix of ACTIVE_TOKEN_SUFFIXES) {
+    root.style.removeProperty(`--xilo-${suffix}`);
+  }
+  setPaletteVars(root, "xilo-light", theme.light);
   setPaletteVars(root, "xilo-dark", theme.dark);
 }
 

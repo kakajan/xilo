@@ -3,6 +3,7 @@ package ir.xilo.app.data.repository
 import android.content.Context
 import android.net.Uri
 import dagger.hilt.android.qualifiers.ApplicationContext
+import ir.xilo.app.R
 import ir.xilo.app.data.local.dao.UserDao
 import ir.xilo.app.data.local.entity.UserEntity
 import ir.xilo.app.data.local.prefs.TokenManager
@@ -25,6 +26,9 @@ import kotlinx.coroutines.flow.flowOf
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
+import java.net.ConnectException
+import java.net.UnknownHostException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -58,7 +62,7 @@ class AuthRepository @Inject constructor(
             saveUserLocal(userProfile)
             Result.success(userProfile)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapNetworkFailure(e))
         }
     }
 
@@ -74,7 +78,7 @@ class AuthRepository @Inject constructor(
             saveUserLocal(userProfile)
             Result.success(userProfile)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapNetworkFailure(e))
         }
     }
 
@@ -83,7 +87,7 @@ class AuthRepository @Inject constructor(
             apiService.requestOtp(RequestOTPRequest(phone = phone))
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapNetworkFailure(e))
         }
     }
 
@@ -99,8 +103,22 @@ class AuthRepository @Inject constructor(
             saveUserLocal(userProfile)
             Result.success(userProfile)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapNetworkFailure(e))
         }
+    }
+
+    /** Surfaces host/connect failures with the shared Persian network message. */
+    private fun mapNetworkFailure(error: Exception): Exception {
+        var current: Throwable = error
+        while (true) {
+            when (current) {
+                is UnknownHostException, is ConnectException -> {
+                    return IOException(context.getString(R.string.error_network), error)
+                }
+            }
+            current = current.cause ?: break
+        }
+        return error
     }
 
     private val _onboardingCompleted = MutableStateFlow(isOnboardingCompleted())

@@ -37,6 +37,7 @@
     <string name="error_search">Search failed</string>
     <string name="error_login_failed">Login failed</string>
     <string name="error_registration_failed">Registration failed</string>
+    <string name="error_otp_sms_unavailable">SMS login is temporarily unavailable</string>
 
     <!-- Discover -->
     <string name="discover_action_reply">Reply</string>

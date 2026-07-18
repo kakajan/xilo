@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/url"
 	"sort"
@@ -43,6 +44,12 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
+	if e == nil {
+		return ""
+	}
+	if e.Cause != nil {
+		return fmt.Sprintf("%s: %v", e.Message, e.Cause)
+	}
 	return e.Message
 }
 
@@ -242,6 +249,9 @@ func (s *ChatService) ListChats(
 	chats, cursor, err := s.repo.ListChats(ctx, userID, params)
 	if err != nil {
 		return nil, "", translateRepositoryError(err, "chat")
+	}
+	if chats == nil {
+		chats = []*model.Chat{}
 	}
 	return chats, cursor, nil
 }

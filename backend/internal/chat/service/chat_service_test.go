@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -41,6 +42,10 @@ type fakeRepository struct {
 	idempotency      pkgidempotency.Request
 	membershipCalls  int
 	markReadErr      error
+	listChats        []*model.Chat
+	listChatsCursor  string
+	listChatsErr     error
+	listChatsCalled  bool
 }
 
 func (f *fakeRepository) CreateChat(
@@ -65,6 +70,18 @@ func (f *fakeRepository) CreateChat(
 		Outcome:        pkgidempotency.OutcomeNew,
 		ResponseStatus: http.StatusCreated,
 	}, nil
+}
+
+func (f *fakeRepository) ListChats(
+	_ context.Context,
+	_ string,
+	_ model.ListParams,
+) ([]*model.Chat, string, error) {
+	f.listChatsCalled = true
+	if f.listChatsErr != nil {
+		return nil, "", f.listChatsErr
+	}
+	return f.listChats, f.listChatsCursor, nil
 }
 
 func (f *fakeRepository) GetChat(
@@ -535,6 +552,73 @@ func TestRetryableRepositoryErrorMapsToStableServiceCode(t *testing.T) {
 	}
 	if strings.Contains(serviceErr.Message, "40001") || strings.Contains(serviceErr.Message, "deadlock") {
 		t.Fatalf("service error leaked database details: %q", serviceErr.Message)
+	}
+}
+
+func TestListChatsEmptyReturnsNonNilSlice(t *testing.T) {
+	svc := NewChatService(&fakeRepository{listChats: nil})
+
+	chats, cursor, err := svc.ListChats(context.Background(), testActor, model.ListParams{})
+	if err != nil {
+		t.Fatalf("ListChats: %v", err)
+	}
+	if chats == nil {
+		t.Fatal("expected non-nil empty chat slice")
+	}
+	if len(chats) != 0 {
+		t.Fatalf("len(chats) = %d, want 0", len(chats))
+	}
+	if cursor != "" {
+		t.Fatalf("cursor = %q, want empty", cursor)
+	}
+}
+
+func TestListChatsPreservesWrappedRepositoryCause(t *testing.T) {
+	tests := []struct {
+		name    string
+		cause   error
+		wantSub string
+	}{
+		{
+			name:    "list chats",
+			cause:   fmt.Errorf("list chats: %w", errors.New("db unavailable")),
+			wantSub: "list chats",
+		},
+		{
+			name:    "load chat members",
+			cause:   fmt.Errorf("load chat members: %w", errors.New("db unavailable")),
+			wantSub: "load chat members",
+		},
+		{
+			name:    "load last chat messages",
+			cause:   fmt.Errorf("load last chat messages: %w", errors.New("db unavailable")),
+			wantSub: "load last chat messages",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := NewChatService(&fakeRepository{listChatsErr: tt.cause})
+			_, _, err := svc.ListChats(context.Background(), testActor, model.ListParams{})
+			assertServiceCode(t, err, CodeInternal)
+
+			var serviceErr *Error
+			if !errors.As(err, &serviceErr) {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if serviceErr.Cause == nil {
+				t.Fatal("expected Cause to preserve repository wrap")
+			}
+			if !strings.Contains(serviceErr.Cause.Error(), tt.wantSub) {
+				t.Fatalf("cause = %q, want substring %q", serviceErr.Cause.Error(), tt.wantSub)
+			}
+			if !strings.Contains(err.Error(), tt.wantSub) {
+				t.Fatalf("Error() = %q, want substring %q", err.Error(), tt.wantSub)
+			}
+			if serviceErr.Message != "internal server error" {
+				t.Fatalf("Message = %q, want opaque internal message", serviceErr.Message)
+			}
+		})
 	}
 }
 

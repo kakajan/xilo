@@ -107,16 +107,29 @@ func (s *AuthService) Register(ctx context.Context, req *model.RegisterRequest) 
 }
 
 func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest) (*model.AuthResponse, error) {
-	if req.Email == "" || req.Password == "" {
+	identifier := strings.TrimSpace(req.Email)
+	if identifier == "" || req.Password == "" {
 		return nil, ErrInvalidCredentials
 	}
 
-	user, err := s.repo.FindByEmail(ctx, req.Email)
+	var (
+		user *model.User
+		err  error
+	)
+	// JSON field stays "email" for client compat; value may be email or username.
+	if strings.Contains(identifier, "@") {
+		user, err = s.repo.FindByEmail(ctx, identifier)
+	} else {
+		user, err = s.repo.FindByUsername(ctx, identifier)
+	}
 	if err != nil {
-		if err == repository.ErrUserNotFound {
+		if errors.Is(err, repository.ErrUserNotFound) {
 			return nil, ErrInvalidCredentials
 		}
 		return nil, err
+	}
+	if user == nil {
+		return nil, ErrInvalidCredentials
 	}
 
 	if err := hash.Verify(req.Password, user.PasswordHash); err != nil {

@@ -278,6 +278,11 @@ if [ -f /etc/systemd/system/docker.service.d/http-proxy.conf ]; then
   systemctl daemon-reload || true
 fi
 docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env up -d ${buildFlag}
+# Ensure SQL migrations are applied before serving traffic (avoids relation-does-not-exist 500s).
+chmod +x ${remoteDir}/infra/server/apply-migrations.sh || true
+bash ${remoteDir}/infra/server/apply-migrations.sh ${remoteDir}
+# Restart API so it reconnects after schema catch-up
+docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env up -d --no-deps --force-recreate api-gateway
 bash ${remoteDir}/infra/server/apply-nginx-proxy.sh ${remoteDir}/infra/nginx || true
 curl -sS -o /dev/null -w 'aile:%{http_code}\\n' https://aile.ir/ || true
 curl -sS -o /dev/null -w 'brain:%{http_code}\\n' https://brain.aile.ir/health || true
@@ -323,15 +328,10 @@ set +a
 export XILO_IMAGE_TAG=${tag}
 docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env up -d --build --no-deps web
 docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env up -d --no-deps api-gateway
+chmod +x ${remoteDir}/infra/server/apply-migrations.sh || true
+bash ${remoteDir}/infra/server/apply-migrations.sh ${remoteDir}
+docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env up -d --no-deps --force-recreate api-gateway
 bash ${remoteDir}/infra/server/apply-nginx-proxy.sh ${remoteDir}/infra/nginx || true
-# Apply brand + default-admin SQL (idempotent; host files piped into postgres)
-. ./.compose.secrets.env
-docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env exec -T postgres \
-  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 \
-  < ${remoteDir}/backend/migrations/000017_platform_brand.up.sql || true
-docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env exec -T postgres \
-  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 \
-  < ${remoteDir}/backend/migrations/000018_seed_default_admin.up.sql || true
 curl -sS -o /dev/null -w 'aile:%{http_code}\\n' https://aile.ir/ || true
 curl -sS -o /dev/null -w 'brain:%{http_code}\\n' https://brain.aile.ir/health || true
 echo ${tag} > .prev_tag

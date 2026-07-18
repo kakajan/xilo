@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import java.io.IOException
+import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.inject.Inject
@@ -31,8 +32,9 @@ class ErrorMessageResolver @Inject constructor(
         val root = throwable.rootCause()
         return when (root) {
             is HttpException -> fromHttpException(root, fallbackResId)
-            is UnknownHostException, is IOException -> string(R.string.error_network)
             is SocketTimeoutException -> string(R.string.error_timeout)
+            is UnknownHostException, is ConnectException -> string(R.string.error_network)
+            is IOException -> string(R.string.error_network)
             else -> root.message?.let { mapApiMessage(it)?.let(::string) }
                 ?: string(fallbackResId)
         }
@@ -109,7 +111,19 @@ class ErrorMessageResolver @Inject constructor(
             return R.string.error_avatar_upload
         }
 
+        if (isSmsUnavailableMessage(normalized)) {
+            return R.string.error_otp_sms_unavailable
+        }
+
         return null
+    }
+
+    private fun isSmsUnavailableMessage(message: String): Boolean {
+        val normalized = message.trim().lowercase()
+        return normalized.contains("failed to send otp") ||
+            normalized.contains("sms") ||
+            normalized.contains("not initialized") ||
+            (normalized.contains("otp") && normalized.contains("unavailable"))
     }
 
     private fun resolveMessage(message: String): String? {
@@ -143,12 +157,24 @@ class ErrorMessageResolver @Inject constructor(
                 val hint = string(R.string.api_invalid_credentials)
                 ParsedFormError(
                     fieldErrors = mapOf(
-                        "username" to hint,
+                        "email" to hint,
                         "password" to hint,
                     )
                 )
             }
-            else -> ParsedFormError(generalError = resolveMessage(trimmed) ?: trimmed)
+            else -> {
+                // Bare password policy messages (without "password:" prefix) still belong on the password field.
+                if (trimmed.lowercase() in VALIDATION_MAP && trimmed.lowercase().startsWith("password ")) {
+                    val resolved = resolveMessage(trimmed)
+                    if (resolved != null) {
+                        return ParsedFormError(fieldErrors = mapOf("password" to resolved))
+                    }
+                }
+                if (isSmsUnavailableMessage(trimmed)) {
+                    return ParsedFormError(generalError = string(R.string.error_otp_sms_unavailable))
+                }
+                ParsedFormError(generalError = resolveMessage(trimmed) ?: trimmed)
+            }
         }
     }
 
@@ -201,6 +227,7 @@ class ErrorMessageResolver @Inject constructor(
             "user not found" to R.string.api_user_not_found,
             "post not found" to R.string.error_not_found,
             "failed" to R.string.api_failed,
+            "failed to send otp" to R.string.error_otp_sms_unavailable,
             "no file provided" to R.string.error_avatar_upload,
             "unable to read image" to R.string.error_avatar_upload,
         )

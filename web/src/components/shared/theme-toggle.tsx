@@ -24,15 +24,13 @@ export function ThemeToggle({ className }: { className?: string }) {
       className={className ?? "min-h-11 min-w-11"}
       aria-label={isDark ? "حالت روشن" : "حالت تاریک"}
       title={isDark ? "حالت روشن" : "حالت تاریک"}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => {
+        // Prefer resolvedTheme after mount; if still unknown, force dark.
+        const next = mounted && resolvedTheme === "dark" ? "light" : "dark";
+        setTheme(next);
+      }}
     >
-      {!mounted ? (
-        <Sun className="h-5 w-5" />
-      ) : isDark ? (
-        <Sun className="h-5 w-5" />
-      ) : (
-        <Moon className="h-5 w-5" />
-      )}
+      {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </Button>
   );
 }

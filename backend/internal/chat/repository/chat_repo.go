@@ -612,9 +612,15 @@ func (r *ChatRepo) attachMembers(ctx context.Context, chats []*model.Chat) error
 	ids := make([]string, 0, len(chats))
 	byID := make(map[string]*model.Chat, len(chats))
 	for _, chat := range chats {
+		if chat == nil {
+			continue
+		}
 		chat.Members = []model.ChatMember{}
 		ids = append(ids, chat.ID)
 		byID[chat.ID] = chat
+	}
+	if len(ids) == 0 {
+		return nil
 	}
 
 	var members []model.ChatMember
@@ -629,6 +635,9 @@ func (r *ChatRepo) attachMembers(ctx context.Context, chats []*model.Chat) error
 	`, pq.Array(ids))
 	if err != nil {
 		return fmt.Errorf("load chat members: %w", err)
+	}
+	if members == nil {
+		members = []model.ChatMember{}
 	}
 	for _, member := range members {
 		if chat := byID[member.ChatID]; chat != nil {
@@ -645,8 +654,14 @@ func (r *ChatRepo) attachLastMessages(ctx context.Context, chats []*model.Chat) 
 	ids := make([]string, 0, len(chats))
 	byID := make(map[string]*model.Chat, len(chats))
 	for _, chat := range chats {
+		if chat == nil {
+			continue
+		}
 		ids = append(ids, chat.ID)
 		byID[chat.ID] = chat
+	}
+	if len(ids) == 0 {
+		return nil
 	}
 
 	var messages []*model.Message
@@ -666,6 +681,9 @@ func (r *ChatRepo) attachLastMessages(ctx context.Context, chats []*model.Chat) 
 		return fmt.Errorf("load last chat messages: %w", err)
 	}
 	for _, message := range messages {
+		if message == nil {
+			continue
+		}
 		message.Reactions = []model.Reaction{}
 		message.ReadBy = []model.Read{}
 		if chat := byID[message.ChatID]; chat != nil {

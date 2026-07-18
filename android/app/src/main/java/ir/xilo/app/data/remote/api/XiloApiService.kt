@@ -180,6 +180,9 @@ interface XiloApiService {
     @GET("api/chats/saved")
     suspend fun getSavedMessagesChat(): ChatResponse
 
+    @GET("api/chats/{id}")
+    suspend fun getChat(@Path("id") id: String): ChatResponse
+
     @GET("api/chats/{id}/messages")
     suspend fun listMessages(
         @Path("id") id: String,

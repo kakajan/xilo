@@ -9,6 +9,7 @@ import ir.xilo.app.data.local.entity.MessageEntity
 import ir.xilo.app.data.local.entity.OutboxOperationEntity
 import ir.xilo.app.data.local.entity.OutboxOperationType
 import ir.xilo.app.data.local.entity.OutboxState
+import ir.xilo.app.data.local.prefs.TokenManager
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.repository.toChatEntity
 import ir.xilo.app.data.repository.toMessageEntity
@@ -47,7 +48,8 @@ class ChatOutboxProcessor @Inject constructor(
     private val apiService: XiloApiService,
     private val payloadCodec: OutboxPayloadCodec,
     private val retryPolicy: OutboxRetryPolicy,
-    private val clock: OutboxClock
+    private val clock: OutboxClock,
+    private val tokenManager: TokenManager
 ) {
     suspend fun nextReadyOperationKey(): String? =
         outboxDao.getNextReady(clock.nowMillis())?.operationKey
@@ -162,7 +164,7 @@ class ChatOutboxProcessor @Inject constructor(
     ): OutboxProcessResult {
         val request = payloadCodec.decodeCreateChat(operation.payload)
         val response = apiService.createChat(operation.operationKey, request)
-        val entity = response.toChatEntity(::parseDateToEpoch)
+        val entity = response.toChatEntity(tokenManager.getUserId(), ::parseDateToEpoch)
         reconcile {
             chatDao.insertChat(entity)
             check(outboxDao.delete(operation.operationKey) == 1) {

@@ -1,5 +1,6 @@
 package ir.xilo.app.data.repository
 
+import ir.xilo.app.data.remote.dto.ChatMemberResponse
 import ir.xilo.app.data.remote.dto.ChatResponse
 import ir.xilo.app.data.remote.dto.MessageReadResponse
 import ir.xilo.app.data.remote.dto.MessageResponse
@@ -64,6 +65,71 @@ class ChatRepositoryMappingTest {
     }
 
     @Test
+    fun chatMapping_extractsPeerExcludingCurrentUser() {
+        val chat = ChatResponse(
+            id = "chat-1",
+            type = "direct",
+            name = null,
+            createdAt = "created",
+            updatedAt = "updated",
+            members = listOf(
+                member(userId = "me", username = "meuser", displayName = "Me"),
+                member(
+                    userId = "peer-1",
+                    username = "alice",
+                    displayName = "Alice",
+                    avatarUrl = "https://cdn.example/alice.png"
+                )
+            )
+        )
+
+        val entity = chat.toChatEntity(currentUserId = "me") { 1L }
+
+        assertEquals("peer-1", entity.peerUserId)
+        assertEquals("alice", entity.peerUsername)
+        assertEquals("Alice", entity.peerDisplayName)
+        assertEquals("https://cdn.example/alice.png", entity.peerAvatarUrl)
+    }
+
+    @Test
+    fun chatMapping_withoutCurrentUserId_picksFirstMemberWithUsername() {
+        val chat = ChatResponse(
+            id = "chat-1",
+            type = "direct",
+            createdAt = "created",
+            updatedAt = "updated",
+            members = listOf(
+                member(userId = "u1", username = "", displayName = "Blank"),
+                member(userId = "u2", username = "bob", displayName = "Bob")
+            )
+        )
+
+        val entity = chat.toChatEntity(currentUserId = null) { 1L }
+
+        assertEquals("u2", entity.peerUserId)
+        assertEquals("bob", entity.peerUsername)
+        assertEquals("Bob", entity.peerDisplayName)
+    }
+
+    @Test
+    fun chatMapping_savedType_skipsPeerExtraction() {
+        val chat = ChatResponse(
+            id = "saved-1",
+            type = "saved",
+            createdAt = "created",
+            updatedAt = "updated",
+            members = listOf(
+                member(userId = "me", username = "meuser", displayName = "Me")
+            )
+        )
+
+        val entity = chat.toChatEntity(currentUserId = "me") { 1L }
+
+        assertNull(entity.peerUserId)
+        assertNull(entity.peerUsername)
+    }
+
+    @Test
     fun messageMapping_derivesReadStateAndKeepsMissingSenderDisplaySafe() {
         val message = backendMessage(
             type = MessageType.TEXT,
@@ -97,5 +163,20 @@ class ChatRepositoryMappingTest {
         createdAt = "message-created",
         updatedAt = "message-updated",
         readBy = readBy
+    )
+
+    private fun member(
+        userId: String,
+        username: String,
+        displayName: String,
+        avatarUrl: String? = null
+    ) = ChatMemberResponse(
+        chatId = "chat-1",
+        userId = userId,
+        role = "member",
+        username = username,
+        displayName = displayName,
+        avatarUrl = avatarUrl,
+        joinedAt = "joined"
     )
 }

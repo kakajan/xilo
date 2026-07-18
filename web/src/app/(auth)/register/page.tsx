@@ -8,10 +8,16 @@ import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
 import { Button } from "@/components/ui/button";
+import { mapAuthApiError, passwordMeetsServerRules, passwordRulesHint } from "@/lib/auth-errors";
 
 const registerSchema = z.object({
   email: z.string().email("ایمیل نامعتبر است"),
-  password: z.string().min(8, "حداقل ۸ کاراکتر"),
+  password: z
+    .string()
+    .min(8, "رمز عبور باید حداقل ۸ کاراکتر باشد.")
+    .refine(passwordMeetsServerRules, {
+      message: passwordRulesHint(),
+    }),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -32,7 +38,12 @@ export default function RegisterPage() {
       await registerUser({ email: data.email, password: data.password });
       router.push("/settings?username=1");
     } catch (err) {
-      setError("root", { message: (err as Error).message });
+      const mapped = mapAuthApiError((err as Error).message || "");
+      if (mapped.field) {
+        setError(mapped.field, { message: mapped.message });
+      } else {
+        setError("root", { message: mapped.message });
+      }
     }
   };
 
@@ -51,6 +62,7 @@ export default function RegisterPage() {
             className="w-full min-h-11 rounded-lg border bg-background px-3 py-2"
             placeholder="you@example.com"
             dir="ltr"
+            autoComplete="email"
           />
           {errors.email && (
             <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>
@@ -64,7 +76,9 @@ export default function RegisterPage() {
             className="w-full min-h-11 rounded-lg border bg-background px-3 py-2"
             placeholder="••••••••"
             dir="ltr"
+            autoComplete="new-password"
           />
+          <p className="mt-1 text-xs text-muted-foreground">{passwordRulesHint()}</p>
           {errors.password && (
             <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>
           )}

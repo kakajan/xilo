@@ -479,6 +479,7 @@ func writeError(c *fiber.Ctx, err error) error {
 		serviceErr = &service.Error{
 			Code:    service.CodeInternal,
 			Message: "internal server error",
+			Cause:   err,
 		}
 	}
 
@@ -500,7 +501,14 @@ func writeError(c *fiber.Ctx, err error) error {
 		c.Set("Retry-After", "1")
 	}
 	if status >= fiber.StatusInternalServerError {
-		slog.Error("chat request failed", "code", serviceErr.Code, "error", serviceErr.Cause)
+		// Always include Cause when set (wrapped list chats / members / messages
+		// failures). Also log the original err so nil-Cause cases stay diagnosable.
+		slog.Error(
+			"chat request failed",
+			"code", serviceErr.Code,
+			"error", serviceErr.Cause,
+			"raw", err,
+		)
 	}
 	return c.Status(status).JSON(model.ErrorResponse{
 		Error: serviceErr.Message,
