@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Disk hygiene + Docker log limits on Iran app server (root).
+# IMPORTANT: do NOT prune all images (-af) — that forces multi‑GB re-pulls on next deploy.
 set -euo pipefail
 
 echo "=== Disk before ==="
@@ -12,7 +13,6 @@ if [[ -f /etc/docker/daemon.json ]]; then
   cp -a /etc/docker/daemon.json "/etc/docker/daemon.json.bak.$(date +%s)"
 fi
 
-# Merge-ish: write known-good production defaults
 cat >/etc/docker/daemon.json <<'EOF'
 {
   "log-driver": "json-file",
@@ -48,10 +48,9 @@ cat >/etc/logrotate.d/xilo <<'EOF'
 }
 EOF
 
-# Safe Docker prune (never volume prune)
+# Safe only: stopped containers + dangling layers. Keep base images (postgres/node/…).
 docker container prune -f || true
-docker image prune -af || true
-docker builder prune -af || true
+docker image prune -f || true
 
 apt-get autoremove -y || true
 apt-get clean || true
@@ -59,6 +58,7 @@ apt-get clean || true
 cat >/etc/cron.weekly/xilo-disk <<'EOF'
 #!/bin/sh
 journalctl --vacuum-size=200M >/dev/null 2>&1 || true
+docker container prune -f >/dev/null 2>&1 || true
 docker image prune -f >/dev/null 2>&1 || true
 EOF
 chmod +x /etc/cron.weekly/xilo-disk
