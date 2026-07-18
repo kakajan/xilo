@@ -65,66 +65,67 @@ export function MetadataSidebar() {
 
   return (
     <div className="space-y-5">
-      <h3 className="font-semibold text-sm">Post Settings</h3>
+      <h3 className="text-sm font-semibold">تنظیمات پست</h3>
 
       <div>
-        <label className="block text-xs font-medium mb-1 text-muted-foreground">Title</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">عنوان</label>
         <input
           type="text"
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
-          placeholder="Post title"
+          placeholder="عنوان پست"
           maxLength={200}
-          className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1 text-muted-foreground">Slug</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">نامک (اسلاگ)</label>
         <input
           type="text"
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
-          placeholder="post-slug"
+          placeholder="namak-post"
           maxLength={250}
-          className="w-full px-3 py-2 border rounded-lg bg-background text-sm font-mono"
+          className="w-full rounded-lg border bg-background px-3 py-2 font-mono text-sm"
+          dir="ltr"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1 text-muted-foreground">Excerpt</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">خلاصه</label>
         <textarea
           value={excerpt}
           onChange={(e) => setExcerpt(e.target.value)}
-          placeholder="Brief description..."
+          placeholder="توضیح کوتاه..."
           rows={3}
           maxLength={500}
-          className="w-full px-3 py-2 border rounded-lg bg-background text-sm resize-none"
+          className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1 text-muted-foreground">Category</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">دسته‌بندی</label>
         <input
           type="text"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          placeholder="Technology, Design, etc."
+          placeholder="فناوری، طراحی و ..."
           maxLength={100}
-          className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1 text-muted-foreground">Tags</label>
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">برچسب‌ها</label>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-full text-xs"
+              className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground"
             >
               {tag}
-              <button onClick={() => removeTag(tag)}>
+              <button type="button" onClick={() => removeTag(tag)} aria-label={`حذف ${tag}`}>
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -136,9 +137,9 @@ export function MetadataSidebar() {
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
-            placeholder="Add tag"
+            placeholder="افزودن برچسب"
             maxLength={30}
-            className="flex-1 px-3 py-2 border rounded-lg bg-background text-sm"
+            className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
           />
           <Button variant="outline" size="sm" onClick={handleAddTag} disabled={tags.length >= 10}>
             <Plus className="h-4 w-4" />
@@ -147,43 +148,48 @@ export function MetadataSidebar() {
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1 text-muted-foreground">Cover Image</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">تصویر کاور</label>
         {coverImageUrl ? (
           <div className="relative">
-            <img src={coverImageUrl} alt="Cover" className="w-full h-32 object-cover rounded-lg" />
+            <img src={coverImageUrl} alt="کاور" className="h-32 w-full rounded-lg object-cover" />
             <button
+              type="button"
               onClick={() => setCoverImageUrl("")}
-              className="absolute top-2 right-2 bg-background/80 rounded-full p-1"
+              className="absolute top-2 end-2 rounded-full bg-background/80 p-1"
+              aria-label="حذف تصویر کاور"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         ) : (
-          <label className="flex items-center justify-center border-2 border-dashed rounded-lg h-20 cursor-pointer hover:bg-accent/50 text-sm text-muted-foreground">
-            {uploading ? "Uploading..." : "Click to upload"}
+          <label className="flex h-20 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed text-sm text-muted-foreground hover:bg-accent/50">
+            {uploading ? "در حال آپلود..." : "برای آپلود کلیک کنید"}
             <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
           </label>
         )}
       </div>
 
       <div className="flex items-center justify-between">
-        <label className="text-xs font-medium">Premium</label>
+        <label className="text-xs font-medium">ویژه (پرمیوم)</label>
         <button
+          type="button"
           onClick={() => setIsPremium(!isPremium)}
-          className={`relative w-9 h-5 rounded-full transition-colors ${
+          className={`relative h-5 w-9 rounded-full transition-colors ${
             isPremium ? "bg-primary" : "bg-muted"
           }`}
+          aria-pressed={isPremium}
+          aria-label="پست پرمیوم"
         >
           <span
             className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-              isPremium ? "left-4" : "left-0.5"
+              isPremium ? "start-4" : "start-0.5"
             }`}
           />
         </button>
       </div>
 
       <div>
-        <label className="text-xs font-medium mb-2 block text-muted-foreground">Status</label>
+        <label className="mb-2 block text-xs font-medium text-muted-foreground">وضعیت</label>
         <div className="flex gap-2">
           <Button
             variant={status === "draft" ? "default" : "outline"}
@@ -191,7 +197,7 @@ export function MetadataSidebar() {
             onClick={() => setStatus("draft")}
             className="flex-1"
           >
-            Draft
+            پیش‌نویس
           </Button>
           <Button
             variant={status === "published" ? "default" : "outline"}
@@ -199,7 +205,7 @@ export function MetadataSidebar() {
             onClick={() => setStatus("published")}
             className="flex-1"
           >
-            Publish
+            انتشار
           </Button>
         </div>
       </div>

@@ -60,6 +60,10 @@ func (h *PostHandler) GetBySlug(c *fiber.Ctx) error {
 	slug := c.Params("slug")
 	viewerID, _ := c.Locals("userID").(string)
 	post, err := h.svc.GetBySlug(c.UserContext(), slug, viewerID)
+	// Allow /posts/{uuid} for the editor when slug lookup misses.
+	if err != nil && errors.Is(err, repository.ErrPostNotFound) {
+		post, err = h.svc.GetByID(c.UserContext(), slug)
+	}
 	if err != nil {
 		if errors.Is(err, repository.ErrPostNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{

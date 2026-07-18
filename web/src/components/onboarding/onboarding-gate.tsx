@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
-
-const KEY = "xilo_onboarding_done";
+import { clearOnboardingPending, isOnboardingPending } from "@/lib/onboarding";
 
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const brandName = useBrandStore((s) => s.brand.name_fa);
   const slides = [
@@ -29,10 +30,17 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const done = localStorage.getItem(KEY) === "1";
-    setShow(isAuthenticated && !done);
+    // Only after first registration (pending flag), never on ordinary login.
+    // Defer until the user leaves /settings so username onboarding is not blocked.
+    const deferForSettings = pathname.startsWith("/settings");
+    setShow(isAuthenticated && isOnboardingPending() && !deferForSettings);
     setReady(true);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, pathname]);
+
+  const dismiss = () => {
+    clearOnboardingPending();
+    setShow(false);
+  };
 
   if (!ready) return <>{children}</>;
   if (!show) return <>{children}</>;
@@ -57,30 +65,17 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
               />
             ))}
           </div>
-          <div className="flex gap-3 justify-center">
+          <div className="flex justify-center gap-3">
             {!last ? (
               <Button className="min-h-11 px-8" onClick={() => setStep((s) => s + 1)}>
                 بعدی
               </Button>
             ) : (
-              <Button
-                className="min-h-11 px-8"
-                onClick={() => {
-                  localStorage.setItem(KEY, "1");
-                  setShow(false);
-                }}
-              >
+              <Button className="min-h-11 px-8" onClick={dismiss}>
                 شروع کنیم
               </Button>
             )}
-            <Button
-              variant="ghost"
-              className="min-h-11"
-              onClick={() => {
-                localStorage.setItem(KEY, "1");
-                setShow(false);
-              }}
-            >
+            <Button variant="ghost" className="min-h-11" onClick={dismiss}>
               رد کردن
             </Button>
           </div>

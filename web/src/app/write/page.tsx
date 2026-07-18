@@ -10,7 +10,6 @@ import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
 import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
 import { Button } from "@/components/ui/button";
-import { BackButton } from "@/components/shared/back-button";
 import type { Post } from "@/types/post";
 
 export default function WritePage() {
@@ -94,13 +93,10 @@ export default function WritePage() {
   }
 
   return (
-    <div className="lg:flex lg:gap-8">
+    <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 flex-1">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <BackButton fallbackHref="/" />
-            <h1 className="min-w-0 text-xl font-bold">پست جدید</h1>
-          </div>
+          <h1 className="min-w-0 text-xl font-bold">پست جدید</h1>
           <Button className="min-h-11 shrink-0" onClick={handleSubmit} disabled={saving}>
             {status === "published"
               ? saving
@@ -117,7 +113,7 @@ export default function WritePage() {
         <TiptapEditor onSave={handleSave} contentRef={contentRef} />
       </div>
 
-      <aside className="mt-8 w-64 shrink-0 lg:mt-0">
+      <aside className="w-full shrink-0 md:sticky md:top-6 md:w-72 lg:w-80">
         <MetadataSidebar />
       </aside>
     </div>

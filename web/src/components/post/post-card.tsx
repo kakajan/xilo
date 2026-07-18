@@ -3,21 +3,31 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Bookmark, Heart, MessageCircle, Share2 } from "lucide-react";
-import { readingTimeText, cn, getInitials } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RepostButton } from "@/components/post/repost-button";
+import { PostOwnerMenu } from "@/components/post/post-owner-menu";
 import { useFormatDate } from "@/hooks/use-format-date";
 import { bookmarkPost, unbookmarkPost } from "@/lib/api/bookmarks";
 import { apiFetch } from "@/lib/api-client";
+import { useAuthStore } from "@/stores/auth-store";
 import type { Post } from "@/types/post";
 
-export function PostCard({ post }: { post: Post }) {
+export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => void }) {
   const formatDate = useFormatDate();
+  const user = useAuthStore((s) => s.user);
+  const isOwner =
+    !!user &&
+    (user.id === post.author_id ||
+      (!!post.author?.username && user.username === post.author.username));
   const authorName = post.author?.display_name || post.author?.username || "ناشناس";
   const likeCount = post.reactions?.like ?? post.reactions?.heart ?? 0;
   const [liked, setLiked] = useState(post.viewer_reactions?.includes("like") ?? false);
   const [likes, setLikes] = useState(likeCount);
   const [bookmarked, setBookmarked] = useState(post.is_bookmarked ?? false);
+  const [hidden, setHidden] = useState(false);
+
+  if (hidden) return null;
 
   const href = post.author?.username
     ? `/${post.author.username}/${post.slug}`
@@ -75,19 +85,44 @@ export function PostCard({ post }: { post: Post }) {
             <AvatarFallback>{getInitials(authorName)}</AvatarFallback>
           </Avatar>
         </Link>
-        <div className="min-w-0 text-sm">
+        <div className="min-w-0 flex-1 text-sm">
           <Link
             href={post.author?.username ? `/${post.author.username}` : "#"}
             className="font-semibold hover:underline"
           >
             {authorName}
           </Link>
-          <p className="text-xs text-muted-foreground">
-            {post.author?.username ? `@${post.author.username}` : ""}
-            {post.published_at ? ` · ${formatDate(post.published_at)}` : ""}
-            {post.reading_time ? ` · ${readingTimeText(post.reading_time)}` : ""}
+          <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+            {post.author?.username ? (
+              <span dir="ltr" className="inline-block">
+                @{post.author.username}
+              </span>
+            ) : null}
+            {post.published_at ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{formatDate(post.published_at)}</span>
+              </>
+            ) : null}
+            {post.reading_time ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>
+                  <bdi>{post.reading_time}</bdi> دقیقه مطالعه
+                </span>
+              </>
+            ) : null}
           </p>
         </div>
+        {isOwner ? (
+          <PostOwnerMenu
+            post={post}
+            onRemoved={() => {
+              setHidden(true);
+              onRemoved?.();
+            }}
+          />
+        ) : null}
       </div>
 
       <Link href={href} className="block">

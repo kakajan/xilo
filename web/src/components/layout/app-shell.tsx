@@ -9,7 +9,7 @@ import { DesktopSideNav } from "@/components/layout/desktop-side-nav";
 import { useChromeVisibility } from "@/hooks/use-chrome-visibility";
 import { OnboardingGate } from "@/components/onboarding/onboarding-gate";
 
-const BARE_PREFIXES = ["/write", "/dashboard", "/login", "/register"];
+const BARE_PREFIXES = ["/write", "/login", "/register"];
 
 function isBareLayout(pathname: string) {
   return BARE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -21,10 +21,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { visible } = useChromeVisibility();
 
   if (bare) {
+    const writeWide = pathname === "/write" || pathname.startsWith("/write/");
     return (
       <div className="min-h-screen bg-background">
         <OfflineBanner />
-        <main className="mx-auto max-w-4xl px-4 py-6">{children}</main>
+        <main
+          className={`mx-auto px-4 py-6 ${writeWide ? "max-w-6xl" : "max-w-4xl"}`}
+        >
+          {children}
+        </main>
       </div>
     );
   }

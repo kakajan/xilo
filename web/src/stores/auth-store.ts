@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { User, AuthResponse, LoginRequest, RegisterRequest } from "@/types/user";
 import { apiFetch } from "@/lib/api-client";
 import { clearAuthTokens, setAuthTokens } from "@/lib/auth-tokens";
+import { markOnboardingPending } from "@/lib/onboarding";
 
 interface AuthState {
   user: User | null;
@@ -59,6 +60,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         method: "POST",
         body: JSON.stringify(req),
       });
+      markOnboardingPending();
       get().applyAuthResponse(res);
     } catch (err) {
       set({ isLoading: false, authChecked: true });

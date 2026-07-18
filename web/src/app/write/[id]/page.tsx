@@ -1,25 +1,28 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { MetadataSidebar } from "@/components/editor/metadata-sidebar";
 import { useEditorStore } from "@/stores/editor-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
+import { fetchPostForEdit } from "@/lib/api/posts";
 import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BackButton } from "@/components/shared/back-button";
 import type { Post } from "@/types/post";
 
 export default function EditPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const slugHint = searchParams.get("slug");
   const { isAuthenticated } = useAuthStore();
   const store = useEditorStore();
   const contentRef = useRef<{ html: string; json: string } | null>(null);
   const [json, setJson] = useState("");
+  const [postId, setPostId] = useState("");
   const [authorUsername, setAuthorUsername] = useState("");
   const [postSlug, setPostSlug] = useState("");
   const [saving, setSaving] = useState(false);
@@ -28,8 +31,11 @@ export default function EditPage() {
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
+      setError("");
       try {
-        const post = await apiFetch<Post>(`/api/posts/${id}`);
+        const post = await fetchPostForEdit(id, slugHint);
+        setPostId(post.id);
         store.setTitle(post.title);
         store.setSlug(post.slug);
         store.setExcerpt(post.excerpt || "");
@@ -47,9 +53,9 @@ export default function EditPage() {
       }
       setLoading(false);
     }
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per id
-  }, [id]);
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load when route identity changes
+  }, [id, slugHint]);
 
   const handleSave = useCallback((newHtml: string, newJson: string) => {
     setJson(newJson);
@@ -67,11 +73,16 @@ export default function EditPage() {
       return;
     }
 
+    if (!postId) {
+      setError("شناسه پست مشخص نیست");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
     try {
-      const post = await apiFetch<Post>(`/api/posts/${id}`, {
+      const post = await apiFetch<Post>(`/api/posts/${postId}`, {
         method: "PATCH",
         body: JSON.stringify({
           title: store.title,
@@ -119,13 +130,10 @@ export default function EditPage() {
   }
 
   return (
-    <div className="lg:flex lg:gap-8">
+    <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
       <div className="min-w-0 flex-1">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <BackButton fallbackHref="/" />
-            <h1 className="min-w-0 text-xl font-bold">ویرایش پست</h1>
-          </div>
+          <h1 className="min-w-0 text-xl font-bold">ویرایش پست</h1>
           <Button className="shrink-0" onClick={handleSubmit} disabled={saving}>
             {store.status === "published"
               ? saving
@@ -142,7 +150,7 @@ export default function EditPage() {
         <TiptapEditor content={json} onSave={handleSave} contentRef={contentRef} />
       </div>
 
-      <aside className="mt-8 w-64 shrink-0 lg:mt-0">
+      <aside className="w-full shrink-0 md:sticky md:top-6 md:w-72 lg:w-80">
         <MetadataSidebar />
       </aside>
     </div>
