@@ -4,7 +4,7 @@
 
     <style name="Theme.Xilo.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/aile_splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_aile_splash_mark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_aile_splash_icon</item>
         <item name="postSplashScreenTheme">@style/Theme.Xilo</item>
     </style>
 </resources>

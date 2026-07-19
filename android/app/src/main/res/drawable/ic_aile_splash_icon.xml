@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ splash places this drawable inside a ~240dp circular mask.
+  Content must stay in the center ~160dp safe zone; inset keeps the mark clear of the clip.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_aile_splash_mark"
+    android:inset="18%" />
