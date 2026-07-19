@@ -52,11 +52,14 @@ Examples:
   -Pxilo.apiBaseUrl=https://brain.aile.ir/ \
   -Pxilo.wsBaseUrl=wss://brain.aile.ir/ws
 
-# Release against production (aile.ir)
+# Release against production (aile.ir) — signed with android/signing/
 ./gradlew :app:assembleRelease \
   -Pxilo.apiBaseUrl=https://brain.aile.ir/ \
   -Pxilo.wsBaseUrl=wss://brain.aile.ir/ws
+# → app/build/outputs/apk/release/app-release.apk
 ```
+
+Release signing uses `android/signing/aile-release.jks` and `android/signing/keystore.properties` (see `android/signing/README.md`). Keep the repo private; back up the keystore and passwords offline.
 
 For visual emulator checks after install, capture a screenshot to `android/emulator_test.png` (see `run-on-emulator.sh`). When pointing at production, use the Gradle properties above — never commit API keys or tokens.
 

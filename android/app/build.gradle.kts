@@ -1,4 +1,6 @@
+import java.io.FileInputStream
 import java.net.URI
+import java.util.Properties
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
@@ -12,6 +14,14 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.hilt.android)
   alias(libs.plugins.ksp)
+}
+
+val signingDir = rootProject.file("signing")
+val keystorePropertiesFile = signingDir.resolve("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        FileInputStream(keystorePropertiesFile).use { load(it) }
+    }
 }
 
 abstract class CheckReleaseEndpoints : DefaultTask() {
@@ -86,6 +96,37 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFileName = keystoreProperties.getProperty("storeFile")
+            val storePasswordValue = keystoreProperties.getProperty("storePassword")
+            val keyAliasValue = keystoreProperties.getProperty("keyAlias")
+            val keyPasswordValue = keystoreProperties.getProperty("keyPassword")
+            if (
+                storeFileName.isNullOrBlank() ||
+                storePasswordValue.isNullOrBlank() ||
+                keyAliasValue.isNullOrBlank() ||
+                keyPasswordValue.isNullOrBlank()
+            ) {
+                throw GradleException(
+                    "Missing android/signing/keystore.properties. " +
+                        "Copy keystore.properties.example and fill credentials. " +
+                        "See android/signing/README.md."
+                )
+            }
+            val resolvedStore = signingDir.resolve(storeFileName)
+            if (!resolvedStore.isFile) {
+                throw GradleException(
+                    "Release keystore not found: ${resolvedStore.invariantSeparatorsPath}"
+                )
+            }
+            storeFile = resolvedStore
+            storePassword = storePasswordValue
+            keyAlias = keyAliasValue
+            keyPassword = keyPasswordValue
+        }
+    }
+
     buildTypes {
         debug {
             val apiBase = normalizeApiBaseUrl(
@@ -98,6 +139,7 @@ android {
             buildConfigField("String", "WS_BASE_URL", "\"$wsBase\"")
         }
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
