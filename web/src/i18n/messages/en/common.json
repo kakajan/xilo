@@ -1,0 +1,45 @@
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "retry": "Retry",
+    "loading": "Loading…",
+    "search": "Search",
+    "submit": "Submit"
+  },
+  "errors": {
+    "notFound": "The requested item was not found",
+    "generic": "Something went wrong. Please try again.",
+    "network": "No internet connection",
+    "unauthorized": "Please sign in again",
+    "forbidden": "You do not have permission to do this"
+  },
+  "nav": {
+    "feed": "Feed",
+    "discover": "Discover",
+    "messages": "Messages",
+    "profile": "Profile",
+    "settings": "Settings",
+    "notifications": "Notifications",
+    "saved": "Saved",
+    "dashboard": "Dashboard",
+    "write": "Write",
+    "writePost": "Write a post",
+    "login": "Log in",
+    "register": "Sign up",
+    "mainNavigation": "Main navigation",
+    "desktopMenu": "Desktop menu",
+    "searchPlaceholder": "Search..."
+  },
+  "offline": {
+    "banner": "You are offline — showing saved data"
+  },
+  "language": {
+    "unknownInitial": "?"
+  }
+}

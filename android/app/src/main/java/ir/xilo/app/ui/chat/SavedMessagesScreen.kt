@@ -209,7 +209,7 @@ fun SavedMessageCard(message: MessageEntity) {
     } else {
         message.content.orEmpty()
     }
-    val timeLabel = DateFormatter.getRelativeTimeSpan(message.createdAt)
+    val timeLabel = DateFormatter.getRelativeTimeSpan(androidx.compose.ui.platform.LocalContext.current, message.createdAt)
 
     Row(
         modifier = Modifier

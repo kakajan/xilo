@@ -1,21 +1,27 @@
 package ir.xilo.app.ui.chat
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.ChatEntity
+import ir.xilo.app.data.local.entity.ChatFolderEntity
 import ir.xilo.app.data.local.entity.MessageEntity
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.BookmarkedCommentResponse
 import ir.xilo.app.data.remote.dto.MessageType
 import ir.xilo.app.data.remote.dto.SendMessageRequest
 import ir.xilo.app.data.remote.websocket.RealtimeEvent
-import ir.xilo.app.data.local.entity.ChatFolderEntity
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.ChatFolderRepository
 import ir.xilo.app.data.repository.ChatRepository
 import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
+import ir.xilo.app.util.ErrorMessageResolver
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,6 +35,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
 sealed interface ChatSendEvent {
@@ -53,6 +62,9 @@ class ChatViewModel @Inject constructor(
     private val chatFolderRepository: ChatFolderRepository,
     private val postRepository: PostRepository,
     private val commentRepository: CommentRepository,
+    private val apiService: XiloApiService,
+    private val errorMessageResolver: ErrorMessageResolver,
+    @ApplicationContext private val context: Context,
     authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -112,6 +124,9 @@ class ChatViewModel @Inject constructor(
 
     private val _sendEvents = MutableSharedFlow<ChatSendEvent>(extraBufferCapacity = 1)
     val sendEvents = _sendEvents.asSharedFlow()
+
+    private val _composerError = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val composerError = _composerError.asSharedFlow()
 
     val currentUserId: String = authRepository.getUserId() ?: ""
 
@@ -294,6 +309,87 @@ class ChatViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun sendImageMessage(uri: Uri, caption: String) {
+        val chat = _currentChat.value ?: return
+        val draft = caption.trim()
+        stopLocalTyping(chat.id)
+        viewModelScope.launch {
+            val part = uriToMultipart(uri)
+            if (part == null) {
+                _sendEvents.emit(ChatSendEvent.Failed(draft.ifBlank { null }))
+                return@launch
+            }
+            val mediaUrl = try {
+                apiService.uploadMedia(part).url
+            } catch (e: Exception) {
+                _composerError.tryEmit(
+                    errorMessageResolver.fromThrowable(e, R.string.chat_attach_failed)
+                )
+                _sendEvents.emit(ChatSendEvent.Failed(draft.ifBlank { null }))
+                return@launch
+            }
+            if (mediaUrl.isBlank()) {
+                _composerError.tryEmit(
+                    errorMessageResolver.fromThrowable(
+                        IllegalStateException("empty media url"),
+                        R.string.chat_attach_failed,
+                    )
+                )
+                return@launch
+            }
+            val draftIdentity = "${chat.id}\u0000image\u0000$mediaUrl\u0000$draft"
+            val operationKey = synchronized(activeDraftKeys) {
+                if (activeDraftKeys.containsKey(draftIdentity)) {
+                    return@launch
+                }
+                chatRepository.createMessageOperationKey().also {
+                    activeDraftKeys[draftIdentity] = it
+                }
+            }
+            var durablyAccepted = false
+            try {
+                chatRepository.sendMessage(
+                    chatId = chat.id,
+                    request = SendMessageRequest(
+                        type = MessageType.IMAGE,
+                        content = draft.ifBlank { null },
+                        mediaUrl = mediaUrl,
+                    ),
+                    operationKey = operationKey,
+                    onDurablyAccepted = {
+                        durablyAccepted = true
+                        releaseDraftGuard(draftIdentity, operationKey)
+                        _sendEvents.tryEmit(ChatSendEvent.Accepted(operationKey))
+                    }
+                ).fold(
+                    onSuccess = {},
+                    onFailure = {
+                        if (!durablyAccepted) {
+                            _sendEvents.emit(ChatSendEvent.Failed(draft.ifBlank { null }))
+                        }
+                    }
+                )
+            } finally {
+                if (!durablyAccepted) {
+                    releaseDraftGuard(draftIdentity, operationKey)
+                }
+            }
+        }
+    }
+
+    private fun uriToMultipart(uri: Uri): MultipartBody.Part? {
+        val resolver = context.contentResolver
+        val mime = resolver.getType(uri) ?: "image/jpeg"
+        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
+        val filename = when {
+            mime.contains("png") -> "chat.png"
+            mime.contains("webp") -> "chat.webp"
+            else -> "chat.jpg"
+        }
+        return MultipartBody.Part.createFormData("file", filename, body)
     }
 
     private fun releaseDraftGuard(draftIdentity: String, operationKey: String) {

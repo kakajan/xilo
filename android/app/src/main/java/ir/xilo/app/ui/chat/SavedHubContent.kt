@@ -44,6 +44,7 @@ import ir.xilo.app.data.remote.dto.BookmarkedCommentResponse
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.ui.components.ChromeVisibilityState
+import ir.xilo.app.ui.components.ContentAwareText
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
@@ -233,7 +234,7 @@ fun SavedPostCard(
                     }
                 )
                 Text(
-                    text = DateFormatter.getRelativeTimeSpan(post.createdAt),
+                    text = DateFormatter.getRelativeTimeSpan(androidx.compose.ui.platform.LocalContext.current, post.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -321,11 +322,11 @@ fun SavedCommentCard(
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Text(
+        ContentAwareText(
             text = comment.content,
             style = MaterialTheme.typography.bodyLarge,
             maxLines = 4,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -94,6 +94,17 @@
 - [ ] **T2.2.7** Implement comment sorting UI (newest, oldest, most reacted, most replied)
   - Acceptance: Sort dropdown works; selection persists per session
 
+### 2.2b Post hashtags (social)
+
+- [x] **T2.2b.1** Backend hashtag extract/normalize + merge into `posts.tags` on Create/Update
+  - Acceptance: `#خبر` / `#Xilo_App` stored normalized; URL fragments ignored; max 10; fixtures in `testdata/hashtags/`
+- [x] **T2.2b.2** Tag suggest/trending APIs (`GET /api/tags/suggest`, `GET /api/tags/trending`)
+  - Acceptance: Prefix autocomplete and 30-day trending counts from published posts
+- [x] **T2.2b.3** Web: TipTap highlight + autocomplete, linkify in post body, `/tag/[slug]` feed
+  - Acceptance: Inline `#tag` links to tag page; metadata tags merge with extracted hashtags
+- [x] **T2.2b.4** Android: extract/send tags, HashtagAwareText, CreatePost suggestions, TagFeed screen
+  - Acceptance: Tap hashtag opens TagFeed filtered by `GET /api/posts?tag=`
+
 ### 2.3 Reactions
 
 - [x] **T2.3.1** Implement `reactions` table migration
@@ -295,6 +306,8 @@
   - Acceptance: Author sees 7d/30d/90d charts for their posts
 - [x] **T4.3.3** Implement admin dashboard with DAU/WAU/MAU, revenue, top posts
   - Acceptance: Admin sees platform-wide metrics with time range selector
+- [x] **T4.3.4** Implement operational post view counting with 24h dedup
+  - Acceptance: `POST /api/posts/:id/view` increments `view_count` once per user/session per 24h; clients display real counts
 - [x] **T4.3.5** Implement custom event tracking (post_read, scroll_depth, search_performed)
   - Acceptance: Events fire and appear in analytics dashboard
 - [x] **T4.5.1** Deploy Prometheus + Grafana with service dashboards

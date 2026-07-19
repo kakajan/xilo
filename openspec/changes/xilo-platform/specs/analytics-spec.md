@@ -16,6 +16,16 @@ Self-hosted analytics tracking with PostHog or Umami as primary engine, plus cus
 - Session ID (anonymous or authenticated)
 - Timestamp
 
+### REQ-ALY-001b: Post View Counting (Operational)
+
+**Given** a published post  
+**When** a reader opens the post detail (web or Android)  
+**Then** the client SHALL call `POST /api/posts/:id/view` with a stable `session_id`  
+**And** the server SHALL increment `posts.view_count` at most once per viewer within 24 hours  
+**And** authenticated viewers are keyed by `user_id`; anonymous viewers by `session_id`  
+**And** the author viewing their own post SHALL NOT increment the counter  
+**And** APIs that return posts SHALL include `view_count`
+
 ### REQ-ALY-002: Custom Event Tracking
 
 The following custom events are tracked:
@@ -75,3 +85,4 @@ The following custom events are tracked:
 | GET | `/api/analytics/author/:authorId` | Author | Author dashboard data |
 | GET | `/api/analytics/admin` | Admin | Admin dashboard data |
 | POST | `/api/analytics/events` | None/Reader+ | Ingest custom event |
+| POST | `/api/posts/:id/view` | None/Reader+ | Record post view (24h dedup) |

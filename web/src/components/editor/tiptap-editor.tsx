@@ -12,6 +12,8 @@ import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorToolbar } from "./editor-toolbar";
+import { HashtagHighlight } from "./hashtag-highlight";
+import { HashtagSuggestion } from "./hashtag-suggestion";
 import { apiUpload } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -54,6 +56,7 @@ export function TiptapEditor({ content, onSave, contentRef }: TiptapEditorProps)
       TableCell,
       TableHeader,
       Placeholder.configure({ placeholder: "داستان خود را بنویسید..." }),
+      HashtagHighlight,
     ],
     content: parseInitialContent(content),
     immediatelyRender: false,
@@ -149,6 +152,7 @@ export function TiptapEditor({ content, onSave, contentRef }: TiptapEditorProps)
         onDragOver={(e) => e.preventDefault()}
       >
         <EditorContent editor={editor} />
+        <HashtagSuggestion editor={editor} />
       </div>
 
       <div className="flex shrink-0 items-center justify-between border-t px-6 py-2 text-xs text-muted-foreground">

@@ -1,9 +1,11 @@
 "use client";
 
 import { WifiOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useOnline } from "@/hooks/use-online";
 
 export function OfflineBanner() {
+  const t = useTranslations("common.offline");
   const online = useOnline();
   if (online) return null;
 
@@ -14,7 +16,7 @@ export function OfflineBanner() {
       style={{ backgroundColor: "#FFAD1F" }}
     >
       <WifiOff className="h-4 w-4 shrink-0" />
-      <span className="min-w-0">آفلاین هستید — داده‌های ذخیره‌شده نمایش داده می‌شود</span>
+      <span className="min-w-0">{t("banner")}</span>
     </div>
   );
 }

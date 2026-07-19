@@ -17,7 +17,17 @@ data class PlatformBrand(
     val nameFa: String = "آیله",
     val nameEn: String = "aile",
     val display: String = "آیله | aile",
-)
+) {
+    fun nameForLanguage(languageCode: String): String {
+        val rtlScript = languageCode.equals("fa", ignoreCase = true) ||
+            languageCode.equals("ar", ignoreCase = true)
+        return if (rtlScript) {
+            nameFa.trim().ifBlank { nameEn.trim().ifBlank { DefaultPlatformBrand.nameFa } }
+        } else {
+            nameEn.trim().ifBlank { nameFa.trim().ifBlank { DefaultPlatformBrand.nameEn } }
+        }
+    }
+}
 
 val DefaultPlatformBrand = PlatformBrand()
 

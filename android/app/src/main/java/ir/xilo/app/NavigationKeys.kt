@@ -24,7 +24,11 @@ data class ChatConversationKey(
     val chatId: String,
     val isSavedMessages: Boolean = false,
 ) : NavKey
-@Serializable data object CreatePostKey : NavKey
+@Serializable data object NewChatKey : NavKey
+@Serializable
+data class CreatePostKey(val editPostId: String? = null) : NavKey
+@Serializable
+data class TagFeedKey(val tag: String) : NavKey
 @Serializable data object SettingsKey : NavKey
 @Serializable data object SavedHubKey : NavKey
 @Serializable data class ContactDetailKey(val chatId: String) : NavKey

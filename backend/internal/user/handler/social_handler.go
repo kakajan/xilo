@@ -74,6 +74,7 @@ func (h *SocialHandler) ListBookmarks(c *fiber.Ctx) error {
 		PublishedAt    *string `db:"published_at"`
 		CreatedAt      string  `db:"created_at"`
 		ReadingTime    int     `db:"reading_time"`
+		ViewCount      int64   `db:"view_count"`
 		AuthorUsername string  `db:"author_username"`
 		AuthorName     string  `db:"author_name"`
 		AuthorAvatar   string  `db:"author_avatar"`
@@ -88,6 +89,7 @@ func (h *SocialHandler) ListBookmarks(c *fiber.Ctx) error {
 		       p.published_at::text AS published_at,
 		       p.created_at::text AS created_at,
 		       p.reading_time,
+		       p.view_count,
 		       u.username AS author_username,
 		       COALESCE(u.display_name, u.username) AS author_name,
 		       COALESCE(u.avatar_url, '') AS author_avatar
@@ -115,6 +117,7 @@ func (h *SocialHandler) ListBookmarks(c *fiber.Ctx) error {
 		Category      string  `json:"category"`
 		IsBookmarked  bool    `json:"is_bookmarked"`
 		ReadingTime   int     `json:"reading_time"`
+		ViewCount     int64   `json:"view_count"`
 		CreatedAt     string  `json:"created_at"`
 		PublishedAt   *string `json:"published_at"`
 	}
@@ -143,6 +146,7 @@ func (h *SocialHandler) ListBookmarks(c *fiber.Ctx) error {
 			Category:      row.Category,
 			IsBookmarked:  true,
 			ReadingTime:   row.ReadingTime,
+			ViewCount:     row.ViewCount,
 			CreatedAt:     row.CreatedAt,
 			PublishedAt:   row.PublishedAt,
 		})

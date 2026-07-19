@@ -1,0 +1,9 @@
+{
+  "placeholder": "Yorum yazın",
+  "reply": "Yanıtla",
+  "submit": "Yorumu gönder",
+  "empty": "Henüz yorum yok",
+  "delete": "Yorumu sil",
+  "report": "Bildir",
+  "replies": "{count} yanıt"
+}

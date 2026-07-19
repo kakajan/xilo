@@ -10,11 +10,14 @@ import ir.xilo.app.data.remote.websocket.RealtimeEvent
 import ir.xilo.app.data.remote.websocket.RealtimeEvents
 import ir.xilo.app.data.remote.websocket.RealtimePresencePayload
 import ir.xilo.app.data.remote.websocket.RealtimeTypingPayload
+import android.content.Context
+import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.ChatFolderRepository
 import ir.xilo.app.data.repository.ChatRepository
 import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
+import ir.xilo.app.util.ErrorMessageResolver
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -47,6 +50,9 @@ class ChatViewModelTest {
     private val postRepository = mockk<PostRepository>(relaxed = true)
     private val commentRepository = mockk<CommentRepository>(relaxed = true)
     private val authRepository = mockk<AuthRepository>()
+    private val apiService = mockk<XiloApiService>(relaxed = true)
+    private val errorMessageResolver = mockk<ErrorMessageResolver>(relaxed = true)
+    private val context = mockk<Context>(relaxed = true)
     private val messages = MutableStateFlow<List<MessageEntity>>(emptyList())
     private val realtimeEvents = MutableSharedFlow<RealtimeEvent>(extraBufferCapacity = 8)
 
@@ -55,6 +61,9 @@ class ChatViewModelTest {
         folderRepository,
         postRepository,
         commentRepository,
+        apiService,
+        errorMessageResolver,
+        context,
         authRepository,
     )
 

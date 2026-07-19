@@ -5,6 +5,7 @@ import { X, Plus } from "lucide-react";
 import { useEditorStore } from "@/stores/editor-store";
 import { Button } from "@/components/ui/button";
 import { apiUpload } from "@/lib/api-client";
+import { normalizeTag } from "@/lib/hashtag";
 
 export function MetadataSidebar() {
   const {
@@ -57,8 +58,9 @@ export function MetadataSidebar() {
   };
 
   const handleAddTag = () => {
-    if (tagInput.trim() && tags.length < 10) {
-      addTag(tagInput.trim());
+    const normalized = normalizeTag(tagInput);
+    if (normalized && tags.length < 10) {
+      addTag(normalized);
       setTagInput("");
     }
   };

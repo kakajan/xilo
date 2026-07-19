@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
 import { Button } from "@/components/ui/button";
@@ -13,15 +14,13 @@ import { apiFetch } from "@/lib/api-client";
 import { mapAuthApiError } from "@/lib/auth-errors";
 import type { AuthResponse } from "@/types/user";
 
-const loginSchema = z.object({
-  // Backend accepts email or username in the `email` JSON field.
-  email: z.string().min(1, "ایمیل یا نام کاربری لازم است"),
-  password: z.string().min(1, "رمز عبور لازم است"),
-});
-
-type LoginForm = z.infer<typeof loginSchema>;
+type LoginForm = {
+  email: string;
+  password: string;
+};
 
 export default function LoginPage() {
+  const t = useTranslations("auth.login");
   const router = useRouter();
   const { login } = useAuthStore();
   const brandName = useBrandStore((s) => s.brand.name_fa);
@@ -31,6 +30,15 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpBusy, setOtpBusy] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+
+  const loginSchema = useMemo(
+    () =>
+      z.object({
+        email: z.string().min(1, t("emailRequired")),
+        password: z.string().min(1, t("passwordRequired")),
+      }),
+    [t]
+  );
 
   const {
     register,
@@ -45,7 +53,7 @@ export default function LoginPage() {
       router.push("/");
     } catch (err) {
       const mapped = mapAuthApiError((err as Error).message || "");
-      setError("root", { message: mapped.message || "ورود ناموفق بود" });
+      setError("root", { message: mapped.message || t("failed") });
     }
   };
 
@@ -68,9 +76,9 @@ export default function LoginPage() {
         lower.includes("not configured") ||
         lower.includes("unavailable")
       ) {
-        setOtpError("ورود با پیامک موقتاً در دسترس نیست.");
+        setOtpError(t("otpUnavailable"));
       } else {
-        setOtpError(mapAuthApiError(raw).message || "ارسال کد ناموفق بود");
+        setOtpError(mapAuthApiError(raw).message || t("sendCodeFailed"));
       }
     } finally {
       setOtpBusy(false);
@@ -88,7 +96,7 @@ export default function LoginPage() {
       useAuthStore.getState().applyAuthResponse(res);
       router.push("/");
     } catch (e) {
-      setOtpError(e instanceof Error ? e.message : "تأیید کد ناموفق بود");
+      setOtpError(e instanceof Error ? e.message : t("verifyFailed"));
     } finally {
       setOtpBusy(false);
     }
@@ -96,8 +104,8 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto mt-16 max-w-md">
-      <h1 className="mb-2 text-2xl font-bold">ورود به {brandName}</h1>
-      <p className="mb-6 text-sm text-muted-foreground">با ایمیل یا نام کاربری و رمز، یا کد یک‌بارمصرف</p>
+      <h1 className="mb-2 text-2xl font-bold">{t("title", { brand: brandName })}</h1>
+      <p className="mb-6 text-sm text-muted-foreground">{t("subtitle")}</p>
 
       <div className="mb-4 flex gap-2">
         <Button
@@ -106,7 +114,7 @@ export default function LoginPage() {
           className="min-h-11 flex-1"
           onClick={() => setMode("password")}
         >
-          رمز عبور
+          {t("passwordTab")}
         </Button>
         <Button
           type="button"
@@ -114,19 +122,19 @@ export default function LoginPage() {
           className="min-h-11 flex-1"
           onClick={() => setMode("otp")}
         >
-          کد یک‌بارمصرف
+          {t("otpTab")}
         </Button>
       </div>
 
       {mode === "password" ? (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">ایمیل یا نام کاربری</label>
+            <label className="mb-1 block text-sm font-medium">{t("emailOrUsername")}</label>
             <input
               {...register("email")}
               type="text"
               className="w-full min-h-11 rounded-lg border bg-background px-3 py-2"
-              placeholder="you@example.com یا username"
+              placeholder={t("emailOrUsernamePlaceholder")}
               dir="ltr"
               autoComplete="username"
             />
@@ -135,11 +143,11 @@ export default function LoginPage() {
             )}
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">رمز عبور</label>
+            <label className="mb-1 block text-sm font-medium">{t("password")}</label>
             <input
               {...register("password")}
               type="password"
-              className="w-full min-h-11 rounded-lg border bg-background px-3 py-2"
+              className="w-full min-h-11 rounded-lg border bg-background py-2 px-3"
               placeholder="••••••••"
               dir="ltr"
             />
@@ -149,13 +157,13 @@ export default function LoginPage() {
           </div>
           {errors.root && <p className="text-sm text-destructive">{errors.root.message}</p>}
           <Button type="submit" className="w-full min-h-11" disabled={isSubmitting}>
-            {isSubmitting ? "در حال ورود..." : "ورود"}
+            {isSubmitting ? t("submitting") : t("submit")}
           </Button>
         </form>
       ) : (
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">ایمیل</label>
+            <label className="mb-1 block text-sm font-medium">{t("email")}</label>
             <input
               type="email"
               value={otpEmail}
@@ -166,7 +174,7 @@ export default function LoginPage() {
           </div>
           {otpSent && (
             <div>
-              <label className="mb-1 block text-sm font-medium">کد</label>
+              <label className="mb-1 block text-sm font-medium">{t("code")}</label>
               <input
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
@@ -183,7 +191,7 @@ export default function LoginPage() {
               disabled={otpBusy || !otpEmail}
               onClick={() => void requestOtp()}
             >
-              ارسال کد
+              {t("sendCode")}
             </Button>
           ) : (
             <Button
@@ -192,16 +200,16 @@ export default function LoginPage() {
               disabled={otpBusy || !otpCode}
               onClick={() => void verifyOtp()}
             >
-              تأیید و ورود
+              {t("verifyAndLogin")}
             </Button>
           )}
         </div>
       )}
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
-        حساب ندارید؟{" "}
+        {t("noAccount")}{" "}
         <Link href="/register" className="text-primary hover:underline">
-          ثبت‌نام
+          {t("registerLink")}
         </Link>
       </p>
     </div>

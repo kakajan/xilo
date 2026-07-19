@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FollowButton } from "@/components/user/follow-button";
 import { cn, getInitials } from "@/lib/utils";
+import type { Post } from "@/types/post";
+import type { Comment } from "@/types/comment";
 
 type Tab = "posts" | "replies" | "likes" | "archived";
 
@@ -26,40 +28,8 @@ export default function AuthorProfilePage() {
   const { username } = useParams<{ username: string }>();
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
-  const isOwn = user?.username === username;
+  const isOwn = !!user?.username && user.username === username;
   const [tab, setTab] = useState<Tab>("posts");
-
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ["profile", username],
-    queryFn: () => getPublicProfile(username),
-  });
-
-  const postsQ = useQuery({
-    queryKey: ["user-posts", username, tab],
-    enabled: tab === "posts" || tab === "archived",
-    queryFn: async () =>
-      (await listUserPosts(username, tab === "archived" ? "archived" : "posts")).data ?? [],
-  });
-
-  const repliesQ = useQuery({
-    queryKey: ["user-replies", username],
-    enabled: tab === "replies",
-    queryFn: async () => (await listUserReplies(username)).data ?? [],
-  });
-
-  const likesQ = useQuery({
-    queryKey: ["user-likes", username],
-    enabled: tab === "likes",
-    queryFn: async () => (await listUserLikes(username)).data ?? [],
-  });
-
-  const messageMut = useMutation({
-    mutationFn: async () => {
-      if (!profile?.id) throw new Error("no user");
-      return createChat([profile.id], "direct");
-    },
-    onSuccess: (chat) => router.push(`/chat/${chat.id}`),
-  });
 
   const tabs = useMemo(() => {
     if (isOwn) {
@@ -74,6 +44,47 @@ export default function AuthorProfilePage() {
       ["likes", "پسندها"],
     ] as const;
   }, [isOwn]);
+
+  // Keep active tab valid when own/other tab sets change (auth hydrate / navigation).
+  const activeTab: Tab = tabs.some(([key]) => key === tab) ? tab : "posts";
+
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["profile", username],
+    queryFn: () => getPublicProfile(username),
+  });
+
+  // Separate keys so switching tabs reuses cache instead of remounting a shared query.
+  const postsQ = useQuery({
+    queryKey: ["user-posts", username, "posts"],
+    enabled: activeTab === "posts",
+    queryFn: async () => (await listUserPosts(username, "posts")).data ?? [],
+  });
+
+  const archivedQ = useQuery({
+    queryKey: ["user-posts", username, "archived"],
+    enabled: activeTab === "archived" && isOwn,
+    queryFn: async () => (await listUserPosts(username, "archived")).data ?? [],
+  });
+
+  const repliesQ = useQuery({
+    queryKey: ["user-replies", username],
+    enabled: activeTab === "replies" && !isOwn,
+    queryFn: async () => (await listUserReplies(username)).data ?? [],
+  });
+
+  const likesQ = useQuery({
+    queryKey: ["user-likes", username],
+    enabled: activeTab === "likes" && !isOwn,
+    queryFn: async () => (await listUserLikes(username)).data ?? [],
+  });
+
+  const messageMut = useMutation({
+    mutationFn: async () => {
+      if (!profile?.id) throw new Error("no user");
+      return createChat([profile.id], "direct");
+    },
+    onSuccess: (chat) => router.push(`/chat/${chat.id}`),
+  });
 
   if (isLoading) {
     return (
@@ -184,11 +195,11 @@ export default function AuthorProfilePage() {
             onClick={() => setTab(key)}
             className={cn(
               "relative min-h-11 flex-1 px-2 text-sm font-medium",
-              tab === key ? "text-primary" : "text-muted-foreground"
+              activeTab === key ? "text-primary" : "text-muted-foreground"
             )}
           >
             {label}
-            {tab === key && (
+            {activeTab === key && (
               <span className="absolute inset-x-6 -bottom-px h-1 rounded-full bg-primary" />
             )}
           </button>
@@ -196,36 +207,50 @@ export default function AuthorProfilePage() {
       </div>
 
       <div className="mt-4 space-y-4">
-        {(tab === "posts" || tab === "archived") &&
-          (postsQ.isLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : (postsQ.data?.length ?? 0) === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">پستی نیست</p>
-          ) : (
-            postsQ.data!.map((p) => <PostCard key={p.id} post={p} />)
-          ))}
+        {activeTab === "posts" && (
+          <PostListPanel
+            isLoading={postsQ.isLoading}
+            isError={postsQ.isError}
+            posts={postsQ.data}
+            emptyLabel="پستی نیست"
+            onRetry={() => void postsQ.refetch()}
+          />
+        )}
 
-        {tab === "replies" &&
+        {activeTab === "archived" && isOwn && (
+          <PostListPanel
+            isLoading={archivedQ.isLoading}
+            isError={archivedQ.isError}
+            posts={archivedQ.data}
+            emptyLabel="پست بایگانی‌شده‌ای نیست"
+            onRetry={() => void archivedQ.refetch()}
+          />
+        )}
+
+        {activeTab === "replies" &&
           (repliesQ.isLoading ? (
             <Skeleton className="h-32 w-full" />
+          ) : repliesQ.isError ? (
+            <ErrorRetry label="خطا در بارگذاری پاسخ‌ها" onRetry={() => void repliesQ.refetch()} />
           ) : (repliesQ.data?.length ?? 0) === 0 ? (
             <p className="py-12 text-center text-muted-foreground">پاسخی نیست</p>
           ) : (
-            repliesQ.data!.map((c) => (
+            repliesQ.data!.map((c: Comment) => (
               <div key={c.id} className="rounded-2xl bg-bubble-others px-4 py-3">
                 <p className="whitespace-pre-wrap text-[15px]">{c.content}</p>
               </div>
             ))
           ))}
 
-        {tab === "likes" &&
-          (likesQ.isLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : (likesQ.data?.length ?? 0) === 0 ? (
-            <p className="py-12 text-center text-muted-foreground">پسندی نیست</p>
-          ) : (
-            likesQ.data!.map((p) => <PostCard key={p.id} post={p} />)
-          ))}
+        {activeTab === "likes" && (
+          <PostListPanel
+            isLoading={likesQ.isLoading}
+            isError={likesQ.isError}
+            posts={likesQ.data}
+            emptyLabel="پسندی نیست"
+            onRetry={() => void likesQ.refetch()}
+          />
+        )}
       </div>
     </div>
   );
@@ -237,5 +262,47 @@ function Stat({ label, value }: { label: string; value: number }) {
       <p className="text-lg font-bold">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
+  );
+}
+
+function ErrorRetry({ label, onRetry }: { label: string; onRetry: () => void }) {
+  return (
+    <div className="py-12 text-center">
+      <p className="mb-3 text-muted-foreground">{label}</p>
+      <Button type="button" variant="outline" className="min-h-11" onClick={onRetry}>
+        تلاش دوباره
+      </Button>
+    </div>
+  );
+}
+
+function PostListPanel({
+  isLoading,
+  isError,
+  posts,
+  emptyLabel,
+  onRetry,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  posts: Post[] | undefined;
+  emptyLabel: string;
+  onRetry: () => void;
+}) {
+  if (isLoading) {
+    return <Skeleton className="h-32 w-full" />;
+  }
+  if (isError) {
+    return <ErrorRetry label="خطا در بارگذاری پست‌ها" onRetry={onRetry} />;
+  }
+  if ((posts?.length ?? 0) === 0) {
+    return <p className="py-12 text-center text-muted-foreground">{emptyLabel}</p>;
+  }
+  return (
+    <>
+      {posts!.map((p) => (
+        <PostCard key={p.id} post={p} />
+      ))}
+    </>
   );
 }

@@ -3,23 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Compass, Home, MessageCircle, User } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
 
-const ITEMS = [
-  { href: "/", label: "فید", icon: Home },
-  { href: "/discover", label: "اکتشاف", icon: Compass },
-  { href: "/chat", label: "پیام‌ها", icon: MessageCircle },
-] as const;
-
 export function DesktopSideNav() {
+  const t = useTranslations("common.nav");
   const pathname = usePathname();
   const username = useAuthStore((s) => s.user?.username);
 
+  const items = [
+    { href: "/", label: t("feed"), icon: Home },
+    { href: "/discover", label: t("discover"), icon: Compass },
+    { href: "/chat", label: t("messages"), icon: MessageCircle },
+  ] as const;
+
   return (
     <aside className="hidden w-44 shrink-0 md:block">
-      <nav className="sticky top-20 space-y-1" aria-label="منوی دسکتاپ">
-        {ITEMS.map(({ href, label, icon: Icon }) => {
+      <nav className="sticky top-20 space-y-1" aria-label={t("desktopMenu")}>
+        {items.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
@@ -48,7 +50,7 @@ export function DesktopSideNav() {
           )}
         >
           <User className="h-5 w-5 shrink-0" />
-          <span className="min-w-0">پروفایل</span>
+          <span className="min-w-0">{t("profile")}</span>
         </Link>
       </nav>
     </aside>

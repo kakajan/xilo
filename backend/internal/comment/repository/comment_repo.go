@@ -268,6 +268,13 @@ func (r *CommentRepo) Pin(ctx context.Context, id string, pin bool) error {
 }
 
 func (r *CommentRepo) ToggleReaction(ctx context.Context, userID, targetType, targetID, reaction string) (int, error) {
+	// Treat like/heart as one family so clients cannot get stuck with a legacy heart row
+	// while toggling "like" (or the reverse).
+	family := reactionFamily(reaction)
+	if len(family) > 0 {
+		return r.toggleReactionFamily(ctx, userID, targetType, targetID, family, "like")
+	}
+
 	var existingID string
 	err := r.db.GetContext(ctx, &existingID, `
 		SELECT id FROM reactions
@@ -299,5 +306,67 @@ func (r *CommentRepo) ToggleReaction(ctx context.Context, userID, targetType, ta
 		WHERE target_type = $1 AND target_id = $2 AND reaction = $3
 	`, targetType, targetID, reaction)
 
+	return count, nil
+}
+
+func reactionFamily(reaction string) []string {
+	switch reaction {
+	case "like", "heart":
+		return []string{"like", "heart"}
+	default:
+		return nil
+	}
+}
+
+func (r *CommentRepo) toggleReactionFamily(
+	ctx context.Context,
+	userID, targetType, targetID string,
+	family []string,
+	insertAs string,
+) (int, error) {
+	var existingIDs []string
+	query, args, err := sqlx.In(`
+		SELECT id FROM reactions
+		WHERE user_id = ? AND target_type = ? AND target_id = ? AND reaction IN (?)
+	`, userID, targetType, targetID, family)
+	if err != nil {
+		return 0, fmt.Errorf("build reaction family query: %w", err)
+	}
+	query = r.db.Rebind(query)
+	if err := r.db.SelectContext(ctx, &existingIDs, query, args...); err != nil {
+		return 0, fmt.Errorf("check reaction family: %w", err)
+	}
+
+	if len(existingIDs) > 0 {
+		delQuery, delArgs, err := sqlx.In(`DELETE FROM reactions WHERE id IN (?)`, existingIDs)
+		if err != nil {
+			return 0, fmt.Errorf("build delete reaction family query: %w", err)
+		}
+		delQuery = r.db.Rebind(delQuery)
+		if _, err := r.db.ExecContext(ctx, delQuery, delArgs...); err != nil {
+			return 0, fmt.Errorf("delete reaction family: %w", err)
+		}
+	} else {
+		_, err := r.db.ExecContext(ctx, `
+			INSERT INTO reactions (user_id, target_type, target_id, reaction)
+			VALUES ($1, $2, $3, $4)
+		`, userID, targetType, targetID, insertAs)
+		if err != nil {
+			return 0, fmt.Errorf("insert reaction: %w", err)
+		}
+	}
+
+	countQuery, countArgs, err := sqlx.In(`
+		SELECT COUNT(*) FROM reactions
+		WHERE target_type = ? AND target_id = ? AND reaction IN (?)
+	`, targetType, targetID, family)
+	if err != nil {
+		return 0, fmt.Errorf("build count reaction family query: %w", err)
+	}
+	countQuery = r.db.Rebind(countQuery)
+	var count int
+	if err := r.db.GetContext(ctx, &count, countQuery, countArgs...); err != nil {
+		return 0, fmt.Errorf("count reaction family: %w", err)
+	}
 	return count, nil
 }

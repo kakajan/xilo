@@ -3,15 +3,21 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, CheckCircle2, Languages } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { APP_LANGUAGES, applyDocumentLanguage, type AppLanguageCode } from "@/lib/languages";
+import { APP_LANGUAGES, type AppLanguageCode } from "@/lib/languages";
 import { useAuthStore } from "@/stores/auth-store";
+import { useLocaleStore } from "@/stores/locale-store";
 
 export default function LanguageSettingsPage() {
+  const t = useTranslations("settings.language");
+  const tCommon = useTranslations("common.actions");
   const router = useRouter();
   const { user, isAuthenticated, isLoading, authChecked, updateProfile } = useAuthStore();
-  const [language, setLanguage] = useState<AppLanguageCode>("fa");
+  const setLocale = useLocaleStore((s) => s.setLocale);
+  const currentLocale = useLocaleStore((s) => s.locale);
+  const [language, setLanguage] = useState<AppLanguageCode>(currentLocale);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
     null
@@ -24,19 +30,23 @@ export default function LanguageSettingsPage() {
   useEffect(() => {
     if (user?.preferred_language) {
       setLanguage(user.preferred_language as AppLanguageCode);
-      applyDocumentLanguage(user.preferred_language);
+    } else {
+      setLanguage(currentLocale);
     }
-  }, [user?.preferred_language]);
+  }, [user?.preferred_language, currentLocale]);
 
   const onSave = async () => {
     setSaving(true);
     setMessage(null);
     try {
       await updateProfile({ preferred_language: language });
-      applyDocumentLanguage(language);
-      setMessage({ type: "success", text: "زبان رابط ذخیره شد" });
+      setLocale(language);
+      setMessage({ type: "success", text: t("saved") });
     } catch (e) {
-      setMessage({ type: "error", text: e instanceof Error ? e.message : "ذخیره ناموفق بود" });
+      setMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : t("saveFailed"),
+      });
     } finally {
       setSaving(false);
     }
@@ -54,12 +64,13 @@ export default function LanguageSettingsPage() {
           size="icon"
           className="min-h-11 min-w-11"
           onClick={() => router.push("/settings")}
+          aria-label={tCommon("back")}
         >
           <ArrowRight className="h-5 w-5" />
         </Button>
         <div className="flex min-w-0 items-center gap-2">
           <Languages className="h-5 w-5 shrink-0 text-indigo-600" />
-          <h1 className="text-xl font-bold">زبان رابط</h1>
+          <h1 className="text-xl font-bold">{t("title")}</h1>
         </div>
       </div>
 
@@ -79,9 +90,7 @@ export default function LanguageSettingsPage() {
       )}
 
       <section className="rounded-2xl border p-4">
-        <p className="mb-4 text-sm text-muted-foreground">
-          جهت صفحه (راست‌به‌چپ / چپ‌به‌راست) با زبان انتخابی تنظیم می‌شود.
-        </p>
+        <p className="mb-4 text-sm text-muted-foreground">{t("description")}</p>
         <div className="mb-4 space-y-2">
           {APP_LANGUAGES.map((opt) => (
             <label
@@ -95,7 +104,10 @@ export default function LanguageSettingsPage() {
                 name="language"
                 className="mt-1"
                 checked={language === opt.code}
-                onChange={() => setLanguage(opt.code)}
+                onChange={() => {
+                  setLanguage(opt.code);
+                  setLocale(opt.code);
+                }}
               />
               <span className="min-w-0">
                 <span className="block text-sm font-medium">{opt.nameNative}</span>
@@ -107,7 +119,7 @@ export default function LanguageSettingsPage() {
           ))}
         </div>
         <Button className="min-h-11" disabled={saving} onClick={() => void onSave()}>
-          {saving ? "در حال ذخیره…" : "ذخیره زبان"}
+          {saving ? t("saving") : t("save")}
         </Button>
       </section>
     </div>

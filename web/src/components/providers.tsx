@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
+import { I18nProvider } from "@/components/i18n-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
 import { useThemeStore } from "@/stores/theme-store";
-import { applyDocumentLanguage } from "@/lib/languages";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -35,14 +35,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-        <PlatformThemeInitializer>
-          <AuthInitializer>{children}</AuthInitializer>
-        </PlatformThemeInitializer>
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <I18nProvider>
+          <PlatformThemeInitializer>
+            <AuthInitializer>{children}</AuthInitializer>
+          </PlatformThemeInitializer>
+        </I18nProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
@@ -62,15 +64,10 @@ function PlatformThemeInitializer({ children }: { children: React.ReactNode }) {
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {
   const fetchMe = useAuthStore((s) => s.fetchMe);
-  const preferredLanguage = useAuthStore((s) => s.user?.preferred_language);
 
   useEffect(() => {
     void fetchMe();
   }, [fetchMe]);
-
-  useEffect(() => {
-    if (preferredLanguage) applyDocumentLanguage(preferredLanguage);
-  }, [preferredLanguage]);
 
   return <>{children}</>;
 }

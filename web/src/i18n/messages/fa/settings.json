@@ -1,0 +1,27 @@
+{
+  "title": "تنظیمات",
+  "usernamePending": "نام کاربری هنوز انتخاب نشده",
+  "usernamePrompt": "یک نام کاربری دائمی برای پروفایل خود انتخاب کنید.",
+  "changePhoto": "تغییر عکس",
+  "username": "نام کاربری",
+  "chooseUsername": "انتخاب نام کاربری",
+  "myProfile": "پروفایل من",
+  "wallet": "کیف پول",
+  "walletSoon": "کیف پول به‌زودی...",
+  "messagesAndSaved": "پیام‌ها و ذخیره‌ها",
+  "devices": "دستگاه‌ها",
+  "chatFolders": "پوشه‌های چت",
+  "interfaceLanguage": "زبان رابط",
+  "calendar": "تقویم نمایش تاریخ",
+  "logout": "خروج",
+  "avatarUpdated": "عکس پروفایل به‌روز شد",
+  "uploadFailed": "آپلود ناموفق بود",
+  "language": {
+    "title": "زبان رابط",
+    "description": "متن رابط و جهت صفحه (راست‌به‌چپ / چپ‌به‌راست) با زبان انتخابی تغییر می‌کند.",
+    "save": "ذخیره زبان",
+    "saving": "در حال ذخیره…",
+    "saved": "زبان رابط ذخیره شد",
+    "saveFailed": "ذخیره ناموفق بود"
+  }
+}

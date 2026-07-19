@@ -10,8 +10,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
+import ir.xilo.app.core.util.AppLocale
 
 data class BubbleColors(
     val ownBubble: Color,
@@ -130,11 +131,12 @@ fun XiloTheme(
         ownBubble = palette.bubbleOwn,
         othersBubble = palette.bubbleOthers
     )
+    val layoutDirection = AppLocale.layoutDirection(AppLocale.languageCode(LocalContext.current))
 
     CompositionLocalProvider(
         LocalBubbleColors provides bubbleColors,
         LocalPlatformTheme provides platformTheme,
-        LocalLayoutDirection provides LayoutDirection.Rtl
+        LocalLayoutDirection provides layoutDirection,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

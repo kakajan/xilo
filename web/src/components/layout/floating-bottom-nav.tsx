@@ -4,42 +4,44 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Compass, Home, MessageCircle, User } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
-
-const TABS = [
-  { href: "/", label: "فید", icon: Home, match: (p: string) => p === "/" },
-  {
-    href: "/discover",
-    label: "اکتشاف",
-    icon: Compass,
-    match: (p: string) => p.startsWith("/discover"),
-  },
-  {
-    href: "/chat",
-    label: "پیام‌ها",
-    icon: MessageCircle,
-    match: (p: string) => p.startsWith("/chat") || p.startsWith("/saved"),
-  },
-  {
-    href: "/profile",
-    label: "پروفایل",
-    icon: User,
-    match: (p: string) => p === "/profile" || p.startsWith("/settings"),
-  },
-] as const;
 
 interface FloatingBottomNavProps {
   visible?: boolean;
 }
 
 export function FloatingBottomNav({ visible = true }: FloatingBottomNavProps) {
+  const t = useTranslations("common.nav");
   const pathname = usePathname();
   const username = useAuthStore((s) => s.user?.username);
 
+  const tabs = [
+    { href: "/", label: t("feed"), icon: Home, match: (p: string) => p === "/" },
+    {
+      href: "/discover",
+      label: t("discover"),
+      icon: Compass,
+      match: (p: string) => p.startsWith("/discover"),
+    },
+    {
+      href: "/chat",
+      label: t("messages"),
+      icon: MessageCircle,
+      match: (p: string) => p.startsWith("/chat") || p.startsWith("/saved"),
+    },
+    {
+      href: "/profile",
+      label: t("profile"),
+      icon: User,
+      match: (p: string) => p === "/profile" || p.startsWith("/settings"),
+    },
+  ] as const;
+
   return (
     <motion.nav
-      aria-label="ناوبری اصلی"
+      aria-label={t("mainNavigation")}
       initial={false}
       animate={{
         y: visible ? 0 : 88,
@@ -58,7 +60,7 @@ export function FloatingBottomNav({ visible = true }: FloatingBottomNavProps) {
           "dark:border-white/10"
         )}
       >
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const href =
             tab.href === "/profile" ? (username ? `/${username}` : "/login") : tab.href;
           const active =

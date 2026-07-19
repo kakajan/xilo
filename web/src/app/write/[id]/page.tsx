@@ -9,6 +9,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
 import { fetchPostForEdit } from "@/lib/api/posts";
 import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
+import { extractHashtags, mergeTags } from "@/lib/hashtag";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Post } from "@/types/post";
@@ -82,6 +83,8 @@ export default function EditPage() {
     setError("");
 
     try {
+      const contentMd = extractTextFromTipTapJSON(payloadJson);
+      const mergedTags = mergeTags(extractHashtags(contentMd), store.tags);
       const post = await apiFetch<Post>(`/api/posts/${postId}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -89,10 +92,10 @@ export default function EditPage() {
           slug: store.slug || undefined,
           excerpt: store.excerpt || undefined,
           content: payloadJson,
-          content_md: extractTextFromTipTapJSON(payloadJson),
+          content_md: contentMd,
           cover_image_url: store.coverImageUrl || undefined,
           category: store.category || undefined,
-          tags: store.tags.length > 0 ? store.tags : undefined,
+          tags: mergedTags,
           status: store.status,
           is_premium: store.isPremium,
         }),

@@ -2,11 +2,16 @@ package ir.xilo.app.data.repository
 
 import ir.xilo.app.data.local.dao.PostDao
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.data.local.prefs.AnalyticsSessionStore
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.CreatePostRequest
 import ir.xilo.app.data.remote.dto.PostResponse
+import ir.xilo.app.data.remote.dto.RecordViewRequest
 import ir.xilo.app.data.remote.dto.ToggleReactionRequest
+import ir.xilo.app.data.remote.dto.UpdatePostRequest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -15,6 +20,7 @@ import kotlinx.serialization.json.put
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,8 +28,10 @@ import javax.inject.Singleton
 class PostRepository @Inject constructor(
     private val apiService: XiloApiService,
     private val postDao: PostDao,
+    private val analyticsSessionStore: AnalyticsSessionStore,
     private val json: Json
 ) {
+    private val likeMutexes = ConcurrentHashMap<String, Mutex>()
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
@@ -68,13 +76,17 @@ class PostRepository @Inject constructor(
             val local = postDao.getPostBySlug(slug)
             if (local != null) {
                 // Background refresh — preserve feedRank so the home list stays stable.
-                try {
-                    val remote = apiService.getPostBySlug(slug)
-                    val updated = remote.toEntity(feedRank = local.feedRank)
-                    postDao.insertPost(updated)
-                } catch (_: Exception) {
+                // Skip while a like toggle is in flight so a stale GET cannot restore the heart.
+                val likeLocked = likeMutexes[local.id]?.isLocked == true
+                if (!likeLocked) {
+                    try {
+                        val remote = apiService.getPostBySlug(slug)
+                        val updated = remote.toEntity(feedRank = local.feedRank)
+                        postDao.insertPost(updated)
+                    } catch (_: Exception) {
+                    }
                 }
-                Result.success(local)
+                Result.success(postDao.getPostById(local.id) ?: local)
             } else {
                 val remote = apiService.getPostBySlug(slug)
                 val entity = remote.toEntity(feedRank = Int.MAX_VALUE)
@@ -90,36 +102,17 @@ class PostRepository @Inject constructor(
         return try {
             val slug = title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
             // Backend expects Tiptap JSON; wrap plain text with structured encoding (safe escaping).
-            val tiptapJson = buildJsonObject {
-                put("type", "doc")
-                put(
-                    "content",
-                    buildJsonArray {
-                        add(
-                            buildJsonObject {
-                                put("type", "paragraph")
-                                put(
-                                    "content",
-                                    buildJsonArray {
-                                        add(
-                                            buildJsonObject {
-                                                put("type", "text")
-                                                put("text", content)
-                                            },
-                                        )
-                                    },
-                                )
-                            },
-                        )
-                    },
-                )
-            }.toString()
+            val tiptapJson = buildTiptapDoc(content)
+            val tags = ir.xilo.app.core.util.HashtagParser.extract(content)
 
             val request = CreatePostRequest(
                 title = title,
                 slug = slug + "-" + System.currentTimeMillis().toString().takeLast(4),
                 content = tiptapJson,
-                excerpt = content.take(100)
+                contentMd = content,
+                excerpt = content.take(100),
+                tags = tags.takeIf { it.isNotEmpty() },
+                status = "published",
             )
             val remote = apiService.createPost(request)
             val entity = remote.toEntity(feedRank = 0)
@@ -131,26 +124,66 @@ class PostRepository @Inject constructor(
     }
 
     suspend fun toggleLike(postId: String, currentLikeState: Boolean): Result<Boolean> {
-        val snapshot = postDao.getPostById(postId)
-        val newState = !currentLikeState
-        if (snapshot != null) {
-            val newCount = snapshot.likeCount + (if (newState) 1 else -1)
-            // Use UPDATE (not REPLACE) so row identity / feed order stay stable.
-            postDao.updatePost(
-                snapshot.copy(isLiked = newState, likeCount = newCount.coerceAtLeast(0))
-            )
+        val mutex = likeMutexes.getOrPut(postId) { Mutex() }
+        // Drop rapid double-taps that would toggle the server twice and bring the like back.
+        if (!mutex.tryLock()) {
+            val latest = postDao.getPostById(postId)?.isLiked ?: currentLikeState
+            return Result.success(latest)
         }
-
         return try {
-            apiService.toggleReaction(
-                type = "post",
-                id = postId,
-                request = ToggleReactionRequest(reaction = "like")
-            )
-            Result.success(newState)
-        } catch (e: Exception) {
-            // Keep optimistic UI (filled red heart); a later refresh reconciles with the server.
-            Result.failure(e)
+            val snapshot = postDao.getPostById(postId)
+                ?: return Result.failure(IllegalStateException("Post not found: $postId"))
+            // Prefer Room as source of truth — UI `currentLikeState` can be stale on fast taps.
+            val previousLiked = snapshot.isLiked
+            val previousCount = snapshot.likeCount
+            val wantLiked = !previousLiked
+            val optimisticCount = (previousCount + if (wantLiked) 1 else -1).coerceAtLeast(0)
+            postDao.updateLikeState(postId, wantLiked, optimisticCount)
+
+            try {
+                apiService.toggleReaction(
+                    type = "post",
+                    id = postId,
+                    request = ToggleReactionRequest(reaction = "like"),
+                )
+
+                // Production may still have legacy "heart" rows. When unliking, clear any
+                // remaining like/heart viewer reactions so the heart cannot stick.
+                if (!wantLiked) {
+                    clearRemainingLikeReactions(postId = postId, slug = snapshot.slug)
+                }
+
+                val confirmed = runCatching {
+                    apiService.getPostBySlug(snapshot.slug.ifBlank { postId })
+                }.getOrNull()
+                val liked = confirmed?.resolvedIsLiked() ?: wantLiked
+                val count = confirmed?.resolvedLikeCount() ?: optimisticCount
+                postDao.updateLikeState(postId, liked, count.coerceAtLeast(0))
+                Result.success(liked)
+            } catch (e: Exception) {
+                postDao.updateLikeState(postId, previousLiked, previousCount)
+                Result.failure(e)
+            }
+        } finally {
+            mutex.unlock()
+        }
+    }
+
+    private suspend fun clearRemainingLikeReactions(postId: String, slug: String) {
+        val remote = runCatching {
+            apiService.getPostBySlug(slug.ifBlank { postId })
+        }.getOrNull() ?: return
+        val leftovers = remote.viewerReactions.filter {
+            it.equals("like", ignoreCase = true) || it.equals("heart", ignoreCase = true)
+        }
+        for (reaction in leftovers.distinctBy { it.lowercase() }) {
+            runCatching {
+                apiService.toggleReaction(
+                    type = "post",
+                    id = postId,
+                    request = ToggleReactionRequest(reaction = reaction),
+                )
+            }
         }
     }
 
@@ -168,6 +201,7 @@ class PostRepository @Inject constructor(
         likeCount = resolvedLikeCount(),
         commentCount = commentCount,
         repostCount = repostCount,
+        viewCount = viewCount,
         isLiked = resolvedIsLiked(),
         isBookmarked = isBookmarked,
         isReposted = isReposted,
@@ -175,6 +209,22 @@ class PostRepository @Inject constructor(
         createdAt = parseDateToEpoch(publishedAt?.takeIf { it.isNotBlank() } ?: createdAt),
         feedRank = feedRank
     )
+
+    suspend fun recordView(postId: String): Result<Long> {
+        return try {
+            val response = apiService.recordPostView(
+                id = postId,
+                request = RecordViewRequest(sessionId = analyticsSessionStore.getSessionId()),
+            )
+            val local = postDao.getPostById(postId)
+            if (local != null) {
+                postDao.updatePost(local.copy(viewCount = response.viewCount))
+            }
+            Result.success(response.viewCount)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun getBookmarkedPosts(): Result<List<PostEntity>> {
         return try {
@@ -232,6 +282,81 @@ class PostRepository @Inject constructor(
             if (snapshot != null) {
                 postDao.updatePost(snapshot)
             }
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPostById(id: String): PostEntity? = postDao.getPostById(id)
+
+    suspend fun updatePost(postId: String, title: String, content: String): Result<PostEntity> {
+        return try {
+            val tiptapJson = buildTiptapDoc(content)
+            val tags = ir.xilo.app.core.util.HashtagParser.extract(content)
+
+            val remote = apiService.updatePost(
+                id = postId,
+                request = UpdatePostRequest(
+                    title = title,
+                    content = tiptapJson,
+                    contentMd = content,
+                    excerpt = content.take(100),
+                    tags = tags,
+                ),
+            )
+            val local = postDao.getPostById(postId)
+            val entity = remote.toEntity(feedRank = local?.feedRank ?: Int.MAX_VALUE)
+            postDao.insertPost(entity)
+            Result.success(entity)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun buildTiptapDoc(content: String): String =
+        buildJsonObject {
+            put("type", "doc")
+            put(
+                "content",
+                buildJsonArray {
+                    add(
+                        buildJsonObject {
+                            put("type", "paragraph")
+                            put(
+                                "content",
+                                buildJsonArray {
+                                    add(
+                                        buildJsonObject {
+                                            put("type", "text")
+                                            put("text", content)
+                                        },
+                                    )
+                                },
+                            )
+                        },
+                    )
+                },
+            )
+        }.toString()
+
+    suspend fun archivePost(postId: String): Result<Unit> {
+        return try {
+            apiService.updatePost(
+                id = postId,
+                request = UpdatePostRequest(status = "archived"),
+            )
+            postDao.deletePostById(postId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deletePost(postId: String): Result<Unit> {
+        return try {
+            apiService.deletePost(postId)
+            postDao.deletePostById(postId)
+            Result.success(Unit)
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

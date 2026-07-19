@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/lib/pq"
@@ -23,6 +24,7 @@ type Post struct {
 	WordCount    int        `json:"word_count" db:"word_count"`
 	ReadingTime  int        `json:"reading_time" db:"reading_time"`
 	Language     string     `json:"language" db:"language"`
+	ViewCount    int64      `json:"view_count" db:"view_count"`
 	ScheduledAt  *time.Time `json:"scheduled_at,omitempty" db:"scheduled_at"`
 	PublishedAt  *time.Time `json:"published_at,omitempty" db:"published_at"`
 	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
@@ -36,6 +38,19 @@ type Post struct {
 	ViewerReactions  []string          `json:"viewer_reactions,omitempty" db:"-"`
 	IsBookmarked     bool              `json:"is_bookmarked" db:"-"`
 	IsReposted       bool              `json:"is_reposted" db:"-"`
+}
+
+var ErrInvalidViewSession = errors.New("session_id is required for anonymous views")
+
+type RecordViewRequest struct {
+	SessionID string `json:"session_id"`
+}
+
+type RecordViewResult struct {
+	Counted   bool   `json:"counted"`
+	ViewCount int64  `json:"view_count"`
+	Slug      string `json:"-"`
+	AuthorID  string `json:"-"`
 }
 
 type PostVersion struct {
@@ -88,4 +103,10 @@ type PostListParams struct {
 	Language  string
 	MediaOnly bool
 	ViewerID  string
+}
+
+// TagSuggestion is a hashtag/tag used for autocomplete and trending.
+type TagSuggestion struct {
+	Tag   string `json:"tag" db:"tag"`
+	Count int64  `json:"count" db:"count"`
 }

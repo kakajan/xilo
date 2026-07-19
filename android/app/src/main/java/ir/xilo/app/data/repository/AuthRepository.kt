@@ -60,6 +60,7 @@ class AuthRepository @Inject constructor(
                 authResp.user ?: throw Exception("No user data in auth response")
             }
             saveUserLocal(userProfile)
+            syncPreferredLanguageAfterAuth()
             Result.success(userProfile)
         } catch (e: Exception) {
             Result.failure(mapNetworkFailure(e))
@@ -76,6 +77,7 @@ class AuthRepository @Inject constructor(
                 authResp.user ?: throw Exception("No user data in auth response")
             }
             saveUserLocal(userProfile)
+            syncPreferredLanguageAfterAuth()
             Result.success(userProfile)
         } catch (e: Exception) {
             Result.failure(mapNetworkFailure(e))
@@ -101,6 +103,7 @@ class AuthRepository @Inject constructor(
                 authResp.user ?: throw Exception("No user data in auth response")
             }
             saveUserLocal(userProfile)
+            syncPreferredLanguageAfterAuth()
             Result.success(userProfile)
         } catch (e: Exception) {
             Result.failure(mapNetworkFailure(e))
@@ -189,9 +192,11 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun updatePreferredLanguage(language: String): Result<UserResponse> {
+        val normalized = language.trim().ifBlank { "fa" }
+        tokenManager.setPreferredLanguage(normalized, chosen = true)
         return try {
             val updated = apiService.updateProfile(
-                UpdateProfileRequest(preferredLanguage = language.trim())
+                UpdateProfileRequest(preferredLanguage = normalized)
             )
             saveUserLocal(updated)
             Result.success(updated)
@@ -211,6 +216,23 @@ class AuthRepository @Inject constructor(
     fun isUsernamePending(): Boolean = tokenManager.isUsernamePending()
 
     fun getPreferredLanguage(): String = tokenManager.getPreferredLanguage()
+
+    /** Persists UI language locally (login screen / offline). Server sync is separate. */
+    fun setPreferredLanguageLocal(language: String) {
+        tokenManager.setPreferredLanguage(language.trim().ifBlank { "fa" }, chosen = true)
+    }
+
+    /**
+     * After auth: keep an explicit pre-auth language choice and push it to the account.
+     * Otherwise adopt the server preference (e.g. returning user on a fresh install).
+     */
+    private suspend fun syncPreferredLanguageAfterAuth() {
+        if (!tokenManager.isPreferredLanguageChosen()) return
+        val local = tokenManager.getPreferredLanguage()
+        runCatching {
+            apiService.updateProfile(UpdateProfileRequest(preferredLanguage = local))
+        }
+    }
 
     suspend fun uploadAndSetAvatar(uri: Uri): Result<UserResponse> {
         return try {
@@ -289,8 +311,12 @@ class AuthRepository @Inject constructor(
         DateFormatter.setUserPreferenceFromApi(calendar)
         val pending = user.usernamePending || user.username.startsWith("tmp_")
         tokenManager.setUsernamePending(pending)
-        user.preferredLanguage?.takeIf { it.isNotBlank() }?.let {
-            tokenManager.setPreferredLanguage(it)
+        // Do not clobber an explicit UI language (e.g. English chosen on the login screen)
+        // with the account default (usually fa) during login /me refresh.
+        if (!tokenManager.isPreferredLanguageChosen()) {
+            user.preferredLanguage?.takeIf { it.isNotBlank() }?.let {
+                tokenManager.setPreferredLanguage(it, chosen = false)
+            }
         }
         userDao.insertUser(
             UserEntity(

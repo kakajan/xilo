@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -159,7 +160,7 @@ fun CommentCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "· ${getRelativeTimeSpan(comment.createdAt)}",
+                        text = "· ${getRelativeTimeSpan(LocalContext.current, comment.createdAt)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.secondary,
                         maxLines = 1
@@ -168,12 +169,12 @@ fun CommentCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
+                ContentAwareText(
                     text = comment.content,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                     maxLines = contentMaxLines,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
 
                 Row(

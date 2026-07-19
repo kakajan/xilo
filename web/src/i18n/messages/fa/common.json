@@ -1,0 +1,45 @@
+{
+  "actions": {
+    "save": "ذخیره",
+    "cancel": "انصراف",
+    "confirm": "تأیید",
+    "delete": "حذف",
+    "edit": "ویرایش",
+    "close": "بستن",
+    "back": "بازگشت",
+    "retry": "تلاش دوباره",
+    "loading": "در حال بارگذاری…",
+    "search": "جستجو",
+    "submit": "ارسال"
+  },
+  "errors": {
+    "notFound": "مورد درخواستی پیدا نشد",
+    "generic": "خطایی رخ داد. لطفاً دوباره تلاش کنید.",
+    "network": "اتصال اینترنت برقرار نیست",
+    "unauthorized": "لطفاً دوباره وارد حساب شوید",
+    "forbidden": "شما اجازه انجام این کار را ندارید"
+  },
+  "nav": {
+    "feed": "فید",
+    "discover": "اکتشاف",
+    "messages": "پیام‌ها",
+    "profile": "پروفایل",
+    "settings": "تنظیمات",
+    "notifications": "اعلان‌ها",
+    "saved": "ذخیره‌ها",
+    "dashboard": "داشبورد",
+    "write": "نوشتن",
+    "writePost": "نوشتن پست",
+    "login": "ورود",
+    "register": "ثبت‌نام",
+    "mainNavigation": "ناوبری اصلی",
+    "desktopMenu": "منوی دسکتاپ",
+    "searchPlaceholder": "جستجو..."
+  },
+  "offline": {
+    "banner": "آفلاین هستید — داده‌های ذخیره‌شده نمایش داده می‌شود"
+  },
+  "language": {
+    "unknownInitial": "؟"
+  }
+}

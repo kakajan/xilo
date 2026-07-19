@@ -1,0 +1,18 @@
+{
+  "readMore": "Read more",
+  "like": "Like",
+  "dislike": "Dislike",
+  "bookmark": "Save",
+  "unbookmark": "Remove from saved",
+  "comments": "Comments",
+  "languageBadge": "Post language",
+  "emptyFeed": "No posts yet",
+  "create": "Create post",
+  "publish": "Publish",
+  "draft": "Draft",
+  "title": "Title",
+  "excerpt": "Excerpt",
+  "content": "Content",
+  "tagFeedLabel": "Posts with this tag",
+  "tagFeedEmpty": "No posts with this hashtag yet"
+}

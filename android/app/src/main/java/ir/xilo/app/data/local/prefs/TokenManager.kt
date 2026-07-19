@@ -114,12 +114,12 @@ class TokenManager @Inject constructor(
     }
 
     fun clearUser() {
+        // Keep preferred language across logout — it is a device/UI preference.
         prefs.edit()
             .remove("user_id")
             .remove("username")
             .remove("user_role")
             .remove(USERNAME_PENDING_KEY)
-            .remove(PREFERRED_LANGUAGE_KEY)
             .apply()
     }
 
@@ -161,8 +161,24 @@ class TokenManager @Inject constructor(
     fun getPreferredLanguage(): String =
         prefs.getString(PREFERRED_LANGUAGE_KEY, "fa") ?: "fa"
 
-    fun setPreferredLanguage(value: String) {
-        prefs.edit().putString(PREFERRED_LANGUAGE_KEY, value.ifBlank { "fa" }).apply()
+    /** True when the user picked a language on auth/settings (not only a server hydrate). */
+    fun isPreferredLanguageChosen(): Boolean {
+        if (prefs.contains(PREFERRED_LANGUAGE_CHOSEN_KEY)) {
+            return prefs.getBoolean(PREFERRED_LANGUAGE_CHOSEN_KEY, false)
+        }
+        // Pre-flag installs: a stored language was user/device preference — do not clobber it.
+        return prefs.contains(PREFERRED_LANGUAGE_KEY)
+    }
+
+    /**
+     * Persists UI language. Uses commit() so Activity.recreate() sees the new value immediately.
+     * @param chosen mark as an explicit user selection (survives profile refreshes from the server).
+     */
+    fun setPreferredLanguage(value: String, chosen: Boolean = true) {
+        prefs.edit()
+            .putString(PREFERRED_LANGUAGE_KEY, value.ifBlank { "fa" })
+            .putBoolean(PREFERRED_LANGUAGE_CHOSEN_KEY, chosen)
+            .commit()
     }
 
     private fun readTokensLocked(): AuthTokens? {
@@ -276,15 +292,23 @@ class TokenManager @Inject constructor(
         val r: String,
     )
 
-    private companion object {
+    companion object {
         const val PREFS_NAME = "xilo_auth_prefs"
-        const val ENCRYPTED_SESSION_KEY = "encrypted_session_v1"
-        const val LEGACY_ACCESS_TOKEN_KEY = "access_token"
-        const val LEGACY_REFRESH_TOKEN_KEY = "refresh_token"
-        const val PREFERRED_CALENDAR_KEY = "preferred_calendar"
-        const val USERNAME_PENDING_KEY = "username_pending"
         const val PREFERRED_LANGUAGE_KEY = "preferred_language"
-        const val BLOB_VERSION = 1
+        const val PREFERRED_LANGUAGE_CHOSEN_KEY = "preferred_language_chosen"
+
+        fun preferredLanguageFrom(context: Context): String =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(PREFERRED_LANGUAGE_KEY, "fa")
+                ?.takeIf { it.isNotBlank() }
+                ?: "fa"
+
+        private const val ENCRYPTED_SESSION_KEY = "encrypted_session_v1"
+        private const val LEGACY_ACCESS_TOKEN_KEY = "access_token"
+        private const val LEGACY_REFRESH_TOKEN_KEY = "refresh_token"
+        private const val PREFERRED_CALENDAR_KEY = "preferred_calendar"
+        private const val USERNAME_PENDING_KEY = "username_pending"
+        private const val BLOB_VERSION = 1
 
         private val sessionJson = Json {
             ignoreUnknownKeys = false

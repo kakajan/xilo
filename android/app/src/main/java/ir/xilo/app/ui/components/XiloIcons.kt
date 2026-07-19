@@ -23,6 +23,25 @@ import androidx.compose.ui.unit.sp
 import ir.xilo.app.theme.XiloBlue
 import io.eyram.iconsax.IconSax
 
+/**
+ * Iconsax Back / ChevronEnd are authored for RTL (Persian default):
+ * Back = ArrowRight3 (→), ChevronEnd = ArrowLeft2 (←).
+ * In LTR, swap to the opposing chevron drawable instead of scaleX mirroring
+ * (graphicsLayer flips are unreliable on these vector painters).
+ */
+@DrawableRes
+private fun resolveDirectionalIcon(
+    @DrawableRes icon: Int,
+    direction: LayoutDirection,
+): Int {
+    if (direction == LayoutDirection.Rtl) return icon
+    return when (icon) {
+        XiloIcons.Back -> IconSax.Outline.ArrowLeft2
+        XiloIcons.ChevronEnd -> IconSax.Outline.ArrowRight3
+        else -> icon
+    }
+}
+
 @Composable
 fun XiloIcon(
     @DrawableRes icon: Int,
@@ -30,8 +49,9 @@ fun XiloIcon(
     modifier: Modifier = Modifier,
     tint: Color = LocalContentColor.current,
 ) {
+    val resolvedIcon = resolveDirectionalIcon(icon, LocalLayoutDirection.current)
     Icon(
-        painter = painterResource(icon),
+        painter = painterResource(resolvedIcon),
         contentDescription = contentDescription,
         modifier = modifier,
         tint = tint,
@@ -83,6 +103,7 @@ object XiloIcons {
     val MessageTickBold = IconSax.Bold.MessageTick
     val Edit = IconSax.Outline.Edit
     val Archive = IconSax.Outline.Archive
+    val Trash = IconSax.Outline.Trash
     val Pin = IconSax.Outline.Location
 
     val Call = IconSax.Outline.Call
@@ -123,12 +144,13 @@ fun XiloSendIcon(
 @Composable
 fun VerifiedBadge(
     modifier: Modifier = Modifier,
-    size: Dp = 18.dp
+    size: Dp = 18.dp,
+    tint: Color = XiloBlue,
 ) {
     XiloIcon(
         icon = XiloIcons.Verify,
         contentDescription = "Verified",
-        tint = XiloBlue,
+        tint = tint,
         modifier = modifier.size(size)
     )
 }

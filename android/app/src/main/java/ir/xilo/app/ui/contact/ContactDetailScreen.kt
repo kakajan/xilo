@@ -39,9 +39,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import ir.xilo.app.R
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.ui.components.ProfileHeaderSkeleton
@@ -58,7 +60,14 @@ fun ContactDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("رسانه", "فایل‌ها", "صدا", "لینک‌ها", "گیف", "گروه‌ها")
+    val tabs = listOf(
+        stringResource(R.string.contact_tab_media),
+        stringResource(R.string.contact_tab_files),
+        stringResource(R.string.contact_tab_audio),
+        stringResource(R.string.contact_tab_links),
+        stringResource(R.string.contact_tab_gifs),
+        stringResource(R.string.contact_tab_groups),
+    )
 
     LaunchedEffect(chatId) {
         viewModel.loadContact(chatId)
@@ -82,13 +91,13 @@ fun ContactDetailScreen(
                     IconButton(onClick = onBackClick) {
                         XiloIcon(
                             icon = XiloIcons.Back,
-                            contentDescription = "بازگشت"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 },
                 actions = {
                     IconButton(onClick = { }) {
-                        XiloIcon(icon = XiloIcons.Edit, contentDescription = "ویرایش")
+                        XiloIcon(icon = XiloIcons.Edit, contentDescription = stringResource(R.string.common_edit))
                     }
                 }
             )
@@ -148,11 +157,11 @@ fun ContactDetailScreen(
                         .padding(horizontal = 8.dp, vertical = 56.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    ContactActionButton(XiloIcons.Call, "تماس")
-                    ContactActionButton(XiloIcons.Video, "ویدیو")
-                    ContactActionButton(XiloIcons.Notification, "بی‌صدا")
-                    ContactActionButton(XiloIcons.Search, "جستجو")
-                    ContactActionButton(XiloIcons.MoreHorizontal, "بیشتر")
+                    ContactActionButton(XiloIcons.Call, stringResource(R.string.contact_action_call))
+                    ContactActionButton(XiloIcons.Video, stringResource(R.string.contact_action_video))
+                    ContactActionButton(XiloIcons.Notification, stringResource(R.string.contact_action_mute))
+                    ContactActionButton(XiloIcons.Search, stringResource(R.string.common_search))
+                    ContactActionButton(XiloIcons.MoreHorizontal, stringResource(R.string.common_more))
                 }
             }
 
@@ -166,14 +175,14 @@ fun ContactDetailScreen(
                         .padding(16.dp)
                 ) {
                     if (contact.phone.isNotBlank()) {
-                        Text("موبایل", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        Text(stringResource(R.string.profile_label_mobile), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                         Text(contact.phone, style = MaterialTheme.typography.bodyLarge, color = XiloBlue)
                         if (contact.username.isNotBlank()) {
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
                     if (contact.username.isNotBlank()) {
-                        Text("نام کاربری", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        Text(stringResource(R.string.profile_label_username), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                         Text(contact.username, style = MaterialTheme.typography.bodyLarge, color = XiloBlue)
                     }
                 }
@@ -224,7 +233,7 @@ fun ContactDetailScreen(
                 items(contact.mediaItems) { item ->
                     AsyncImage(
                         model = item,
-                        contentDescription = "رسانه",
+                        contentDescription = stringResource(R.string.contact_cd_media),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .fillMaxWidth()

@@ -27,6 +27,9 @@ func main() {
 	app.Use(logger.New())
 
 	app.Get("/", h.List)
+	app.Get("/tags/suggest", h.SuggestTags)
+	app.Get("/tags/trending", h.TrendingTags)
+	app.Post("/:id/view", h.RecordView)
 	app.Get("/:slug", h.GetBySlug)
 	app.Post("/", h.Create)
 	app.Patch("/:id", h.Update)

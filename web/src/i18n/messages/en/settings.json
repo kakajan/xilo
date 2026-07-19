@@ -1,0 +1,27 @@
+{
+  "title": "Settings",
+  "usernamePending": "Username not chosen yet",
+  "usernamePrompt": "Choose a permanent username for your profile.",
+  "changePhoto": "Change photo",
+  "username": "Username",
+  "chooseUsername": "Choose username",
+  "myProfile": "My profile",
+  "wallet": "Wallet",
+  "walletSoon": "Wallet coming soon...",
+  "messagesAndSaved": "Messages & saved",
+  "devices": "Devices",
+  "chatFolders": "Chat folders",
+  "interfaceLanguage": "Interface language",
+  "calendar": "Date calendar",
+  "logout": "Log out",
+  "avatarUpdated": "Profile photo updated",
+  "uploadFailed": "Upload failed",
+  "language": {
+    "title": "Interface language",
+    "description": "Interface text and page direction (RTL / LTR) update with your selected language.",
+    "save": "Save language",
+    "saving": "Saving…",
+    "saved": "Interface language saved",
+    "saveFailed": "Failed to save"
+  }
+}

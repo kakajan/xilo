@@ -60,6 +60,7 @@ data class PostEntity(
     val likeCount: Int = 0,
     val commentCount: Int = 0,
     val repostCount: Int = 0,
+    val viewCount: Long = 0,
     val isLiked: Boolean = false,
     val isBookmarked: Boolean = false,
     val isReposted: Boolean = false,

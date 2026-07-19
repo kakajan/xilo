@@ -237,9 +237,33 @@ data class CreatePostRequest(
     val slug: String,
     val excerpt: String? = null,
     val content: String, // Expected to be Tiptap JSON or text
+    val contentMd: String? = null,
     val coverImageUrl: String? = null,
-    val categoryId: String? = null,
-    val isPublished: Boolean = true
+    val category: String? = null,
+    val tags: List<String>? = null,
+    val status: String = "published",
+    val isPremium: Boolean = false,
+)
+
+@Serializable
+data class UpdatePostRequest(
+    val title: String? = null,
+    val content: String? = null,
+    val contentMd: String? = null,
+    val excerpt: String? = null,
+    val tags: List<String>? = null,
+    val status: String? = null,
+)
+
+@Serializable
+data class TagSuggestion(
+    val tag: String,
+    val count: Long = 0,
+)
+
+@Serializable
+data class TagListResponse(
+    val data: List<TagSuggestion> = emptyList(),
 )
 
 @Serializable
@@ -258,6 +282,7 @@ data class PostResponse(
     val likeCount: Int = 0,
     val commentCount: Int = 0,
     val repostCount: Int = 0,
+    val viewCount: Long = 0,
     val isLiked: Boolean = false,
     val isBookmarked: Boolean = false,
     val isReposted: Boolean = false,
@@ -280,6 +305,17 @@ data class PostResponse(
 @Serializable
 data class ToggleReactionRequest(
     val reaction: String
+)
+
+@Serializable
+data class RecordViewRequest(
+    val sessionId: String,
+)
+
+@Serializable
+data class RecordViewResponse(
+    val counted: Boolean = false,
+    val viewCount: Long = 0,
 )
 
 // ────────────────────── Comment DTOs ──────────────────────

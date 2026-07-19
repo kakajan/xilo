@@ -1,0 +1,45 @@
+{
+  "actions": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "retry": "إعادة المحاولة",
+    "loading": "جارٍ التحميل…",
+    "search": "بحث",
+    "submit": "إرسال"
+  },
+  "errors": {
+    "notFound": "العنصر المطلوب غير موجود",
+    "generic": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "network": "لا يوجد اتصال بالإنترنت",
+    "unauthorized": "يرجى تسجيل الدخول مرة أخرى",
+    "forbidden": "ليس لديك إذن للقيام بذلك"
+  },
+  "nav": {
+    "feed": "الموجز",
+    "discover": "اكتشف",
+    "messages": "الرسائل",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "notifications": "الإشعارات",
+    "saved": "المحفوظات",
+    "dashboard": "لوحة التحكم",
+    "write": "كتابة",
+    "writePost": "كتابة منشور",
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "mainNavigation": "التنقل الرئيسي",
+    "desktopMenu": "قائمة سطح المكتب",
+    "searchPlaceholder": "بحث..."
+  },
+  "offline": {
+    "banner": "أنت غير متصل — يتم عرض البيانات المحفوظة"
+  },
+  "language": {
+    "unknownInitial": "؟"
+  }
+}

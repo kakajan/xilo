@@ -92,8 +92,9 @@ class SettingsViewModel @Inject constructor(
                 )
             }
             val local = authRepository.getLocalProfile()
+            val fallbackName = errorMessageResolver.string(R.string.settings_default_display_name)
             applyProfile(
-                displayName = local?.displayName ?: local?.username ?: authRepository.getUsername() ?: "کاربر",
+                displayName = local?.displayName ?: local?.username ?: authRepository.getUsername() ?: fallbackName,
                 username = local?.username ?: authRepository.getUsername() ?: "user",
                 usernamePending = authRepository.isUsernamePending(),
                 phone = local?.phone.orEmpty(),
@@ -135,7 +136,9 @@ class SettingsViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isLoading = loading,
-                displayName = displayName.ifBlank { "کاربر" },
+                displayName = displayName.ifBlank {
+                    errorMessageResolver.string(R.string.settings_default_display_name)
+                },
                 username = username.ifBlank { "user" },
                 usernamePending = usernamePending,
                 usernameDraft = if (usernamePending) "" else username,
@@ -160,7 +163,9 @@ class SettingsViewModel @Inject constructor(
             return
         }
         if (draft.startsWith("tmp_")) {
-            _uiState.update { it.copy(errorMessage = "این پیشوند رزرو شده است") }
+            _uiState.update {
+                it.copy(errorMessage = errorMessageResolver.string(R.string.validation_username_reserved_prefix))
+            }
             return
         }
         viewModelScope.launch {
@@ -178,7 +183,9 @@ class SettingsViewModel @Inject constructor(
                             ?: _uiState.value.preferredLanguage,
                         loading = false
                     )
-                    _uiState.update { it.copy(infoMessage = "نام کاربری ذخیره شد") }
+                    _uiState.update {
+                        it.copy(infoMessage = errorMessageResolver.string(R.string.settings_username_saved))
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update {
@@ -192,16 +199,25 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun updatePreferredLanguage(code: String) {
+        val normalized = code.trim().ifBlank { "fa" }
+        // Apply locally first so Activity recreate picks up resources + layout direction.
+        authRepository.setPreferredLanguageLocal(normalized)
+        _uiState.update {
+            it.copy(
+                preferredLanguage = normalized,
+                isLoading = true,
+                errorMessage = null,
+            )
+        }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            authRepository.updatePreferredLanguage(code)
+            authRepository.updatePreferredLanguage(normalized)
                 .onSuccess { user ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             preferredLanguage = user.preferredLanguage?.takeIf { lang -> lang.isNotBlank() }
-                                ?: code,
-                            infoMessage = "زبان رابط ذخیره شد"
+                                ?: normalized,
+                            infoMessage = errorMessageResolver.string(R.string.settings_language_saved)
                         )
                     }
                 }
@@ -218,7 +234,12 @@ class SettingsViewModel @Inject constructor(
 
     fun updateThemeMode(mode: ThemeMode) {
         themeRepository.setThemeMode(mode)
-        _uiState.update { it.copy(themeMode = mode, infoMessage = "حالت نمایش به‌روزرسانی شد") }
+        _uiState.update {
+            it.copy(
+                themeMode = mode,
+                infoMessage = errorMessageResolver.string(R.string.settings_theme_updated),
+            )
+        }
     }
 
     fun updatePreferredCalendar(preference: CalendarPreference) {
@@ -230,7 +251,7 @@ class SettingsViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             preferredCalendar = preference,
-                            infoMessage = "تقویم به‌روزرسانی شد"
+                            infoMessage = errorMessageResolver.string(R.string.settings_calendar_updated)
                         )
                     }
                 }
@@ -263,7 +284,7 @@ class SettingsViewModel @Inject constructor(
                             username = user.username,
                             usernamePending = user.usernamePending || user.username.startsWith("tmp_"),
                             phone = formatPhone(user.phone.orEmpty()),
-                            infoMessage = "عکس پروفایل به‌روزرسانی شد"
+                            infoMessage = errorMessageResolver.string(R.string.settings_avatar_updated)
                         )
                     }
                 }
@@ -283,7 +304,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onWalletComingSoon() {
-        _uiState.update { it.copy(infoMessage = "به‌زودی") }
+        _uiState.update {
+            it.copy(infoMessage = errorMessageResolver.string(R.string.settings_coming_soon))
+        }
     }
 
     fun onSavedMessages() {

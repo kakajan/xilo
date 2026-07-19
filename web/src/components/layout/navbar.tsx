@@ -14,6 +14,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { canCreatePost } from "@/lib/auth/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
@@ -27,6 +28,8 @@ interface NavbarProps {
 }
 
 export function Navbar({ chromeVisible = true }: NavbarProps) {
+  const t = useTranslations("common.nav");
+  const tLang = useTranslations("common.language");
   const { user, isAuthenticated } = useAuthStore();
   const brandName = useBrandStore((s) => s.brand.name_fa);
   const router = useRouter();
@@ -59,7 +62,7 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
             <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
-              placeholder="جستجو..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-lg border bg-background py-2 pe-4 ps-9 text-sm min-h-11"
@@ -77,7 +80,7 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
                   size="icon"
                   className="min-h-11 min-w-11"
                   onClick={() => router.push("/dashboard")}
-                  aria-label="داشبورد"
+                  aria-label={t("dashboard")}
                 >
                   <LayoutDashboard className="h-5 w-5" />
                 </Button>
@@ -88,7 +91,7 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
                   size="icon"
                   className="min-h-11 min-w-11 hidden sm:inline-flex"
                   onClick={() => router.push("/write")}
-                  aria-label="نوشتن"
+                  aria-label={t("write")}
                 >
                   <PlusCircle className="h-5 w-5" />
                 </Button>
@@ -98,7 +101,7 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
                 size="icon"
                 className="min-h-11 min-w-11"
                 onClick={() => router.push("/notifications")}
-                aria-label="اعلان‌ها"
+                aria-label={t("notifications")}
               >
                 <Bell className="h-5 w-5" />
               </Button>
@@ -107,7 +110,7 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
                 size="icon"
                 className="min-h-11 min-w-11"
                 onClick={() => router.push("/saved")}
-                aria-label="ذخیره‌ها"
+                aria-label={t("saved")}
               >
                 <Bookmark className="h-5 w-5" />
               </Button>
@@ -116,7 +119,7 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
                 size="icon"
                 className="min-h-11 min-w-11"
                 onClick={() => router.push("/settings")}
-                aria-label="تنظیمات"
+                aria-label={t("settings")}
               >
                 <Settings className="h-5 w-5" />
               </Button>
@@ -125,14 +128,16 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
                 size="icon"
                 className="min-h-11 min-w-11"
                 onClick={() => router.push(`/${user?.username}`)}
-                aria-label="پروفایل"
+                aria-label={t("profile")}
               >
                 <Avatar className="h-8 w-8">
                   {user?.avatar_url ? (
                     <AvatarImage src={user.avatar_url} alt="" />
                   ) : null}
                   <AvatarFallback>
-                    {user ? getInitials(user.display_name || user.username) : "؟"}
+                    {user
+                      ? getInitials(user.display_name || user.username)
+                      : tLang("unknownInitial")}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -146,11 +151,11 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
                 onClick={() => router.push("/login")}
               >
                 <LogIn className="ms-1 h-4 w-4" />
-                ورود
+                {t("login")}
               </Button>
               <Button size="sm" className="min-h-11" onClick={() => router.push("/register")}>
                 <UserPlus className="ms-1 h-4 w-4" />
-                ثبت‌نام
+                {t("register")}
               </Button>
             </>
           )}

@@ -3,25 +3,69 @@ package ir.xilo.app.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.xilo.app.R
+import ir.xilo.app.data.remote.dto.LanguageInfo
 import ir.xilo.app.data.repository.AuthRepository
+import ir.xilo.app.data.repository.BrandRepository
 import ir.xilo.app.ui.components.AuthField
 import ir.xilo.app.util.ErrorMessageResolver
 import ir.xilo.app.util.InputValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val brandRepository: BrandRepository,
     private val errorMessageResolver: ErrorMessageResolver,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    private val _preferredLanguage = MutableStateFlow(authRepository.getPreferredLanguage())
+    val preferredLanguage: StateFlow<String> = _preferredLanguage.asStateFlow()
+
+    private val _languages = MutableStateFlow(defaultLanguages)
+    val languages: StateFlow<List<LanguageInfo>> = _languages.asStateFlow()
+
+    val brandTitle: StateFlow<String> = combine(
+        brandRepository.brand,
+        _preferredLanguage,
+    ) { brand, language ->
+        brand.nameForLanguage(language)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = brandRepository.brand.value.nameForLanguage(_preferredLanguage.value),
+    )
+
+    init {
+        viewModelScope.launch {
+            authRepository.listLanguages()
+                .onSuccess { remote ->
+                    if (remote.isNotEmpty()) {
+                        _languages.value = remote
+                    }
+                }
+        }
+    }
+
+    /** Saves language locally for pre-auth UI; returns true when the value changed. */
+    fun selectLanguage(code: String): Boolean {
+        val normalized = code.trim().ifBlank { "fa" }
+        if (normalized == _preferredLanguage.value) return false
+        authRepository.setPreferredLanguageLocal(normalized)
+        _preferredLanguage.value = normalized
+        clearError()
+        return true
+    }
 
     fun login(email: String, passwordHash: String) {
         val fieldErrors = buildMap {
@@ -77,7 +121,9 @@ class AuthViewModel @Inject constructor(
 
     fun requestOtp(phone: String) {
         if (phone.isBlank()) {
-            _uiState.value = AuthUiState.Error(generalError = "شماره موبایل الزامی است")
+            _uiState.value = AuthUiState.Error(
+                generalError = errorMessageResolver.string(R.string.auth_phone_required),
+            )
             return
         }
         viewModelScope.launch {
@@ -115,7 +161,9 @@ class AuthViewModel @Inject constructor(
 
     fun verifyOtpLogin(phone: String, code: String) {
         if (phone.isBlank() || code.isBlank()) {
-            _uiState.value = AuthUiState.Error(generalError = "شماره موبایل و کد تایید الزامی است")
+            _uiState.value = AuthUiState.Error(
+                generalError = errorMessageResolver.string(R.string.auth_otp_fields_required),
+            )
             return
         }
         viewModelScope.launch {
@@ -165,3 +213,11 @@ sealed interface AuthUiState {
         val generalError: String? = null,
     ) : AuthUiState
 }
+
+private val defaultLanguages = listOf(
+    LanguageInfo("fa", "فارسی", "Persian", "rtl"),
+    LanguageInfo("en", "English", "English", "ltr"),
+    LanguageInfo("ar", "العربية", "Arabic", "rtl"),
+    LanguageInfo("ru", "Русский", "Russian", "ltr"),
+    LanguageInfo("tr", "Türkçe", "Turkish", "ltr"),
+)

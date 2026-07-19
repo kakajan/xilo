@@ -1,4 +1,13 @@
-export type AppLanguageCode = "fa" | "en" | "ar" | "ru" | "tr";
+import {
+  applyDocumentLocale,
+  defaultLocale,
+  localeConfig,
+  locales,
+  resolveLocale,
+  type Locale,
+} from "@/i18n/config";
+
+export type AppLanguageCode = Locale;
 
 export interface AppLanguage {
   code: AppLanguageCode;
@@ -7,24 +16,20 @@ export interface AppLanguage {
   direction: "rtl" | "ltr";
 }
 
-export const APP_LANGUAGES: AppLanguage[] = [
-  { code: "fa", nameNative: "فارسی", nameEnglish: "Persian", direction: "rtl" },
-  { code: "en", nameNative: "English", nameEnglish: "English", direction: "ltr" },
-  { code: "ar", nameNative: "العربية", nameEnglish: "Arabic", direction: "rtl" },
-  { code: "ru", nameNative: "Русский", nameEnglish: "Russian", direction: "ltr" },
-  { code: "tr", nameNative: "Türkçe", nameEnglish: "Turkish", direction: "ltr" },
-];
+export const APP_LANGUAGES: AppLanguage[] = locales.map((code) => ({
+  code,
+  nameNative: localeConfig[code].name,
+  nameEnglish: localeConfig[code].nameEnglish,
+  direction: localeConfig[code].direction,
+}));
 
-export const DEFAULT_LANGUAGE: AppLanguageCode = "fa";
+export const DEFAULT_LANGUAGE: AppLanguageCode = defaultLocale;
 
 export function getLanguage(code?: string | null): AppLanguage {
-  const found = APP_LANGUAGES.find((l) => l.code === code);
-  return found ?? APP_LANGUAGES.find((l) => l.code === DEFAULT_LANGUAGE)!;
+  const resolved = resolveLocale(code);
+  return APP_LANGUAGES.find((l) => l.code === resolved)!;
 }
 
 export function applyDocumentLanguage(code?: string | null): void {
-  if (typeof document === "undefined") return;
-  const lang = getLanguage(code);
-  document.documentElement.lang = lang.code;
-  document.documentElement.dir = lang.direction;
+  applyDocumentLocale(resolveLocale(code));
 }

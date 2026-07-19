@@ -25,6 +25,8 @@ import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
+import ir.xilo.app.ui.components.ContentAwareText
+import ir.xilo.app.ui.components.HashtagAwareText
 import ir.xilo.app.ui.components.FeedSkeletonList
 import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
@@ -32,6 +34,8 @@ import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.XiloLogo
 import ir.xilo.app.ui.components.XiloTopAppBar
+import ir.xilo.app.ui.feed.PostOwnerMenu
+import ir.xilo.app.ui.feed.isPostOwner
 
 fun extractPlainText(json: String): String {
     if (json.isBlank() || json == "{}") return ""
@@ -68,6 +72,8 @@ fun PostDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
     onAuthorClick: (String) -> Unit = {},
+    onEditPost: (String) -> Unit = {},
+    onHashtagClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     replyToCommentId: String? = null,
     replyToAuthor: String? = null,
@@ -78,6 +84,9 @@ fun PostDetailScreen(
     val comments by viewModel.comments.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val currentUserId by viewModel.currentUserId.collectAsState()
+    val currentUsername by viewModel.currentUsername.collectAsState()
+    val postRemoved by viewModel.postRemoved.collectAsState()
 
     var replyDraftText by remember { mutableStateOf("") }
     var replyingToCommentId by remember(replyToCommentId) { mutableStateOf(replyToCommentId) }
@@ -113,6 +122,10 @@ fun PostDetailScreen(
 
     LaunchedEffect(slug) {
         viewModel.loadPost(slug)
+    }
+
+    LaunchedEffect(postRemoved) {
+        if (postRemoved) onBackClick()
     }
 
     LaunchedEffect(errorMessage) {
@@ -210,8 +223,15 @@ fun PostDetailScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         item {
+                            val detailPost = post!!
+                            val owner = isPostOwner(
+                                authorId = detailPost.authorId,
+                                authorUsername = detailPost.authorUsername,
+                                currentUserId = currentUserId,
+                                currentUsername = currentUsername,
+                            )
                             PostDetailHeader(
-                                post = post!!,
+                                post = detailPost,
                                 onReplyClick = {
                                     replyDraftText = ""
                                     replyingToCommentId = null
@@ -219,10 +239,23 @@ fun PostDetailScreen(
                                     isReplyingToPost = true
                                 },
                                 onRepostClick = {
-                                    viewModel.toggleRepost(post!!.id, post!!.isReposted)
+                                    viewModel.toggleRepost(detailPost.id, detailPost.isReposted)
                                 },
                                 onAuthorClick = {
-                                    onAuthorClick(post!!.authorUsername)
+                                    onAuthorClick(detailPost.authorUsername)
+                                },
+                                onHashtagClick = onHashtagClick,
+                                isOwner = owner,
+                                onEditClick = if (owner) ({ onEditPost(detailPost.id) }) else null,
+                                onArchiveClick = if (owner) {
+                                    ({ viewModel.archivePost(detailPost.id) })
+                                } else {
+                                    null
+                                },
+                                onDeleteClick = if (owner) {
+                                    ({ viewModel.deletePost(detailPost.id) })
+                                } else {
+                                    null
                                 },
                             )
                         }
@@ -273,7 +306,7 @@ fun PostDetailScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        "اولین کسی باشید که نظر خود را ثبت می‌کند.",
+                                        stringResource(R.string.post_detail_empty_comments),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.secondary
                                     )
@@ -348,6 +381,11 @@ fun PostDetailHeader(
     onReplyClick: () -> Unit = {},
     onRepostClick: () -> Unit = {},
     onAuthorClick: (() -> Unit)? = null,
+    onHashtagClick: (String) -> Unit = {},
+    isOwner: Boolean = false,
+    onEditClick: (() -> Unit)? = null,
+    onArchiveClick: (() -> Unit)? = null,
+    onDeleteClick: (() -> Unit)? = null,
 ) {
     val openAuthor = onAuthorClick?.takeIf { post.authorUsername.isNotBlank() }
     Column(
@@ -362,7 +400,7 @@ fun PostDetailHeader(
                 onClick = openAuthor,
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = post.authorName ?: post.authorUsername,
@@ -378,7 +416,7 @@ fun PostDetailHeader(
                     VerifiedBadge(size = 18.dp)
                 }
                 Text(
-                    text = "@${post.authorUsername} · ${getRelativeTimeSpan(post.createdAt)}",
+                    text = "@${post.authorUsername} · ${getRelativeTimeSpan(androidx.compose.ui.platform.LocalContext.current, post.createdAt)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
                     modifier = if (openAuthor != null) {
@@ -388,15 +426,22 @@ fun PostDetailHeader(
                     }
                 )
             }
+            if (isOwner && onEditClick != null && onArchiveClick != null && onDeleteClick != null) {
+                PostOwnerMenu(
+                    onEdit = onEditClick,
+                    onArchive = onArchiveClick,
+                    onDelete = onDeleteClick,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         if (post.title.isNotBlank()) {
-            Text(
+            ContentAwareText(
                 text = post.title,
                 style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
         }
 
@@ -404,10 +449,11 @@ fun PostDetailHeader(
             extractPlainText(post.content).ifBlank { post.excerpt ?: "" }
         }
         if (displayContent.isNotBlank()) {
-            Text(
+            HashtagAwareText(
                 text = displayContent,
+                onHashtagClick = onHashtagClick,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
 
@@ -415,7 +461,7 @@ fun PostDetailHeader(
             Spacer(modifier = Modifier.height(12.dp))
             AsyncImage(
                 model = post.coverImageUrl,
-                contentDescription = "تصویر پست",
+                contentDescription = stringResource(R.string.cd_post_image),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -433,26 +479,30 @@ fun PostDetailHeader(
             DetailAction(
                 icon = XiloIcons.Message,
                 count = post.commentCount.toString(),
-                description = "نظرات",
+                description = stringResource(R.string.cd_comments),
                 onClick = onReplyClick,
             )
             DetailAction(
                 icon = XiloIcons.Repeat,
                 count = post.repostCount.toString(),
-                description = "بازنشر",
+                description = stringResource(R.string.cd_repost),
                 tint = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
                 onClick = onRepostClick,
             )
             DetailAction(
                 icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
                 count = post.likeCount.toString(),
-                description = "پسند",
+                description = stringResource(R.string.cd_like),
                 tint = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
             )
-            DetailAction(XiloIcons.Chart, "48.6K", "بازدید")
+            DetailAction(
+                XiloIcons.Chart,
+                formatDetailViewCount(post.viewCount),
+                stringResource(R.string.cd_views),
+            )
             XiloIcon(
                 icon = XiloIcons.Share,
-                contentDescription = "اشتراک‌گذاری",
+                contentDescription = stringResource(R.string.cd_share),
                 tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(XiloSpacing.iconInline)
             )
@@ -494,5 +544,11 @@ private fun DetailAction(
     }
 }
 
-private fun getRelativeTimeSpan(timestamp: Long): String =
-    ir.xilo.app.ui.feed.getRelativeTimeSpan(timestamp)
+private fun getRelativeTimeSpan(context: android.content.Context, timestamp: Long): String =
+    ir.xilo.app.ui.feed.getRelativeTimeSpan(context, timestamp)
+
+private fun formatDetailViewCount(n: Long): String = when {
+    n >= 1_000_000L -> "${n / 1_000_000L}M"
+    n >= 1_000L -> "${n / 1_000L}K"
+    else -> n.toString()
+}

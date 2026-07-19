@@ -9,6 +9,7 @@ import { canCreatePost } from "@/lib/auth/permissions";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
 import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
+import { extractHashtags, mergeTags } from "@/lib/hashtag";
 import { Button } from "@/components/ui/button";
 import type { Post } from "@/types/post";
 
@@ -43,6 +44,8 @@ export default function WritePage() {
     setError("");
 
     try {
+      const contentMd = extractTextFromTipTapJSON(payloadJson);
+      const mergedTags = mergeTags(extractHashtags(contentMd), tags);
       const post = await apiFetch<Post>("/api/posts", {
         method: "POST",
         body: JSON.stringify({
@@ -50,10 +53,10 @@ export default function WritePage() {
           slug: slug || undefined,
           excerpt: excerpt || undefined,
           content: payloadJson,
-          content_md: extractTextFromTipTapJSON(payloadJson),
+          content_md: contentMd,
           cover_image_url: coverImageUrl || undefined,
           category: category || undefined,
-          tags: tags.length > 0 ? tags : undefined,
+          tags: mergedTags.length > 0 ? mergedTags : undefined,
           status,
           is_premium: isPremium,
         }),

@@ -43,7 +43,7 @@ func (r *PostRepo) Create(ctx context.Context, req *model.CreatePostRequest, aut
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
 		          cover_image_url, category, tags, status, is_premium,
-		          word_count, reading_time, language, scheduled_at, published_at,
+		          word_count, reading_time, language, view_count, scheduled_at, published_at,
 		          created_at, updated_at
 	`, authorID, req.Title, slug, req.Excerpt, ensureJSON(req.Content), req.ContentMD,
 		req.CoverImageURL, req.Category, pq.Array(req.Tags), req.Status, req.IsPremium,
@@ -60,7 +60,7 @@ func (r *PostRepo) GetBySlug(ctx context.Context, slug string) (*model.Post, err
 	err := r.db.GetContext(ctx, &post, `
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.content::text, p.content_md,
 		       p.cover_image_url, p.category, p.tags, p.status, p.is_premium,
-		       p.word_count, p.reading_time, p.language, p.scheduled_at, p.published_at,
+		       p.word_count, p.reading_time, p.language, p.view_count, p.scheduled_at, p.published_at,
 		       p.created_at, p.updated_at
 		FROM posts p
 		WHERE p.slug = $1 AND p.deleted_at IS NULL AND p.status = 'published'
@@ -95,7 +95,7 @@ func (r *PostRepo) GetByID(ctx context.Context, id string) (*model.Post, error) 
 	err := r.db.GetContext(ctx, &post, `
 		SELECT id, author_id, title, slug, excerpt, content::text, content_md,
 		       cover_image_url, category, tags, status, is_premium,
-		       word_count, reading_time, language, scheduled_at, published_at,
+		       word_count, reading_time, language, view_count, scheduled_at, published_at,
 		       created_at, updated_at
 		FROM posts
 		WHERE id = $1 AND deleted_at IS NULL
@@ -143,6 +143,16 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 		status = *req.Status
 	}
 
+	tags := existing.Tags
+	if req.Tags != nil {
+		tags = pq.StringArray(*req.Tags)
+	}
+
+	isPremium := existing.IsPremium
+	if req.IsPremium != nil {
+		isPremium = *req.IsPremium
+	}
+
 	var publishedAt *time.Time
 	if status == "published" && existing.Status != "published" {
 		now := time.Now()
@@ -153,15 +163,15 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 	err = r.db.GetContext(ctx, &post, `
 		UPDATE posts
 		SET title = $2, slug = $3, excerpt = $4, content = $5, content_md = $6,
-		    cover_image_url = $7, category = $8, status = $9,
-		    word_count = $10, reading_time = $11, language = $12, scheduled_at = $13,
-		    published_at = COALESCE($14, published_at), updated_at = NOW()
+		    cover_image_url = $7, category = $8, tags = $9, status = $10, is_premium = $11,
+		    word_count = $12, reading_time = $13, language = $14, scheduled_at = $15,
+		    published_at = COALESCE($16, published_at), updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
 		          cover_image_url, category, tags, status, is_premium,
-		          word_count, reading_time, language, scheduled_at, published_at,
+		          word_count, reading_time, language, view_count, scheduled_at, published_at,
 		          created_at, updated_at
-	`, id, title, slug, excerpt, content, contentMD, coverImageURL, category, status,
+	`, id, title, slug, excerpt, content, contentMD, coverImageURL, category, tags, status, isPremium,
 		wordCount, readingTime, language, req.ScheduledAt, publishedAt)
 	if err != nil {
 		return nil, fmt.Errorf("update post: %w", err)
@@ -183,16 +193,25 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 		limit = 10
 	}
 
+	status := params.Status
+	if status == "" {
+		status = "published"
+	}
+	// Only published (public) and archived (owner-scoped via handler) are listable.
+	if status != "published" && status != "archived" {
+		status = "published"
+	}
+
 	query := `
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.cover_image_url,
 		       p.category, p.tags, p.status, p.is_premium,
-		       p.word_count, p.reading_time, p.language, p.published_at,
+		       p.word_count, p.reading_time, p.language, p.view_count, p.published_at,
 		       p.created_at, p.updated_at
 		FROM posts p
-		WHERE p.status = 'published' AND p.deleted_at IS NULL
+		WHERE p.status = $1 AND p.deleted_at IS NULL
 	`
-	args := []interface{}{}
-	argIdx := 1
+	args := []interface{}{status}
+	argIdx := 2
 
 	if params.Category != "" {
 		query += fmt.Sprintf(" AND p.category = $%d", argIdx)
@@ -218,12 +237,21 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 		query += " AND p.cover_image_url IS NOT NULL AND p.cover_image_url != ''"
 	}
 	if params.Cursor != "" {
-		query += ` AND p.published_at <= (SELECT published_at FROM posts WHERE id = $` + fmt.Sprint(argIdx) + `)`
+		if status == "archived" {
+			// Archived posts may lack published_at; page by updated_at.
+			query += ` AND p.updated_at <= (SELECT updated_at FROM posts WHERE id = $` + fmt.Sprint(argIdx) + `)`
+		} else {
+			query += ` AND p.published_at <= (SELECT published_at FROM posts WHERE id = $` + fmt.Sprint(argIdx) + `)`
+		}
 		args = append(args, params.Cursor)
 		argIdx++
 	}
 
-	query += " ORDER BY p.published_at DESC, p.id DESC"
+	if status == "archived" {
+		query += " ORDER BY p.updated_at DESC, p.id DESC"
+	} else {
+		query += " ORDER BY p.published_at DESC, p.id DESC"
+	}
 	query += fmt.Sprintf(" LIMIT $%d", argIdx)
 	args = append(args, limit+1)
 
@@ -310,6 +338,66 @@ func (r *PostRepo) saveVersion(ctx context.Context, post *model.Post) error {
 		return fmt.Errorf("failed to save version (no rows)")
 	}
 	return nil
+}
+
+func (r *PostRepo) SuggestTags(ctx context.Context, query string, limit int) ([]model.TagSuggestion, error) {
+	query = strings.TrimSpace(strings.TrimPrefix(query, "#"))
+	if limit <= 0 {
+		limit = 10
+	}
+	var rows []model.TagSuggestion
+	var err error
+	if query == "" {
+		err = r.db.SelectContext(ctx, &rows, `
+			SELECT tag, COUNT(*)::bigint AS count
+			FROM posts, LATERAL unnest(tags) AS tag
+			WHERE status = 'published' AND deleted_at IS NULL AND cardinality(tags) > 0
+			GROUP BY tag
+			ORDER BY count DESC, tag ASC
+			LIMIT $1
+		`, limit)
+	} else {
+		err = r.db.SelectContext(ctx, &rows, `
+			SELECT tag, COUNT(*)::bigint AS count
+			FROM posts, LATERAL unnest(tags) AS tag
+			WHERE status = 'published' AND deleted_at IS NULL
+			  AND tag ILIKE $1 || '%'
+			GROUP BY tag
+			ORDER BY count DESC, tag ASC
+			LIMIT $2
+		`, query, limit)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("suggest tags: %w", err)
+	}
+	if rows == nil {
+		rows = []model.TagSuggestion{}
+	}
+	return rows, nil
+}
+
+func (r *PostRepo) TrendingTags(ctx context.Context, limit int) ([]model.TagSuggestion, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	var rows []model.TagSuggestion
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT tag, COUNT(*)::bigint AS count
+		FROM posts, LATERAL unnest(tags) AS tag
+		WHERE status = 'published' AND deleted_at IS NULL
+		  AND published_at > NOW() - INTERVAL '30 days'
+		  AND cardinality(tags) > 0
+		GROUP BY tag
+		ORDER BY count DESC, tag ASC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("trending tags: %w", err)
+	}
+	if rows == nil {
+		rows = []model.TagSuggestion{}
+	}
+	return rows, nil
 }
 
 func generateSlug(title string) string {

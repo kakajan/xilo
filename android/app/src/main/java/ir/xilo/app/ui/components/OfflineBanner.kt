@@ -10,9 +10,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ir.xilo.app.R
 import ir.xilo.app.theme.ColorWarning
 
 @Composable
@@ -42,7 +44,7 @@ fun OfflineBanner(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "حالت آفلاین — داده‌های ذخیره‌شده نمایش داده می‌شوند",
+                text = stringResource(R.string.offline_banner),
                 color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium

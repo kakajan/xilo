@@ -41,10 +41,34 @@ class DateFormatterTest {
     @Test
     fun relative_recentIsPersianRelative() {
         val now = System.currentTimeMillis()
-        assertEquals("الان", DateFormatter.getRelativeTimeSpan(now - 10_000, now))
-        assertEquals("۲ دقیقه پیش", DateFormatter.getRelativeTimeSpan(now - 120_000, now))
-        assertEquals("۱ ساعت پیش", DateFormatter.getRelativeTimeSpan(now - 3_600_000, now))
-        assertEquals("۳ روز پیش", DateFormatter.getRelativeTimeSpan(now - 3L * 24 * 3_600_000, now))
+        fun fa(ts: Long) = DateFormatter.getRelativeTimeSpan(
+            languageCode = "fa",
+            timestampMs = ts,
+            nowMs = now,
+            justNow = "الان",
+            minutesAgo = { "$it دقیقه پیش" },
+            hoursAgo = { "$it ساعت پیش" },
+            daysAgo = { "$it روز پیش" },
+        )
+        assertEquals("الان", fa(now - 10_000))
+        assertEquals("۲ دقیقه پیش", fa(now - 120_000))
+        assertEquals("۱ ساعت پیش", fa(now - 3_600_000))
+        assertEquals("۳ روز پیش", fa(now - 3L * 24 * 3_600_000))
+    }
+
+    @Test
+    fun relative_englishUsesLatinDigits() {
+        val now = System.currentTimeMillis()
+        val label = DateFormatter.getRelativeTimeSpan(
+            languageCode = "en",
+            timestampMs = now - 120_000,
+            nowMs = now,
+            justNow = "now",
+            minutesAgo = { "$it minutes ago" },
+            hoursAgo = { "$it hours ago" },
+            daysAgo = { "$it days ago" },
+        )
+        assertEquals("2 minutes ago", label)
     }
 
     @Test

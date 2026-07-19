@@ -43,6 +43,15 @@ class PostDetailViewModel @Inject constructor(
     private val _currentUserAvatarUrl = MutableStateFlow<String?>(null)
     val currentUserAvatarUrl: StateFlow<String?> = _currentUserAvatarUrl.asStateFlow()
 
+    private val _currentUserId = MutableStateFlow(authRepository.getUserId())
+    val currentUserId: StateFlow<String?> = _currentUserId.asStateFlow()
+
+    private val _currentUsername = MutableStateFlow(authRepository.getUsername())
+    val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
+
+    private val _postRemoved = MutableStateFlow(false)
+    val postRemoved: StateFlow<Boolean> = _postRemoved.asStateFlow()
+
     private var currentPostId: String? = null
     private var commentsJob: Job? = null
 
@@ -63,6 +72,7 @@ class PostDetailViewModel @Inject constructor(
 
                     webSocketManager.subscribeToPost(postEntity.id)
                     commentRepository.refreshComments(postEntity.id)
+                    recordView(postEntity.id)
 
                     commentsJob?.cancel()
                     commentsJob = viewModelScope.launch {
@@ -75,6 +85,14 @@ class PostDetailViewModel @Inject constructor(
                     _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_load_post)
                 }
             _isLoading.value = false
+        }
+    }
+
+    private fun recordView(postId: String) {
+        viewModelScope.launch {
+            postRepository.recordView(postId).onSuccess { count ->
+                _post.value = _post.value?.copy(viewCount = count)
+            }
         }
     }
 
@@ -148,6 +166,34 @@ class PostDetailViewModel @Inject constructor(
                     }
                     _errorMessage.value =
                         errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+                }
+        }
+    }
+
+    fun archivePost(postId: String) {
+        viewModelScope.launch {
+            postRepository.archivePost(postId)
+                .onSuccess {
+                    _post.value = null
+                    _postRemoved.value = true
+                }
+                .onFailure {
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_archive_post)
+                }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            postRepository.deletePost(postId)
+                .onSuccess {
+                    _post.value = null
+                    _postRemoved.value = true
+                }
+                .onFailure {
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_delete_post)
                 }
         }
     }

@@ -1,5 +1,7 @@
 package ir.xilo.app.core.util
 
+import android.content.Context
+import ir.xilo.app.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -101,18 +103,49 @@ object DateFormatter {
         )
     }
 
-    fun getRelativeTimeSpan(timestampMs: Long, nowMs: Long = System.currentTimeMillis()): String {
+    fun getRelativeTimeSpan(
+        context: Context,
+        timestampMs: Long,
+        nowMs: Long = System.currentTimeMillis(),
+    ): String {
+        val localized = AppLocale.wrap(context)
+        return getRelativeTimeSpan(
+            languageCode = AppLocale.languageCode(context),
+            timestampMs = timestampMs,
+            nowMs = nowMs,
+            justNow = localized.getString(R.string.time_just_now),
+            minutesAgo = { localized.getString(R.string.time_minutes_ago, it) },
+            hoursAgo = { localized.getString(R.string.time_hours_ago, it) },
+            daysAgo = { localized.getString(R.string.time_days_ago, it) },
+        )
+    }
+
+    /** Testable relative-time formatting without Android resource inflation. */
+    internal fun getRelativeTimeSpan(
+        languageCode: String,
+        timestampMs: Long,
+        nowMs: Long = System.currentTimeMillis(),
+        justNow: String,
+        minutesAgo: (String) -> String,
+        hoursAgo: (String) -> String,
+        daysAgo: (String) -> String,
+    ): String {
         val diff = (nowMs - timestampMs).coerceAtLeast(0)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(diff)
         val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
         val hours = TimeUnit.MILLISECONDS.toHours(diff)
         val days = TimeUnit.MILLISECONDS.toDays(diff)
+        // Persian digits are for fa UI only; ar/other locales keep Western digits.
+        val usePersianDigits = languageCode.equals("fa", ignoreCase = true)
+
+        fun count(value: Long): String =
+            if (usePersianDigits) toPersianDigits(value.toString()) else value.toString()
 
         return when {
-            seconds < 60 -> "الان"
-            minutes < 60 -> "${toPersianDigits(minutes.toString())} دقیقه پیش"
-            hours < 24 -> "${toPersianDigits(hours.toString())} ساعت پیش"
-            days < 7 -> "${toPersianDigits(days.toString())} روز پیش"
+            seconds < 60 -> justNow
+            minutes < 60 -> minutesAgo(count(minutes))
+            hours < 24 -> hoursAgo(count(hours))
+            days < 7 -> daysAgo(count(days))
             else -> formatAbsolute(timestampMs, "d MMMM")
         }
     }

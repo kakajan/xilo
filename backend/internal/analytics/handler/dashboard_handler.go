@@ -64,22 +64,32 @@ func (h *AnalyticsDashboardHandler) AuthorDashboard(c *fiber.Ctx) error {
 	topPosts := make([]TopPost, 0)
 	h.db.Select(&topPosts, `
 		SELECT
-			properties->>'post_id' as post_id,
-			COUNT(*) as views
-		FROM analytics_events
-		WHERE event_type = 'post_view'
-		AND properties->>'author_id' = $1
-		AND created_at > NOW() - INTERVAL '1 day' * $2
-		GROUP BY post_id
-		ORDER BY views DESC
+			p.id as post_id,
+			p.title as title,
+			p.view_count as views
+		FROM posts p
+		WHERE p.author_id = $1
+		  AND p.deleted_at IS NULL
+		  AND p.status = 'published'
+		ORDER BY p.view_count DESC, p.published_at DESC
 		LIMIT 10
+	`, userID)
+
+	var uniqueReaders int64
+	h.db.Get(&uniqueReaders, `
+		SELECT COUNT(*) FROM post_view_dedup d
+		INNER JOIN posts p ON p.id = d.post_id
+		WHERE p.author_id = $1
+		  AND p.deleted_at IS NULL
+		  AND d.last_viewed_at > NOW() - INTERVAL '1 day' * $2
 	`, userID, days)
 
 	return c.JSON(fiber.Map{
-		"total_views":  totalViews,
-		"total_reads":  totalReads,
-		"daily_stats":  dailyStats,
-		"top_posts":    topPosts,
+		"total_views":     totalViews,
+		"total_reads":     totalReads,
+		"unique_readers":  uniqueReaders,
+		"daily_stats":     dailyStats,
+		"top_posts":       topPosts,
 	})
 }
 

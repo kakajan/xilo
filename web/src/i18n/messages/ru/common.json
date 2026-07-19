@@ -1,0 +1,45 @@
+{
+  "actions": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "confirm": "Подтвердить",
+    "delete": "Удалить",
+    "edit": "Изменить",
+    "close": "Закрыть",
+    "back": "Назад",
+    "retry": "Повторить",
+    "loading": "Загрузка…",
+    "search": "Поиск",
+    "submit": "Отправить"
+  },
+  "errors": {
+    "notFound": "Запрошенный элемент не найден",
+    "generic": "Что-то пошло не так. Попробуйте снова.",
+    "network": "Нет подключения к интернету",
+    "unauthorized": "Пожалуйста, войдите снова",
+    "forbidden": "У вас нет прав для этого действия"
+  },
+  "nav": {
+    "feed": "Лента",
+    "discover": "Обзор",
+    "messages": "Сообщения",
+    "profile": "Профиль",
+    "settings": "Настройки",
+    "notifications": "Уведомления",
+    "saved": "Сохранённое",
+    "dashboard": "Панель",
+    "write": "Написать",
+    "writePost": "Написать пост",
+    "login": "Войти",
+    "register": "Регистрация",
+    "mainNavigation": "Основная навигация",
+    "desktopMenu": "Меню",
+    "searchPlaceholder": "Поиск..."
+  },
+  "offline": {
+    "banner": "Вы офлайн — показаны сохранённые данные"
+  },
+  "language": {
+    "unknownInitial": "?"
+  }
+}

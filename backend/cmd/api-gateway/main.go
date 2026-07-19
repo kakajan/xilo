@@ -256,6 +256,7 @@ func main() {
 	// Static subpaths before /:slug so "repost" is not captured as a slug.
 	posts.Post("/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
 	posts.Delete("/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
+	posts.Post("/:id/view", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.RecordView)
 	posts.Get("/:slug", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.GetBySlug)
 	// Only authors and elevated roles may create posts; readers may comment and chat.
 	posts.Post("/", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin", "superadmin"), postH.Create)
@@ -308,6 +309,10 @@ func main() {
 	search.Get("/posts", applyPublicRateLimit, searchH.SearchPosts)
 	search.Get("/suggest", applyPublicRateLimit, searchH.Suggest)
 
+	tags := app.Group("/api/tags")
+	tags.Get("/suggest", applyPublicRateLimit, postH.SuggestTags)
+	tags.Get("/trending", applyPublicRateLimit, postH.TrendingTags)
+
 	notif := app.Group("/api/notifications")
 	notif.Get("/", authmw.AuthRequired(jwtMgr), notifH.List)
 	notif.Post("/:id/read", authmw.AuthRequired(jwtMgr), notifH.MarkRead)
@@ -350,7 +355,7 @@ func main() {
 	billing.Patch("/settings", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), settingsH.UpdatePaymentGatewayConfig)
 
 	analytics := app.Group("/api/analytics")
-	analytics.Post("/events", analyticsH.Ingest)
+	analytics.Post("/events", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), analyticsH.Ingest)
 	analytics.Get("/author-dashboard", authmw.AuthRequired(jwtMgr), analyticsDH.AuthorDashboard)
 	analytics.Get("/admin-dashboard", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), analyticsDH.AdminDashboard)
 

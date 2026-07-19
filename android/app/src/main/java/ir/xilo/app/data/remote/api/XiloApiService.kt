@@ -36,6 +36,10 @@ interface XiloApiService {
     @POST("api/auth/avatar")
     suspend fun uploadAvatar(@Part file: MultipartBody.Part): UploadResponse
 
+    @Multipart
+    @POST("api/media/upload")
+    suspend fun uploadMedia(@Part file: MultipartBody.Part): UploadResponse
+
     @GET("api/auth/sessions")
     suspend fun listSessions(
         @Header("X-Refresh-Token") refreshToken: String? = null
@@ -63,8 +67,34 @@ interface XiloApiService {
     @POST("api/posts")
     suspend fun createPost(@Body request: CreatePostRequest): PostResponse
 
+    @PATCH("api/posts/{id}")
+    suspend fun updatePost(
+        @Path("id") id: String,
+        @Body request: UpdatePostRequest,
+    ): PostResponse
+
+    @DELETE("api/posts/{id}")
+    suspend fun deletePost(@Path("id") id: String): Map<String, String>
+
     @GET("api/posts/{slug}")
     suspend fun getPostBySlug(@Path("slug") slug: String): PostResponse
+
+    @POST("api/posts/{id}/view")
+    suspend fun recordPostView(
+        @Path("id") id: String,
+        @Body request: RecordViewRequest,
+    ): RecordViewResponse
+
+    @GET("api/tags/suggest")
+    suspend fun suggestTags(
+        @Query("q") query: String? = null,
+        @Query("limit") limit: Int = 10,
+    ): TagListResponse
+
+    @GET("api/tags/trending")
+    suspend fun trendingTags(
+        @Query("limit") limit: Int = 20,
+    ): TagListResponse
 
     // ── Comments API ──────────────────────────────────────────────────────
 

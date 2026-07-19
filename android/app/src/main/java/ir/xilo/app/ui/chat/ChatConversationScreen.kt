@@ -28,6 +28,7 @@ import ir.xilo.app.data.local.entity.MessageDeliveryState
 import ir.xilo.app.data.local.entity.MessageEntity
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
+import ir.xilo.app.theme.XiloTheme
 import ir.xilo.app.ui.components.ChatInput
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
@@ -86,6 +87,12 @@ fun ChatConversationScreen(
                 }
                 snackbarHostState.showSnackbar(sendFailureMessage)
             }
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.composerError.collect { message ->
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -156,17 +163,23 @@ fun ChatConversationScreen(
                         viewModel.onComposerTextChanged("")
                     }
                 },
-                placeholder = stringResource(R.string.chat_message_placeholder)
+                onSendImage = { uri, caption ->
+                    viewModel.sendImageMessage(uri, caption)
+                    textInput = ""
+                    viewModel.onComposerTextChanged("")
+                },
+                placeholder = stringResource(R.string.chat_message_placeholder),
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = Color.White,
         modifier = modifier
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color(0xFFE8F5FE).copy(alpha = 0.5f))
+                .background(Color.White)
         ) {
             LazyColumn(
                 state = listState,
@@ -242,11 +255,12 @@ fun MessageBubble(
         }
     }
 
+    val bubbleColors = XiloTheme.bubbleColors
     val bubbleBg = when {
         isDeleted -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
         isFailed -> MaterialTheme.colorScheme.errorContainer
         isMe -> XiloBlue
-        else -> Color.White
+        else -> bubbleColors.othersBubble
     }
     val contentColor = when {
         isDeleted -> MaterialTheme.colorScheme.onSurfaceVariant

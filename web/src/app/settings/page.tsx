@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarCropDialog } from "@/components/settings/avatar-crop-dialog";
 import { useAuthStore } from "@/stores/auth-store";
@@ -37,6 +38,7 @@ export default function UserSettingsPage() {
 }
 
 function UserSettingsContent() {
+  const t = useTranslations("settings");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading, authChecked, fetchMe, updateProfile, logout } =
@@ -53,7 +55,6 @@ function UserSettingsContent() {
     if (authChecked && !isAuthenticated) router.replace("/login");
   }, [authChecked, isAuthenticated, router]);
 
-  // Backward-compatible redirect from older /settings?username=1 links
   useEffect(() => {
     if (searchParams.get("username") === "1") {
       router.replace("/settings/username");
@@ -70,9 +71,12 @@ function UserSettingsContent() {
       const url = res.avatar_url || res.url;
       if (url) await updateProfile({ avatar_url: url });
       await fetchMe({ force: true });
-      setMessage({ type: "success", text: "عکس پروفایل به‌روز شد" });
+      setMessage({ type: "success", text: t("avatarUpdated") });
     } catch (e) {
-      setMessage({ type: "error", text: e instanceof Error ? e.message : "آپلود ناموفق بود" });
+      setMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : t("uploadFailed"),
+      });
     } finally {
       setUploadingAvatar(false);
     }
@@ -88,7 +92,7 @@ function UserSettingsContent() {
 
   const menu = [
     {
-      title: "تغییر عکس",
+      title: t("changePhoto"),
       icon: Camera,
       tint: "text-primary",
       onClick: () => {
@@ -96,19 +100,19 @@ function UserSettingsContent() {
       },
     },
     {
-      title: user.username_pending ? "انتخاب نام کاربری" : "نام کاربری",
+      title: user.username_pending ? t("chooseUsername") : t("username"),
       icon: AtSign,
       tint: "text-rose-600",
       onClick: () => router.push("/settings/username"),
     },
     {
-      title: "پروفایل من",
+      title: t("myProfile"),
       icon: User,
       tint: "text-primary",
       onClick: () => router.push(`/${user.username}`),
     },
     {
-      title: "کیف پول",
+      title: t("wallet"),
       icon: Wallet,
       tint: "text-purple-600",
       onClick: () => {
@@ -117,31 +121,31 @@ function UserSettingsContent() {
       },
     },
     {
-      title: "پیام‌ها و ذخیره‌ها",
+      title: t("messagesAndSaved"),
       icon: Bookmark,
       tint: "text-amber-600",
       onClick: () => router.push("/saved"),
     },
     {
-      title: "دستگاه‌ها",
+      title: t("devices"),
       icon: MonitorSmartphone,
       tint: "text-emerald-600",
       onClick: () => router.push("/settings/devices"),
     },
     {
-      title: "پوشه‌های چت",
+      title: t("chatFolders"),
       icon: FolderOpen,
       tint: "text-sky-600",
       onClick: () => router.push("/settings/chat-folders"),
     },
     {
-      title: "زبان رابط",
+      title: t("interfaceLanguage"),
       icon: Languages,
       tint: "text-indigo-600",
       onClick: () => router.push("/settings/language"),
     },
     {
-      title: "تقویم نمایش تاریخ",
+      title: t("calendar"),
       icon: Calendar,
       tint: "text-orange-600",
       onClick: () => router.push("/settings/calendar"),
@@ -156,16 +160,16 @@ function UserSettingsContent() {
           <AvatarFallback>{getInitials(user.display_name || user.username)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold">تنظیمات</h1>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="truncate text-sm text-muted-foreground">
-            {user.username_pending ? "نام کاربری هنوز انتخاب نشده" : `@${user.username}`}
+            {user.username_pending ? t("usernamePending") : `@${user.username}`}
           </p>
         </div>
       </div>
 
       {user.username_pending && (
         <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
-          یک نام کاربری دائمی برای پروفایل خود انتخاب کنید.
+          {t("usernamePrompt")}
         </div>
       )}
 
@@ -204,9 +208,7 @@ function UserSettingsContent() {
         </div>
       )}
 
-      {walletMsg && (
-        <p className="mb-3 text-sm text-muted-foreground">کیف پول به‌زودی...</p>
-      )}
+      {walletMsg && <p className="mb-3 text-sm text-muted-foreground">{t("walletSoon")}</p>}
 
       <ul className="overflow-hidden rounded-2xl border divide-y">
         {menu.map((item) => {
@@ -231,7 +233,7 @@ function UserSettingsContent() {
             className="flex w-full min-h-14 items-center gap-3 px-4 py-3 text-start text-destructive hover:bg-destructive/5"
           >
             <LogOut className="h-5 w-5 shrink-0" />
-            <span className="min-w-0 font-medium">خروج</span>
+            <span className="min-w-0 font-medium">{t("logout")}</span>
           </button>
         </li>
       </ul>

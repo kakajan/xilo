@@ -39,11 +39,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.app.Activity
 import android.net.Uri
 import ir.xilo.app.R
+import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.core.util.CalendarPreference
 import ir.xilo.app.data.repository.ThemeMode
 import ir.xilo.app.theme.XiloBlue
@@ -102,6 +105,7 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var cropImageUri by remember { mutableStateOf<Uri?>(null) }
     var isPreparingCrop by remember { mutableStateOf(false) }
+    val usernameSavedMessage = stringResource(R.string.settings_username_saved)
 
     LaunchedEffect(uiState.usernamePending) {
         if (uiState.usernamePending) {
@@ -123,7 +127,7 @@ fun SettingsScreen(
             if (localUri != null) {
                 cropImageUri = localUri
             } else {
-                snackbarHostState.showSnackbar(context.getString(R.string.avatar_crop_load_failed))
+                snackbarHostState.showSnackbar(AppLocale.string(context, R.string.avatar_crop_load_failed))
             }
         }
     }
@@ -150,16 +154,20 @@ fun SettingsScreen(
         }
     }
 
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
-        }
+    LaunchedEffect(uiState.errorMessage, showUsernameDialog) {
+        val message = uiState.errorMessage ?: return@LaunchedEffect
+        // Keep validation errors on the username dialog field.
+        if (showUsernameDialog) return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.clearError()
     }
 
     LaunchedEffect(uiState.infoMessage) {
-        uiState.infoMessage?.let {
-            snackbarHostState.showSnackbar(it)
+        uiState.infoMessage?.let { message ->
+            if (message == usernameSavedMessage) {
+                showUsernameDialog = false
+            }
+            snackbarHostState.showSnackbar(message)
             viewModel.clearInfo()
         }
     }
@@ -178,19 +186,36 @@ fun SettingsScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("خروج از حساب", fontWeight = FontWeight.Bold) },
-            text = { Text("آیا مطمئن هستید که می‌خواهید از حساب کاربری خارج شوید؟") },
+            title = {
+                Text(
+                    text = stringResource(R.string.settings_logout_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.settings_logout_message),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
                     viewModel.logout()
                 }) {
-                    Text("خروج", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = stringResource(R.string.settings_action_logout),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("انصراف")
+                    Text(
+                        text = stringResource(R.string.settings_action_cancel),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                 }
             }
         )
@@ -199,14 +224,19 @@ fun SettingsScreen(
     if (showCalendarDialog) {
         AlertDialog(
             onDismissRequest = { showCalendarDialog = false },
-            title = { Text("تقویم نمایش تاریخ", fontWeight = FontWeight.Bold) },
+            title = {
+                Text(
+                    text = stringResource(R.string.settings_calendar_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
             text = {
                 Column {
                     CalendarPreference.entries.forEach { pref ->
                         val label = when (pref) {
-                            CalendarPreference.AUTO -> "خودکار (پیش‌فرض سیستم)"
-                            CalendarPreference.JALALI -> "شمسی"
-                            CalendarPreference.GREGORIAN -> "میلادی"
+                            CalendarPreference.AUTO -> stringResource(R.string.settings_calendar_auto)
+                            CalendarPreference.JALALI -> stringResource(R.string.settings_calendar_jalali)
+                            CalendarPreference.GREGORIAN -> stringResource(R.string.settings_calendar_gregorian)
                         }
                         Row(
                             modifier = Modifier
@@ -229,7 +259,10 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showCalendarDialog = false }) {
-                    Text("بستن")
+                    Text(
+                        text = stringResource(R.string.settings_action_close),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                 }
             }
         )
@@ -242,15 +275,21 @@ fun SettingsScreen(
             },
             title = {
                 Text(
-                    if (uiState.usernamePending) "انتخاب نام کاربری" else "نام کاربری",
-                    fontWeight = FontWeight.Bold,
+                    text = stringResource(
+                        if (uiState.usernamePending) {
+                            R.string.settings_username_choose_title
+                        } else {
+                            R.string.settings_username_dialog_title
+                        }
+                    ),
+                    style = MaterialTheme.typography.titleLarge,
                 )
             },
             text = {
                 Column {
                     if (uiState.usernamePending) {
                         Text(
-                            text = "برای ادامه یک نام کاربری دائمی انتخاب کنید.",
+                            text = stringResource(R.string.settings_username_pending_hint),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.padding(bottom = 12.dp),
@@ -259,11 +298,13 @@ fun SettingsScreen(
                     XiloTextField(
                         value = uiState.usernameDraft,
                         onValueChange = viewModel::onUsernameDraftChange,
-                        placeholder = "مثلاً aile_user",
+                        placeholder = stringResource(R.string.settings_username_placeholder),
+                        isError = uiState.errorMessage != null,
+                        errorText = uiState.errorMessage,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        text = "۳ تا ۳۲ کاراکتر؛ فقط حروف انگلیسی، عدد و _",
+                        text = stringResource(R.string.settings_username_rules),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.padding(top = 8.dp),
@@ -275,23 +316,23 @@ fun SettingsScreen(
                     onClick = { viewModel.updateUsername() },
                     enabled = !uiState.isLoading,
                 ) {
-                    Text("ذخیره")
+                    Text(
+                        text = stringResource(R.string.settings_action_save),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                 }
             },
             dismissButton = {
                 if (!uiState.usernamePending) {
                     TextButton(onClick = { showUsernameDialog = false }) {
-                        Text("انصراف")
+                        Text(
+                            text = stringResource(R.string.settings_action_cancel),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
                     }
                 }
             },
         )
-    }
-
-    LaunchedEffect(uiState.usernamePending, uiState.infoMessage) {
-        if (!uiState.usernamePending && uiState.infoMessage == "نام کاربری ذخیره شد") {
-            showUsernameDialog = false
-        }
     }
 
     if (showLanguageDialog) {
@@ -306,7 +347,12 @@ fun SettingsScreen(
         }
         AlertDialog(
             onDismissRequest = { showLanguageDialog = false },
-            title = { Text("زبان رابط", fontWeight = FontWeight.Bold) },
+            title = {
+                Text(
+                    text = stringResource(R.string.settings_language_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
             text = {
                 Column {
                     languages.forEach { lang ->
@@ -315,8 +361,12 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
+                                    val changed = lang.code != uiState.preferredLanguage
                                     showLanguageDialog = false
                                     viewModel.updatePreferredLanguage(lang.code)
+                                    if (changed) {
+                                        (context as? Activity)?.recreate()
+                                    }
                                 }
                                 .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -332,7 +382,10 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLanguageDialog = false }) {
-                    Text("بستن")
+                    Text(
+                        text = stringResource(R.string.settings_action_close),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                 }
             },
         )
@@ -341,14 +394,19 @@ fun SettingsScreen(
     if (showThemeDialog) {
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
-            title = { Text("حالت نمایش", fontWeight = FontWeight.Bold) },
+            title = {
+                Text(
+                    text = stringResource(R.string.settings_theme_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            },
             text = {
                 Column {
                     ThemeMode.entries.forEach { mode ->
                         val label = when (mode) {
-                            ThemeMode.SYSTEM -> "مطابق سیستم"
-                            ThemeMode.LIGHT -> "روشن"
-                            ThemeMode.DARK -> "تاریک"
+                            ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
+                            ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+                            ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
                         }
                         Row(
                             modifier = Modifier
@@ -371,29 +429,89 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showThemeDialog = false }) {
-                    Text("بستن")
+                    Text(
+                        text = stringResource(R.string.settings_action_close),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                 }
             },
         )
     }
 
     val menuItems = listOf(
-        SettingsMenuItem("تغییر عکس پروفایل", XiloIcons.Camera, XiloBlue, action = SettingsAction.ChangePhoto),
         SettingsMenuItem(
-            if (uiState.usernamePending) "انتخاب نام کاربری" else "نام کاربری",
+            stringResource(R.string.settings_menu_change_photo),
+            XiloIcons.Camera,
+            XiloBlue,
+            action = SettingsAction.ChangePhoto,
+        ),
+        SettingsMenuItem(
+            stringResource(
+                if (uiState.usernamePending) {
+                    R.string.settings_menu_choose_username
+                } else {
+                    R.string.settings_menu_username
+                }
+            ),
             XiloIcons.UserAdd,
             Color(0xFFE53935),
             action = SettingsAction.Username,
         ),
-        SettingsMenuItem("پروفایل من", XiloIcons.User, Color(0xFFE53935), action = SettingsAction.MyProfile),
-        SettingsMenuItem("زبان", XiloIcons.Sms, Color(0xFF5E35B1), action = SettingsAction.Language),
-        SettingsMenuItem("حالت نمایش", XiloIcons.Eye, Color(0xFF3949AB), action = SettingsAction.Theme),
-        SettingsMenuItem("تقویم", XiloIcons.Calendar, Color(0xFF00897B), action = SettingsAction.Calendar),
-        SettingsMenuItem("کیف پول", XiloIcons.Wallet, Color(0xFF8E24AA), action = SettingsAction.Wallet),
-        SettingsMenuItem("پیام‌های ذخیره‌شده", XiloIcons.Bookmark, XiloBlue, action = SettingsAction.SavedMessages),
-        SettingsMenuItem("دستگاه‌ها", XiloIcons.Mobile, Color(0xFFFF9800), action = SettingsAction.Devices),
-        SettingsMenuItem("پوشه گفتگو", XiloIcons.Folder, Color(0xFF29B6F6), action = SettingsAction.ChatFolder),
-        SettingsMenuItem("خروج از حساب", XiloIcons.Logout, MaterialTheme.colorScheme.error, isDestructive = true, action = SettingsAction.Logout)
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_my_profile),
+            XiloIcons.User,
+            Color(0xFFE53935),
+            action = SettingsAction.MyProfile,
+        ),
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_language),
+            XiloIcons.Sms,
+            Color(0xFF5E35B1),
+            action = SettingsAction.Language,
+        ),
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_theme),
+            XiloIcons.Eye,
+            Color(0xFF3949AB),
+            action = SettingsAction.Theme,
+        ),
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_calendar),
+            XiloIcons.Calendar,
+            Color(0xFF00897B),
+            action = SettingsAction.Calendar,
+        ),
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_wallet),
+            XiloIcons.Wallet,
+            Color(0xFF8E24AA),
+            action = SettingsAction.Wallet,
+        ),
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_saved_messages),
+            XiloIcons.Bookmark,
+            XiloBlue,
+            action = SettingsAction.SavedMessages,
+        ),
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_devices),
+            XiloIcons.Mobile,
+            Color(0xFFFF9800),
+            action = SettingsAction.Devices,
+        ),
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_chat_folders),
+            XiloIcons.Folder,
+            Color(0xFF29B6F6),
+            action = SettingsAction.ChatFolder,
+        ),
+        SettingsMenuItem(
+            stringResource(R.string.settings_menu_logout),
+            XiloIcons.Logout,
+            MaterialTheme.colorScheme.error,
+            isDestructive = true,
+            action = SettingsAction.Logout,
+        ),
     )
 
     Scaffold(
@@ -401,12 +519,17 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             XiloTopAppBar(
-                title = { Text("تنظیمات", fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.settings_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                },
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onBackClick) {
                         XiloIcon(
                             icon = XiloIcons.Back,
-                            contentDescription = "بازگشت"
+                            contentDescription = stringResource(R.string.settings_back)
                         )
                     }
                 }
@@ -446,13 +569,14 @@ fun SettingsScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
+                        val usernameUnset = stringResource(R.string.settings_username_unset)
                         val subtitle = buildString {
                             if (uiState.phone.isNotBlank()) {
                                 append(uiState.phone)
                                 append(" • ")
                             }
                             if (uiState.usernamePending) {
-                                append("نام کاربری انتخاب نشده")
+                                append(usernameUnset)
                             } else {
                                 append("@")
                                 append(uiState.username)
@@ -466,7 +590,7 @@ fun SettingsScreen(
                     }
                 }
 
-                items(menuItems, key = { it.title }) { item ->
+                items(menuItems, key = { it.action.name }) { item ->
                     SettingsMenuRow(
                         item = item,
                         onClick = {

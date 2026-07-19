@@ -89,6 +89,9 @@ interface PostDao {
     @Update
     suspend fun updatePost(post: PostEntity)
 
+    @Query("UPDATE posts SET isLiked = :isLiked, likeCount = :likeCount WHERE id = :postId")
+    suspend fun updateLikeState(postId: String, isLiked: Boolean, likeCount: Int): Int
+
     @Query("SELECT * FROM posts ORDER BY feedRank ASC, createdAt DESC, id DESC LIMIT 50")
     fun getFeedFlow(): Flow<List<PostEntity>>
 
@@ -100,6 +103,9 @@ interface PostDao {
 
     @Query("SELECT * FROM posts WHERE authorUsername = :username ORDER BY createdAt DESC, id DESC")
     fun getUserPostsFlow(username: String): Flow<List<PostEntity>>
+
+    @Query("DELETE FROM posts WHERE id = :id")
+    suspend fun deletePostById(id: String)
 
     @Query("DELETE FROM posts")
     suspend fun clearAllPosts()

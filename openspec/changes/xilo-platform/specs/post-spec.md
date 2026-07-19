@@ -103,6 +103,25 @@ Posts display estimated reading time calculated as: `word_count / 200` words-per
 **When** they set `scheduled_at` to a future timestamp  
 **Then** a background job publishes the post at that time via NATS scheduled event.
 
+### REQ-POST-012: Inline Hashtags
+
+**Given** an author creates or updates a post whose body contains Instagram/X-style `#hashtags`  
+**When** the server processes Create/Update  
+**Then** hashtags are extracted from plain text (`content_md` or TipTap text), normalized (NFC, Latin lowercase, no `#`), merged with explicit `tags` (extract first), deduped case-insensitively, capped at 10, and stored in `posts.tags`.
+
+**Rules:**
+- Body pattern: `#` + 1–30 letters/digits/`_`/`-` (Latin + Arabic/Persian scripts)
+- Reject digits-only tags (e.g. `#123`) and matches inside URLs
+- Clients MAY send tags for UX; server extraction is the source of truth
+
+**Given** a visitor views a post or feed card  
+**When** the body/excerpt contains `#tag`  
+**Then** each hashtag is rendered as a link to the tag feed (`/tag/{tag}` on web; TagFeed on Android).
+
+**Given** a visitor opens a tag feed  
+**When** they request posts for that tag  
+**Then** `GET /api/posts?tag=` returns published posts containing that tag.
+
 ---
 
 ## API Endpoints
@@ -121,3 +140,5 @@ Posts display estimated reading time calculated as: `word_count / 200` words-per
 | DELETE | `/api/posts/:id/repost` | Reader+ | Remove repost |
 | GET | `/api/posts/feed` | Reader+ | Personalized feed |
 | GET | `/api/posts/my/drafts` | Author+ | List own drafts |
+| GET | `/api/tags/suggest?q=` | None | Hashtag autocomplete |
+| GET | `/api/tags/trending` | None | Trending hashtags |

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "@/components/comment/comment-section";
 import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
 import { PostBody } from "@/components/post/post-body";
+import { RecordPostView } from "@/components/post/record-post-view";
 
 async function getPost(slug: string): Promise<Post | null> {
   try {
@@ -57,10 +58,27 @@ export default async function PostPage({
             >
               {authorName}
             </Link>
-            <p className="text-sm text-muted-foreground">
-              {post.published_at ? formatDate(post.published_at) : ""}
-              {post.reading_time ? ` · ${readingTimeText(post.reading_time)}` : ""}
-              {post.category ? ` · ${post.category}` : ""}
+            <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+              {post.published_at ? <span>{formatDate(post.published_at)}</span> : null}
+              {post.reading_time ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{readingTimeText(post.reading_time)}</span>
+                </>
+              ) : null}
+              {post.category ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{post.category}</span>
+                </>
+              ) : null}
+              <>
+                <span aria-hidden>·</span>
+                <RecordPostView
+                  postId={post.id}
+                  initialViewCount={post.view_count ?? 0}
+                />
+              </>
             </p>
           </div>
         </div>
@@ -70,10 +88,10 @@ export default async function PostPage({
             {post.tags.map((tag) => (
               <Link
                 key={tag}
-                href={`/tag/${tag}`}
-                className="rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground"
+                href={`/tag/${encodeURIComponent(tag)}`}
+                className="rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-primary/10"
               >
-                {tag}
+                #{tag}
               </Link>
             ))}
           </div>

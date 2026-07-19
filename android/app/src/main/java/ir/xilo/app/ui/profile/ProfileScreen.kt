@@ -94,8 +94,8 @@ private val TabSelectedContent = Color.White
 
 private val CollapsedBarHeight = 56.dp
 private val AvatarExpandedSize = 112.dp
-private val ActionRowHeight = 64.dp
-private val ExpandedHeaderExtra = 228.dp
+private val ActionRowHeight = 72.dp
+private val ExpandedHeaderExtra = 260.dp
 private val InfoCardTopRadius = 28.dp
 
 @Composable
@@ -595,6 +595,8 @@ private fun ProfileTopChrome(
     modifier: Modifier = Modifier,
 ) {
     val iconTint = lerpColor(Color.White, Color(0xFF1C1C1E), phase2)
+    // White on teal header; XiloBlue once the collapsed chrome turns light.
+    val verifiedTint = lerpColor(Color.White, XiloBlue, phase2)
     val titleAlpha = phase1
     val onlineAlpha = phase1 * (1f - phase2)
     val storiesAlpha = phase2
@@ -641,7 +643,7 @@ private fun ProfileTopChrome(
                     )
                     if (isVerified) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        VerifiedBadge(size = 16.dp)
+                        VerifiedBadge(size = 16.dp, tint = verifiedTint)
                     }
                 }
                 Box(
@@ -751,7 +753,7 @@ private fun ProfileScrollHeader(
                         )
                         if (isVerified) {
                             Spacer(modifier = Modifier.width(6.dp))
-                            VerifiedBadge(size = 18.dp)
+                            VerifiedBadge(size = 18.dp, tint = Color.White)
                         }
                     }
                     if (isOwnProfile) {
@@ -766,10 +768,10 @@ private fun ProfileScrollHeader(
                     }
                     Row(
                         modifier = Modifier
-                            .padding(top = 12.dp)
+                            .padding(top = 14.dp, bottom = 4.dp)
                             .alpha(expandedIdentityAlpha),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        verticalAlignment = Alignment.Top,
                     ) {
                         ProfileStatItem(
                             count = formatCount(postCount),
@@ -861,7 +863,7 @@ private fun ProfileGlassAction(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(52.dp),
+        modifier = modifier.height(60.dp),
         shape = RoundedCornerShape(16.dp),
         color = GlassButtonBg,
         contentColor = Color.White,
@@ -869,7 +871,9 @@ private fun ProfileGlassAction(
         shadowElevation = 0.dp
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 10.dp, horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -879,7 +883,7 @@ private fun ProfileGlassAction(
                 tint = Color.White,
                 modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = label,
                 fontSize = 11.sp,
@@ -1089,7 +1093,7 @@ fun ProfileStatItem(
     light: Boolean = false,
 ) {
     val countColor = if (light) Color.White else MaterialTheme.colorScheme.onBackground
-    val labelColor = if (light) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.secondary
+    val labelColor = if (light) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.secondary
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = if (onClick != null) {
@@ -1099,7 +1103,8 @@ fun ProfileStatItem(
         }
     ) {
         Text(text = count, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = countColor)
-        Text(text = label, fontSize = 12.sp, color = labelColor)
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(text = label, fontSize = 12.sp, color = labelColor, maxLines = 1)
     }
 }
 

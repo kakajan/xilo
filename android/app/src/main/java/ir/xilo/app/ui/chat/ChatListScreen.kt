@@ -47,6 +47,7 @@ import ir.xilo.app.core.util.DateFormatter
 @Composable
 fun ChatListScreen(
     onChatClick: (chatId: String) -> Unit,
+    onNewChatClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel
 ) {
@@ -74,7 +75,7 @@ fun ChatListScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.White)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             AnimatedVisibility(
@@ -83,14 +84,23 @@ fun ChatListScreen(
                 exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
             ) {
                 XiloTopAppBar(
-                    title = if (showArchived) "گفتگوهای بایگانی شده" else "پیام‌ها",
+                    title = stringResource(if (showArchived) R.string.chat_list_archived_title else R.string.chat_list_title),
                     centered = true,
                     actions = {
+                        if (!showArchived && listMode == ChatListMode.Chats) {
+                            IconButton(onClick = onNewChatClick) {
+                                XiloIcon(
+                                    icon = XiloIcons.Edit,
+                                    contentDescription = stringResource(R.string.cd_new_chat),
+                                    tint = XiloBlue
+                                )
+                            }
+                        }
                         if (listMode == ChatListMode.Chats) {
                             IconButton(onClick = { showArchived = !showArchived }) {
                                 XiloIcon(
                                     icon = if (showArchived) XiloIcons.Folder else XiloIcons.Archive,
-                                    contentDescription = "بایگانی",
+                                    contentDescription = stringResource(R.string.cd_archive),
                                     tint = XiloBlue
                                 )
                             }
@@ -139,7 +149,7 @@ fun ChatListScreen(
                 showArchived -> {
                     ChatListBody(
                         chats = archivedChats,
-                        emptyText = "گفتگوی بایگانی‌شده‌ای ندارید",
+                        emptyText = stringResource(R.string.chat_list_archived_empty),
                         listState = chatListState,
                         chromeState = chromeState,
                         onChatClick = onChatClick,
@@ -163,10 +173,11 @@ fun ChatListScreen(
                 else -> {
                     ChatListBody(
                         chats = chats,
-                        emptyText = "هنوز گفتگویی ندارید",
+                        emptyText = stringResource(R.string.chat_list_empty),
                         listState = chatListState,
                         chromeState = chromeState,
                         onChatClick = onChatClick,
+                        onNewChatClick = onNewChatClick,
                         viewModel = viewModel,
                     )
                 }
@@ -218,6 +229,7 @@ private fun ChatListBody(
     listState: LazyListState,
     chromeState: ChromeVisibilityState?,
     onChatClick: (chatId: String) -> Unit,
+    onNewChatClick: () -> Unit = {},
     viewModel: ChatViewModel,
 ) {
     LazyColumn(
@@ -235,11 +247,13 @@ private fun ChatListBody(
     ) {
         if (chats.isEmpty()) {
             item(key = "chat_list_empty") {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillParentMaxWidth()
-                        .height(320.dp),
-                    contentAlignment = Alignment.Center
+                        .height(320.dp)
+                        .padding(horizontal = 32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
                         text = emptyText,
@@ -247,6 +261,21 @@ private fun ChatListBody(
                         color = MaterialTheme.colorScheme.secondary,
                         textAlign = TextAlign.Center,
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(onClick = onNewChatClick) {
+                        XiloIcon(
+                            icon = XiloIcons.Edit,
+                            contentDescription = null,
+                            tint = XiloBlue,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.chat_new_cta),
+                            color = XiloBlue,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
         } else {
@@ -278,7 +307,7 @@ fun ChatListItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color.White)
     ) {
         Row(
             modifier = Modifier
@@ -364,7 +393,7 @@ fun ChatListItem(
                         } else {
                             XiloIcon(
                                 icon = XiloIcons.MessageTickBold,
-                                contentDescription = "خوانده شده",
+                                contentDescription = stringResource(R.string.chat_list_read),
                                 tint = Color(0xFF00BA7C),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -376,7 +405,7 @@ fun ChatListItem(
                         ) {
                             XiloIcon(
                                 icon = XiloIcons.MoreHorizontal,
-                                contentDescription = "بایگانی",
+                                contentDescription = stringResource(R.string.cd_archive),
                                 tint = Color.Gray,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -406,12 +435,12 @@ fun ChatListItem(
                 ) {
                     XiloIcon(
                         icon = if (chat.isArchived) XiloIcons.Folder else XiloIcons.Archive,
-                        contentDescription = "بایگانی",
+                        contentDescription = stringResource(R.string.cd_archive),
                         tint = XiloBlue,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (chat.isArchived) "خروج از بایگانی" else "بایگانی", color = XiloBlue, fontSize = 12.sp)
+                    Text(stringResource(if (chat.isArchived) R.string.chat_list_unarchive else R.string.chat_list_archive), color = XiloBlue, fontSize = 12.sp)
                 }
 
                 TextButton(
@@ -422,12 +451,12 @@ fun ChatListItem(
                 ) {
                     XiloIcon(
                         icon = XiloIcons.Close,
-                        contentDescription = "حذف",
+                        contentDescription = stringResource(R.string.common_delete),
                         tint = Color.Red,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("حذف گفتگو", color = Color.Red, fontSize = 12.sp)
+                    Text(stringResource(R.string.chat_list_delete), color = Color.Red, fontSize = 12.sp)
                 }
             }
         }

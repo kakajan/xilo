@@ -2,6 +2,7 @@ package ir.xilo.app.util
 
 import android.content.Context
 import ir.xilo.app.R
+import ir.xilo.app.core.util.AppLocale
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -40,7 +41,7 @@ class ErrorMessageResolver @Inject constructor(
         }
     }
 
-    fun string(resId: Int): String = context.getString(resId)
+    fun string(resId: Int): String = AppLocale.string(context, resId)
 
     fun parseFormErrors(
         throwable: Throwable,
@@ -179,7 +180,14 @@ class ErrorMessageResolver @Inject constructor(
     }
 
     private fun looksLocalized(message: String): Boolean =
-        message.any { Character.UnicodeBlock.of(it) == Character.UnicodeBlock.ARABIC }
+        message.any { ch ->
+            when (Character.UnicodeScript.of(ch.code)) {
+                Character.UnicodeScript.ARABIC,
+                Character.UnicodeScript.CYRILLIC,
+                -> true
+                else -> false
+            }
+        }
 
     private fun Throwable.rootCause(): Throwable {
         var current = this

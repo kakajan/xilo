@@ -1,0 +1,18 @@
+{
+  "readMore": "ادامه مطلب",
+  "like": "پسندیدن",
+  "dislike": "نپسندیدن",
+  "bookmark": "ذخیره",
+  "unbookmark": "حذف از ذخیره‌ها",
+  "comments": "نظرات",
+  "languageBadge": "زبان پست",
+  "emptyFeed": "هنوز پستی نیست",
+  "create": "ایجاد پست",
+  "publish": "انتشار",
+  "draft": "پیش‌نویس",
+  "title": "عنوان",
+  "excerpt": "خلاصه",
+  "content": "متن",
+  "tagFeedLabel": "پست‌های این برچسب",
+  "tagFeedEmpty": "هنوز پستی با این هشتگ نیست"
+}

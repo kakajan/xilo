@@ -13,6 +13,7 @@ export interface Post {
   is_premium: boolean;
   word_count: number;
   reading_time: number;
+  view_count?: number;
   scheduled_at: string | null;
   published_at: string | null;
   created_at: string;

@@ -75,7 +75,7 @@ fun ChatFoldersScreen(
 
     if (showCreateDialog) {
         FolderNameDialog(
-            title = "پوشه جدید",
+            title = stringResource(R.string.chat_folders_new),
             initialName = "",
             onDismiss = { showCreateDialog = false },
             onConfirm = { name ->
@@ -87,7 +87,7 @@ fun ChatFoldersScreen(
 
     renameTarget?.let { folder ->
         FolderNameDialog(
-            title = "تغییر نام پوشه",
+            title = stringResource(R.string.chat_folders_rename),
             initialName = folder.name,
             onDismiss = { renameTarget = null },
             onConfirm = { name ->
@@ -112,19 +112,19 @@ fun ChatFoldersScreen(
     deleteTarget?.let { folder ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("حذف پوشه", fontWeight = FontWeight.Bold) },
-            text = { Text("پوشه «${folder.name}» حذف شود؟") },
+            title = { Text(stringResource(R.string.chat_folders_delete_title), fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.chat_folders_delete_message, folder.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     deleteTarget = null
                     viewModel.deleteFolder(folder.id)
                 }) {
-                    Text("حذف", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) {
-                    Text("انصراف")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -135,10 +135,10 @@ fun ChatFoldersScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             XiloTopAppBar(
-                title = { Text("پوشه گفتگو", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.chat_folders_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onBackClick) {
-                        XiloIcon(icon = XiloIcons.Back, contentDescription = "بازگشت")
+                        XiloIcon(icon = XiloIcons.Back, contentDescription = stringResource(R.string.common_back))
                     }
                 }
             )
@@ -168,7 +168,7 @@ fun ChatFoldersScreen(
             ) {
                 XiloIcon(
                     icon = XiloIcons.Add,
-                    contentDescription = "ایجاد پوشه",
+                    contentDescription = stringResource(R.string.chat_folders_new),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp),
                 )
@@ -189,7 +189,7 @@ fun ChatFoldersScreen(
                 }
                 uiState.folders.isEmpty() -> {
                     Text(
-                        text = "هنوز پوشه‌ای ندارید. با + یکی بسازید.",
+                        text = stringResource(R.string.chat_folders_empty),
                         modifier = Modifier
                             .align(Alignment.Center)
                             .padding(XiloSpacing.horizontal),
@@ -239,7 +239,7 @@ private fun FolderRow(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "${folder.chatIds.size} گفتگو",
+                    text = stringResource(R.string.chat_folders_chat_count, folder.chatIds.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -249,10 +249,10 @@ private fun FolderRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            TextButton(onClick = onAssign) { Text("گفتگوها") }
-            TextButton(onClick = onRename) { Text("تغییر نام") }
+            TextButton(onClick = onAssign) { Text(stringResource(R.string.chat_folders_chats)) }
+            TextButton(onClick = onRename) { Text(stringResource(R.string.common_edit)) }
             TextButton(onClick = onDelete) {
-                Text("حذف", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -274,7 +274,7 @@ private fun FolderNameDialog(
                 value = name,
                 onValueChange = { name = it },
                 singleLine = true,
-                label = { Text("نام پوشه") },
+                label = { Text(stringResource(R.string.chat_folders_name_label)) },
                 modifier = Modifier.fillMaxWidth()
             )
         },
@@ -282,10 +282,10 @@ private fun FolderNameDialog(
             TextButton(
                 onClick = { onConfirm(name.trim()) },
                 enabled = name.isNotBlank()
-            ) { Text("تأیید") }
+            ) { Text(stringResource(R.string.common_confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("انصراف") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -302,10 +302,10 @@ private fun AssignChatsDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("گفتگوهای «${folder.name}»", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.chat_folders_assign_title, folder.name), fontWeight = FontWeight.Bold) },
         text = {
             if (chats.isEmpty()) {
-                Text("گفتگویی برای افزودن نیست.")
+                Text(stringResource(R.string.chat_folders_assign_empty))
             } else {
                 LazyColumn {
                     items(chats, key = { it.id }) { chat ->
@@ -349,11 +349,11 @@ private fun AssignChatsDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(selected.toList()) }) {
-                Text("ذخیره")
+                Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("انصراف") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

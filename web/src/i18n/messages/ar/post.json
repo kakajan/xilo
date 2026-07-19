@@ -1,0 +1,18 @@
+{
+  "readMore": "اقرأ المزيد",
+  "like": "إعجاب",
+  "dislike": "عدم إعجاب",
+  "bookmark": "حفظ",
+  "unbookmark": "إزالة من المحفوظات",
+  "comments": "التعليقات",
+  "languageBadge": "لغة المنشور",
+  "emptyFeed": "لا توجد منشورات بعد",
+  "create": "إنشاء منشور",
+  "publish": "نشر",
+  "draft": "مسودة",
+  "title": "العنوان",
+  "excerpt": "الملخص",
+  "content": "المحتوى",
+  "tagFeedLabel": "منشورات بهذا الوسم",
+  "tagFeedEmpty": "لا توجد منشورات بهذا الهاشتاج بعد"
+}

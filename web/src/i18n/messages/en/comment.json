@@ -1,0 +1,9 @@
+{
+  "placeholder": "Write a comment",
+  "reply": "Reply",
+  "submit": "Post comment",
+  "empty": "No comments yet",
+  "delete": "Delete comment",
+  "report": "Report",
+  "replies": "{count, plural, one {# reply} other {# replies}}"
+}

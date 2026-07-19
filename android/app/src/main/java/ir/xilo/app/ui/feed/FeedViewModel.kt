@@ -37,6 +37,12 @@ class FeedViewModel @Inject constructor(
         .map { profile -> profile?.avatarUrl?.takeIf { it.isNotBlank() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    private val _currentUserId = MutableStateFlow(authRepository.getUserId())
+    val currentUserId: StateFlow<String?> = _currentUserId.asStateFlow()
+
+    private val _currentUsername = MutableStateFlow(authRepository.getUsername())
+    val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -49,7 +55,14 @@ class FeedViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    val categories = listOf("برای شما", "دنبال‌شده‌ها", "سنجاق‌شده", "فناوری", "هوش مصنوعی", "طراحی")
+    val categoryResIds = listOf(
+        R.string.feed_category_for_you,
+        R.string.feed_category_following,
+        R.string.feed_category_pinned,
+        R.string.feed_category_tech,
+        R.string.feed_category_ai,
+        R.string.feed_category_design,
+    )
 
     init {
         refreshFeed()
@@ -80,6 +93,11 @@ class FeedViewModel @Inject constructor(
     fun toggleLike(postId: String, currentState: Boolean) {
         viewModelScope.launch {
             postRepository.toggleLike(postId, currentState)
+                .onFailure { e ->
+                    Log.e("FeedViewModel", "toggleLike failed: ${e.message}", e)
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                }
         }
     }
 
@@ -95,6 +113,28 @@ class FeedViewModel @Inject constructor(
                 .onFailure { e ->
                     Log.e("FeedViewModel", "toggleRepost failed: ${e.message}", e)
                     _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                }
+        }
+    }
+
+    fun archivePost(postId: String) {
+        viewModelScope.launch {
+            postRepository.archivePost(postId)
+                .onFailure { e ->
+                    Log.e("FeedViewModel", "archivePost failed: ${e.message}", e)
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(e, R.string.error_archive_post)
+                }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            postRepository.deletePost(postId)
+                .onFailure { e ->
+                    Log.e("FeedViewModel", "deletePost failed: ${e.message}", e)
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(e, R.string.error_delete_post)
                 }
         }
     }

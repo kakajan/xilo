@@ -131,7 +131,7 @@ func (h *ProfileHandler) checkFollowing(followerID, followingID string) bool {
 	return exists
 }
 
-// ListUserPosts lists posts for a user profile tab (posts or media).
+// ListUserPosts lists posts for a user profile tab (posts, media, or archived).
 func (h *ProfileHandler) ListUserPosts(c *fiber.Ctx) error {
 	username := c.Params("username")
 	tab := c.Query("tab", "posts")
@@ -139,11 +139,27 @@ func (h *ProfileHandler) ListUserPosts(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	viewerID, _ := c.Locals("userID").(string)
 
+	status := "published"
+	mediaOnly := tab == "media"
+	if tab == "archived" {
+		var authorID string
+		err := h.db.Get(&authorID, `SELECT id FROM users WHERE username = $1 AND deleted_at IS NULL`, username)
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
+		}
+		if viewerID == "" || viewerID != authorID {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "archived posts are private"})
+		}
+		status = "archived"
+		mediaOnly = false
+	}
+
 	posts, nextCursor, err := h.postRepo.List(c.UserContext(), postmodel.PostListParams{
 		Cursor:    cursor,
 		Limit:     limit,
 		Author:    username,
-		MediaOnly: tab == "media",
+		Status:    status,
+		MediaOnly: mediaOnly,
 		ViewerID:  viewerID,
 	})
 	if err != nil {
@@ -195,7 +211,7 @@ func (h *ProfileHandler) ListUserLikes(c *fiber.Ctx) error {
 	query := `
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.cover_image_url,
 		       p.category, p.tags, p.status, p.is_premium,
-		       p.word_count, p.reading_time, p.language, p.published_at,
+		       p.word_count, p.reading_time, p.language, p.view_count, p.published_at,
 		       p.created_at, p.updated_at, r.id as reaction_id
 		FROM reactions r
 		JOIN posts p ON p.id = r.target_id

@@ -455,6 +455,38 @@ class XiloDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migrate11To12_addsPostViewCount() {
+        helper.createDatabase(V11_TO_V12_DB, 11).apply {
+            execSQL(
+                """
+                INSERT INTO posts (
+                    id, authorId, authorName, authorUsername, authorAvatar, title, slug,
+                    content, excerpt, coverImageUrl, likeCount, commentCount, repostCount,
+                    isLiked, isBookmarked, isReposted, createdAt, feedRank
+                ) VALUES (
+                    'post-1', 'author-1', 'Author', 'author', NULL, 'Title', 'slug',
+                    'body', NULL, NULL, 0, 0, 0, 0, 0, 0, 100, 0
+                )
+                """.trimIndent()
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(
+            V11_TO_V12_DB,
+            12,
+            true,
+            XiloMigrations.MIGRATION_11_12
+        ).apply {
+            query("SELECT viewCount FROM posts WHERE id = 'post-1'").use {
+                it.moveToFirst()
+                assertEquals(0, it.getInt(0))
+            }
+            close()
+        }
+    }
+
     private fun androidx.sqlite.db.SupportSQLiteDatabase.insertV1Chat() {
         execSQL(
             """
@@ -509,5 +541,6 @@ class XiloDatabaseMigrationTest {
         const val V8_TO_V9_DB = "migration-8-9-test"
         const val V9_TO_V10_DB = "migration-9-10-test"
         const val V10_TO_V11_DB = "migration-10-11-test"
+        const val V11_TO_V12_DB = "migration-11-12-test"
     }
 }

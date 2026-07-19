@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Bookmark, Heart, MessageCircle, Share2 } from "lucide-react";
+import { Bookmark, Eye, Heart, MessageCircle, Share2 } from "lucide-react";
 import { cn, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RepostButton } from "@/components/post/repost-button";
 import { PostOwnerMenu } from "@/components/post/post-owner-menu";
+import { HashtagText } from "@/components/post/hashtag-text";
 import { useFormatDate } from "@/hooks/use-format-date";
 import { bookmarkPost, unbookmarkPost } from "@/lib/api/bookmarks";
 import { apiFetch } from "@/lib/api-client";
@@ -129,24 +130,34 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
         <h2 className="mb-2 text-xl font-bold transition-colors group-hover:text-primary">
           {post.title}
         </h2>
-        {post.excerpt && (
-          <p className="mb-3 line-clamp-2 text-muted-foreground">{post.excerpt}</p>
-        )}
       </Link>
+      {post.excerpt && (
+        <p className="mb-3 line-clamp-2 text-muted-foreground">
+          <HashtagText text={post.excerpt} />
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1">
           {post.tags?.slice(0, 3).map((tag) => (
             <Link
               key={tag}
-              href={`/tag/${tag}`}
+              href={`/tag/${encodeURIComponent(tag)}`}
               className="rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-primary/10"
             >
-              {tag}
+              #{tag}
             </Link>
           ))}
         </div>
         <div className="flex items-center gap-0.5 text-muted-foreground">
+          <span
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2"
+            aria-label="بازدید"
+            title="بازدید"
+          >
+            <Eye className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 text-xs">{post.view_count ?? 0}</span>
+          </span>
           <Link
             href={href}
             className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 hover:bg-accent hover:text-primary"

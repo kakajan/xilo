@@ -11,6 +11,7 @@ import (
 
 	pkgredis "github.com/xilo-platform/xilo/pkg/redis"
 	"github.com/xilo-platform/xilo/internal/post/model"
+	"github.com/xilo-platform/xilo/pkg/hashtag"
 	"github.com/xilo-platform/xilo/pkg/i18n"
 	"github.com/xilo-platform/xilo/pkg/validator"
 )
@@ -23,6 +24,9 @@ type PostRepository interface {
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context, params model.PostListParams) ([]*model.Post, string, error)
 	EnrichPosts(ctx context.Context, posts []*model.Post, viewerID string) error
+	RecordView(ctx context.Context, postID, userID, sessionID string) (*model.RecordViewResult, error)
+	SuggestTags(ctx context.Context, query string, limit int) ([]model.TagSuggestion, error)
+	TrendingTags(ctx context.Context, limit int) ([]model.TagSuggestion, error)
 }
 
 type PostService struct {
@@ -39,6 +43,7 @@ func (s *PostService) Create(ctx context.Context, authorID string, req *model.Cr
 	if verr := validator.ValidateTitle(req.Title); verr != nil {
 		return nil, fmt.Errorf("%s: %s", verr.Field, verr.Message)
 	}
+	applyHashtagsCreate(req)
 	if len(req.Tags) > 0 {
 		if verrs := validator.ValidateTags(req.Tags); len(verrs) > 0 {
 			return nil, fmt.Errorf("tags: %s", verrs[0].Message)
@@ -110,14 +115,20 @@ func (s *PostService) Update(ctx context.Context, id string, userID string, req 
 		return nil, fmt.Errorf("only the author can edit this post")
 	}
 
+	if err := applyHashtagsUpdate(post, req); err != nil {
+		return nil, err
+	}
+
 	updated, err := s.repo.Update(ctx, id, req)
 	if err != nil {
 		return nil, err
 	}
 
-	s.rdb.Del(ctx, "post:"+post.Slug)
-	if req.Slug != nil {
-		s.rdb.Del(ctx, "post:"+*req.Slug)
+	if s.rdb != nil {
+		s.rdb.Del(ctx, "post:"+post.Slug)
+		if req.Slug != nil {
+			s.rdb.Del(ctx, "post:"+*req.Slug)
+		}
 	}
 
 	return updated, nil
@@ -143,4 +154,69 @@ func (s *PostService) List(ctx context.Context, params model.PostListParams) ([]
 		params.Limit = 10
 	}
 	return s.repo.List(ctx, params)
+}
+
+func (s *PostService) RecordView(ctx context.Context, postID, userID, sessionID string) (*model.RecordViewResult, error) {
+	result, err := s.repo.RecordView(ctx, postID, userID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if result.Counted && result.Slug != "" && s.rdb != nil {
+		s.rdb.Del(ctx, "post:"+result.Slug)
+	}
+	return result, nil
+}
+
+func (s *PostService) SuggestTags(ctx context.Context, query string, limit int) ([]model.TagSuggestion, error) {
+	if limit <= 0 || limit > 20 {
+		limit = 10
+	}
+	return s.repo.SuggestTags(ctx, query, limit)
+}
+
+func (s *PostService) TrendingTags(ctx context.Context, limit int) ([]model.TagSuggestion, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+	return s.repo.TrendingTags(ctx, limit)
+}
+
+func applyHashtagsCreate(req *model.CreatePostRequest) {
+	text := hashtag.PlainTextFromContent(req.ContentMD, req.Content)
+	req.Tags = hashtag.Merge(hashtag.Extract(text), req.Tags)
+}
+
+func applyHashtagsUpdate(existing *model.Post, req *model.UpdatePostRequest) error {
+	contentChanged := req.Content != nil || req.ContentMD != nil
+	tagsProvided := req.Tags != nil
+	if !contentChanged && !tagsProvided {
+		return nil
+	}
+
+	text := existing.ContentMD
+	if req.ContentMD != nil {
+		text = *req.ContentMD
+	} else if req.Content != nil {
+		text = hashtag.PlainTextFromContent("", *req.Content)
+	}
+
+	var clientTags []string
+	switch {
+	case tagsProvided:
+		clientTags = *req.Tags
+	case contentChanged:
+		// Content-only update: tags become whatever is in the new text.
+		clientTags = nil
+	default:
+		clientTags = append([]string(nil), existing.Tags...)
+	}
+
+	merged := hashtag.Merge(hashtag.Extract(text), clientTags)
+	if len(merged) > 0 {
+		if verrs := validator.ValidateTags(merged); len(verrs) > 0 {
+			return fmt.Errorf("tags: %s", verrs[0].Message)
+		}
+	}
+	req.Tags = &merged
+	return nil
 }

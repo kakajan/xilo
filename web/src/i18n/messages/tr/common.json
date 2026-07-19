@@ -1,0 +1,45 @@
+{
+  "actions": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "confirm": "Onayla",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "close": "Kapat",
+    "back": "Geri",
+    "retry": "Yeniden dene",
+    "loading": "Yükleniyor…",
+    "search": "Ara",
+    "submit": "Gönder"
+  },
+  "errors": {
+    "notFound": "İstenen öğe bulunamadı",
+    "generic": "Bir hata oluştu. Lütfen tekrar deneyin.",
+    "network": "İnternet bağlantısı yok",
+    "unauthorized": "Lütfen tekrar oturum açın",
+    "forbidden": "Bu işlem için izniniz yok"
+  },
+  "nav": {
+    "feed": "Akış",
+    "discover": "Keşfet",
+    "messages": "Mesajlar",
+    "profile": "Profil",
+    "settings": "Ayarlar",
+    "notifications": "Bildirimler",
+    "saved": "Kaydedilenler",
+    "dashboard": "Panel",
+    "write": "Yaz",
+    "writePost": "Gönderi yaz",
+    "login": "Giriş",
+    "register": "Kayıt ol",
+    "mainNavigation": "Ana gezinme",
+    "desktopMenu": "Masaüstü menüsü",
+    "searchPlaceholder": "Ara..."
+  },
+  "offline": {
+    "banner": "Çevrimdışısınız — kayıtlı veriler gösteriliyor"
+  },
+  "language": {
+    "unknownInitial": "?"
+  }
+}

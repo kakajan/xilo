@@ -46,12 +46,14 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
@@ -69,9 +71,11 @@ import ir.xilo.app.ui.components.trackChromeVisibility
 fun FeedScreen(
     onPostClick: (String) -> Unit,
     onReplyToPost: (String) -> Unit = onPostClick,
+    onEditPost: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
+    onHashtagClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
 ) {
@@ -82,6 +86,8 @@ fun FeedScreen(
     val selectedCategory by viewModel.selectedCategoryIndex.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val currentUserAvatarUrl by viewModel.currentUserAvatarUrl.collectAsState()
+    val currentUserId by viewModel.currentUserId.collectAsState()
+    val currentUsername by viewModel.currentUsername.collectAsState()
     val chromeState = LocalChromeVisibility.current
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -146,13 +152,13 @@ fun FeedScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = if (isOnline) "هنوز پستی منتشر نشده است" else "پستی در حافظه محلی نیست",
+                                    text = if (isOnline) stringResource(R.string.feed_empty_online) else stringResource(R.string.feed_empty_offline),
                                     style = MaterialTheme.typography.titleLarge,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "بروزرسانی",
+                                    text = stringResource(R.string.common_refresh),
                                     color = XiloBlue,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier
@@ -171,6 +177,12 @@ fun FeedScreen(
                                 onClick = { onPostClick(post.slug) }
                             )
                         } else {
+                            val owner = isPostOwner(
+                                authorId = post.authorId,
+                                authorUsername = post.authorUsername,
+                                currentUserId = currentUserId,
+                                currentUsername = currentUsername,
+                            )
                             PostCard(
                                 post = post,
                                 onPostClick = onPostClick,
@@ -179,6 +191,11 @@ fun FeedScreen(
                                 onBookmarkClick = { viewModel.toggleBookmark(post.id, post.isBookmarked) },
                                 onRepostClick = { viewModel.toggleRepost(post.id, post.isReposted) },
                                 onAuthorClick = { onAuthorClick(post.authorUsername) },
+                                onHashtagClick = onHashtagClick,
+                                isOwner = owner,
+                                onEditClick = if (owner) ({ onEditPost(post.id) }) else null,
+                                onArchiveClick = if (owner) ({ viewModel.archivePost(post.id) }) else null,
+                                onDeleteClick = if (owner) ({ viewModel.deletePost(post.id) }) else null,
                             )
                         }
                     }
@@ -210,7 +227,7 @@ fun FeedScreen(
                     onProfileClick = onProfileClick
                 )
                 FeedCategoryTabs(
-                    categories = viewModel.categories,
+                    categories = viewModel.categoryResIds.map { stringResource(it) },
                     selectedCategory = selectedCategory,
                     onCategorySelected = viewModel::selectCategory
                 )
@@ -271,13 +288,13 @@ private fun FeedHeader(
             ) {
                 XiloIcon(
                     icon = XiloIcons.Search,
-                    contentDescription = "جستجو",
+                    contentDescription = stringResource(R.string.feed_search_cd),
                     modifier = Modifier.size(XiloSpacing.iconInline),
                     tint = MaterialTheme.colorScheme.secondary
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "جستجو در همه چیز...",
+                    text = stringResource(R.string.feed_search_placeholder),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1
@@ -293,7 +310,7 @@ private fun FeedHeader(
         ) {
             XiloIcon(
                 icon = XiloIcons.Settings,
-                contentDescription = "تنظیمات",
+                contentDescription = stringResource(R.string.feed_settings_cd),
                 modifier = Modifier.size(XiloSpacing.iconInline)
             )
         }
@@ -372,7 +389,7 @@ fun TelegramNotificationCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = post.authorName ?: "تلگرام",
+                        text = post.authorName ?: stringResource(R.string.feed_author_fallback),
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.bodyLarge
                     )
@@ -380,7 +397,7 @@ fun TelegramNotificationCard(
                     VerifiedBadge(size = 16.dp)
                 }
                 Text(
-                    text = getRelativeTimeSpan(post.createdAt),
+                    text = getRelativeTimeSpan(androidx.compose.ui.platform.LocalContext.current, post.createdAt),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -414,7 +431,7 @@ fun TelegramNotificationCard(
         IconButton(onClick = { }) {
             XiloIcon(
                 icon = XiloIcons.More,
-                contentDescription = "گزینه‌های بیشتر",
+                contentDescription = stringResource(R.string.cd_options),
                 modifier = Modifier.size(XiloSpacing.iconInline)
             )
         }

@@ -1,0 +1,27 @@
+{
+  "title": "Ayarlar",
+  "usernamePending": "Kullanıcı adı henüz seçilmedi",
+  "usernamePrompt": "Profiliniz için kalıcı bir kullanıcı adı seçin.",
+  "changePhoto": "Fotoğrafı değiştir",
+  "username": "Kullanıcı adı",
+  "chooseUsername": "Kullanıcı adı seç",
+  "myProfile": "Profilim",
+  "wallet": "Cüzdan",
+  "walletSoon": "Cüzdan yakında...",
+  "messagesAndSaved": "Mesajlar ve kayıtlar",
+  "devices": "Cihazlar",
+  "chatFolders": "Sohbet klasörleri",
+  "interfaceLanguage": "Arayüz dili",
+  "calendar": "Tarih takvimi",
+  "logout": "Çıkış yap",
+  "avatarUpdated": "Profil fotoğrafı güncellendi",
+  "uploadFailed": "Yükleme başarısız",
+  "language": {
+    "title": "Arayüz dili",
+    "description": "Arayüz metni ve sayfa yönü (RTL / LTR) seçilen dile göre güncellenir.",
+    "save": "Dili kaydet",
+    "saving": "Kaydediliyor…",
+    "saved": "Arayüz dili kaydedildi",
+    "saveFailed": "Kaydedilemedi"
+  }
+}

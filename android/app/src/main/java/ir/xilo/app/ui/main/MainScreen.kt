@@ -37,16 +37,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation3.runtime.NavKey
+import ir.xilo.app.R
 import ir.xilo.app.ChatConversationKey
 import ir.xilo.app.CreatePostKey
 import ir.xilo.app.FollowListKey
+import ir.xilo.app.NewChatKey
 import ir.xilo.app.PostDetailKey
 import ir.xilo.app.ProfileKey
 import ir.xilo.app.SettingsKey
+import ir.xilo.app.TagFeedKey
 import ir.xilo.app.ui.profile.FollowListMode
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
@@ -94,10 +98,10 @@ fun MainScreen(
         val openSettingsForUsername by viewModel.openSettingsForUsername.collectAsState()
 
         val navItems = listOf(
-            NavigationItem("فید", XiloIcons.FeedSelected, XiloIcons.FeedUnselected),
-            NavigationItem("اکتشاف", XiloIcons.DiscoverSelected, XiloIcons.DiscoverUnselected),
-            NavigationItem("پیام‌ها", XiloIcons.ChatSelected, XiloIcons.ChatUnselected),
-            NavigationItem("پروفایل", XiloIcons.ProfileSelected, XiloIcons.ProfileUnselected)
+            NavigationItem(stringResource(R.string.nav_feed), XiloIcons.FeedSelected, XiloIcons.FeedUnselected),
+            NavigationItem(stringResource(R.string.nav_discover), XiloIcons.DiscoverSelected, XiloIcons.DiscoverUnselected),
+            NavigationItem(stringResource(R.string.nav_messages), XiloIcons.ChatSelected, XiloIcons.ChatUnselected),
+            NavigationItem(stringResource(R.string.nav_profile), XiloIcons.ProfileSelected, XiloIcons.ProfileUnselected),
         )
 
         val chromeState = rememberChromeVisibilityState()
@@ -187,7 +191,7 @@ fun MainScreen(
                                                 }
                                         ) {
                                             FloatingActionButton(
-                                                onClick = { onItemClick(CreatePostKey) },
+                                                onClick = { onItemClick(CreatePostKey()) },
                                                 shape = CircleShape,
                                                 containerColor = XiloBlue,
                                                 contentColor = Color.White,
@@ -255,6 +259,9 @@ fun MainScreen(
                                 onReplyToPost = { slug ->
                                     onItemClick(PostDetailKey(slug = slug, replyToPost = true))
                                 },
+                                onEditPost = { postId ->
+                                    onItemClick(CreatePostKey(editPostId = postId))
+                                },
                                 onSettingsClick = { onItemClick(SettingsKey) },
                                 onProfileClick = {
                                     coroutineScope.launch {
@@ -263,6 +270,9 @@ fun MainScreen(
                                 },
                                 onAuthorClick = { username ->
                                     if (username.isNotBlank()) onItemClick(ProfileKey(username))
+                                },
+                                onHashtagClick = { tag ->
+                                    if (tag.isNotBlank()) onItemClick(TagFeedKey(tag = tag))
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -283,6 +293,9 @@ fun MainScreen(
                                 onAuthorClick = { username ->
                                     if (username.isNotBlank()) onItemClick(ProfileKey(username))
                                 },
+                                onEditPost = { postId ->
+                                    onItemClick(CreatePostKey(editPostId = postId))
+                                },
                                 modifier = Modifier.fillMaxSize()
                             )
                             2 -> {
@@ -291,6 +304,7 @@ fun MainScreen(
                                     onChatClick = { chatId ->
                                         onItemClick(ChatConversationKey(chatId = chatId))
                                     },
+                                    onNewChatClick = { onItemClick(NewChatKey) },
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = chatViewModel
                                 )
@@ -314,7 +328,7 @@ fun MainScreen(
                                         onEditProfileClick = { onItemClick(SettingsKey) },
                                         onSetPhotoClick = { onItemClick(SettingsKey) },
                                         onCreatePostClick = {
-                                            if (canCreatePost) onItemClick(CreatePostKey)
+                                            if (canCreatePost) onItemClick(CreatePostKey())
                                         },
                                         onPostClick = { slug -> onItemClick(PostDetailKey(slug)) },
                                         onChatClick = { chatId ->

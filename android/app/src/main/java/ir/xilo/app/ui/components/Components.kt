@@ -152,7 +152,13 @@ fun XiloTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text(text = placeholder) },
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    style = textStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
             isError = isError,
@@ -164,7 +170,12 @@ fun XiloTextField(
             shape = RoundedCornerShape(12.dp),
             colors = fieldColors,
             supportingText = if (isError && !errorText.isNullOrBlank()) {
-                { Text(text = errorText) }
+                {
+                    Text(
+                        text = errorText,
+                        style = MaterialTheme.typography.bodySmall.forInput(),
+                    )
+                }
             } else {
                 null
             },

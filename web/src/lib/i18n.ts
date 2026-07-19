@@ -1,12 +1,13 @@
-// Phase 5: Internationalization (i18n) + RTL support
-// Status: SPEC ONLY — implementation deferred
-
-// Languages planned: English (default), Persian (Farsi), Arabic, Turkish
-//
-// Implementation:
-// - next-intl for web (Server Components + Client Components)
-// - flutter_localizations + intl for mobile
-// - RTL layout support via Tailwind rtl: variants
-// - Arabic/Persian font stacks (Vazirmatn, Noto Naskh Arabic)
-// - Date/time formatting per locale
-// - Currency display per locale
+/**
+ * Web UI internationalization.
+ * Catalogs live under `src/i18n/messages/{locale}/`.
+ * Runtime wiring: NextIntlClientProvider + locale store (preferred_language / localStorage).
+ */
+export {
+  locales,
+  localeConfig,
+  defaultLocale,
+  resolveLocale,
+  type Locale,
+} from "@/i18n/config";
+export { getMessages, messagesByLocale } from "@/i18n/messages";

@@ -13,7 +13,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import ir.xilo.app.R
 import ir.xilo.app.theme.XiloSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +45,7 @@ fun XiloTopAppBar(
                 IconButton(onClick = onBackClick) {
                     XiloIcon(
                         icon = XiloIcons.Back,
-                        contentDescription = "بازگشت"
+                        contentDescription = stringResource(R.string.common_back)
                     )
                 }
             }

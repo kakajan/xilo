@@ -177,3 +177,76 @@ func (h *PostHandler) List(c *fiber.Ctx) error {
 		"has_more":    nextCursor != "",
 	})
 }
+
+// @Summary      Record a post view
+// @Description  Increment view_count with 24h dedup per user or anonymous session
+// @Tags         posts
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Post ID"
+// @Param        request body model.RecordViewRequest true "Session id for anonymous viewers"
+// @Success      200  {object}  model.RecordViewResult
+// @Failure      400  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Router       /posts/{id}/view [post]
+func (h *PostHandler) RecordView(c *fiber.Ctx) error {
+	postID := c.Params("id")
+	userID, _ := c.Locals("userID").(string)
+
+	var req model.RecordViewRequest
+	_ = c.BodyParser(&req)
+
+	result, err := h.svc.RecordView(c.UserContext(), postID, userID, req.SessionID)
+	if err != nil {
+		if errors.Is(err, repository.ErrPostNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "post not found"})
+		}
+		if errors.Is(err, model.ErrInvalidViewSession) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to record view"})
+	}
+
+	return c.JSON(fiber.Map{
+		"counted":    result.Counted,
+		"view_count": result.ViewCount,
+	})
+}
+
+// @Summary      Suggest tags
+// @Description  Autocomplete hashtags/tags from published posts
+// @Tags         tags
+// @Produce      json
+// @Param        q     query string false "Prefix query"
+// @Param        limit query int    false "Max results" default(10)
+// @Success      200 {object} map[string]interface{}
+// @Router       /tags/suggest [get]
+func (h *PostHandler) SuggestTags(c *fiber.Ctx) error {
+	q := c.Query("q")
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	items, err := h.svc.SuggestTags(c.UserContext(), q, limit)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "failed to suggest tags",
+		})
+	}
+	return c.JSON(fiber.Map{"data": items})
+}
+
+// @Summary      Trending tags
+// @Description  Most-used tags on recently published posts
+// @Tags         tags
+// @Produce      json
+// @Param        limit query int false "Max results" default(20)
+// @Success      200 {object} map[string]interface{}
+// @Router       /tags/trending [get]
+func (h *PostHandler) TrendingTags(c *fiber.Ctx) error {
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	items, err := h.svc.TrendingTags(c.UserContext(), limit)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "failed to load trending tags",
+		})
+	}
+	return c.JSON(fiber.Map{"data": items})
+}

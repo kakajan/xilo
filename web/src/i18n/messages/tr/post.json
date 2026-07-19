@@ -1,0 +1,18 @@
+{
+  "readMore": "Devamını oku",
+  "like": "Beğen",
+  "dislike": "Beğenme",
+  "bookmark": "Kaydet",
+  "unbookmark": "Kayıtlardan kaldır",
+  "comments": "Yorumlar",
+  "languageBadge": "Gönderi dili",
+  "emptyFeed": "Henüz gönderi yok",
+  "create": "Gönderi oluştur",
+  "publish": "Yayınla",
+  "draft": "Taslak",
+  "title": "Başlık",
+  "excerpt": "Özet",
+  "content": "İçerik",
+  "tagFeedLabel": "Bu etikete sahip gönderiler",
+  "tagFeedEmpty": "Bu hashtag ile henüz gönderi yok"
+}

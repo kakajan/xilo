@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "id": "persian_latin",
+      "input": "سلام #خبر و #Xilo_App امروز",
+      "expected": ["خبر", "xilo_app"]
+    },
+    {
+      "id": "url_fragment",
+      "input": "see https://example.com/path#fragment and #real",
+      "expected": ["real"]
+    },
+    {
+      "id": "digits_only",
+      "input": "code #123 and #ok1",
+      "expected": ["ok1"]
+    },
+    {
+      "id": "dedupe_case",
+      "input": "#News #news #NEWS",
+      "expected": ["news"]
+    },
+    {
+      "id": "punctuation_boundary",
+      "input": "(#خبر) #دوم!",
+      "expected": ["خبر", "دوم"]
+    }
+  ]
+}

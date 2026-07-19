@@ -17,11 +17,13 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
+import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.data.repository.BrandRepository
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.XiloIcon
@@ -46,7 +48,8 @@ fun OnboardingScreen(
     var step by remember { mutableStateOf(1) } // 1: Welcome, 2: Interests, 3: Suggestions
     val selectedInterests = remember { mutableStateListOf<String>() }
     val brand by brandViewModel.brand.collectAsState()
-    val brandName = brand.nameFa.ifBlank { stringResource(R.string.app_name) }
+    val languageCode = AppLocale.languageCode(LocalContext.current)
+    val brandName = brand.nameForLanguage(languageCode).ifBlank { stringResource(R.string.app_name) }
 
     val backgroundBg = MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onBackground
@@ -66,7 +69,7 @@ fun OnboardingScreen(
                 .align(Alignment.TopEnd)
                 .padding(16.dp)
         ) {
-            Text("رد شدن", color = XiloBlue, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(stringResource(R.string.onboarding_skip), color = XiloBlue, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
 
         Column(
@@ -139,7 +142,7 @@ fun OnboardingScreen(
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                 ) {
                     Text(
-                        text = if (step == 3) "شروع به کار" else "ادامه",
+                        text = stringResource(if (step == 3) R.string.onboarding_get_started else R.string.onboarding_continue),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
@@ -147,7 +150,7 @@ fun OnboardingScreen(
                     Spacer(modifier = Modifier.width(4.dp))
                     XiloIcon(
                         icon = XiloIcons.ChevronEnd,
-                        contentDescription = "گام بعدی",
+                        contentDescription = stringResource(R.string.onboarding_next_step),
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
@@ -189,7 +192,7 @@ fun OnboardingStepWelcome(brandName: String) {
         )
 
         Text(
-            text = "یک شبکه اجتماعی محلی غیرمتمرکز، سریع و امن. به صورت محلی متصل شوید، در گفتگوها پاسخ دهید و از طریق شبکه‌های مش به طور مستقیم با دوستان خود همگام‌سازی کنید.",
+            text = stringResource(R.string.onboarding_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
@@ -210,7 +213,7 @@ fun OnboardingStepWelcome(brandName: String) {
             ) {
                 XiloIcon(
                     icon = XiloIcons.Bookmark,
-                    contentDescription = "نکته کمکی",
+                    contentDescription = stringResource(R.string.onboarding_tip_cd),
                     tint = XiloBlue,
                     modifier = Modifier.size(24.dp)
                 )
@@ -228,15 +231,15 @@ fun OnboardingStepWelcome(brandName: String) {
 @Composable
 fun OnboardingStepInterests(selected: Set<String>, onToggle: (String) -> Unit) {
     val interests = listOf(
-        "فناوری" to "Tech",
-        "تمرکززدایی" to "Decentralization",
-        "رابط کاربری" to "UI/UX",
-        "هنر" to "Art",
-        "ارز دیجیتال" to "Crypto",
-        "بازی" to "Gaming",
-        "میم‌ها" to "Memes",
-        "کاتلین" to "Kotlin",
-        "پایگاه داده" to "Room DB"
+        stringResource(R.string.onboarding_interest_tech),
+        stringResource(R.string.onboarding_interest_decentralization),
+        stringResource(R.string.onboarding_interest_ui),
+        stringResource(R.string.onboarding_interest_art),
+        stringResource(R.string.onboarding_interest_crypto),
+        stringResource(R.string.onboarding_interest_gaming),
+        stringResource(R.string.onboarding_interest_memes),
+        stringResource(R.string.onboarding_interest_kotlin),
+        stringResource(R.string.onboarding_interest_database),
     )
 
     Column(
@@ -244,14 +247,14 @@ fun OnboardingStepInterests(selected: Set<String>, onToggle: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "علاقه‌مندی‌های خود را انتخاب کنید",
+            text = stringResource(R.string.onboarding_interests_title),
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            text = "ما فید اکتشاف شما را بر اساس انتخاب‌های شما شخصی‌سازی می‌کنیم.",
+            text = stringResource(R.string.onboarding_interests_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
@@ -271,19 +274,19 @@ fun OnboardingStepInterests(selected: Set<String>, onToggle: (String) -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    for ((farsi, english) in row) {
-                        val isSelected = selected.contains(english)
+                    for (interest in row) {
+                        val isSelected = selected.contains(interest)
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(if (isSelected) XiloBlue else MaterialTheme.colorScheme.surfaceVariant)
-                                .clickable { onToggle(english) }
+                                .clickable { onToggle(interest) }
                                 .padding(vertical = 14.dp, horizontal = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = farsi,
+                                text = interest,
                                 color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyMedium,
@@ -310,14 +313,14 @@ fun OnboardingStepFollows(brandName: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "گره‌های پیشنهادی",
+            text = stringResource(R.string.onboarding_suggested_title),
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
             textAlign = TextAlign.Center
         )
         Text(
-            text = "برای همگام‌سازی آنی پایگاه داده با همتایان خود متصل شوید.",
+            text = stringResource(R.string.onboarding_suggested_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
@@ -375,14 +378,14 @@ fun OnboardingStepFollows(brandName: String) {
                         if (isFollowing) {
                             XiloIcon(
                                 icon = XiloIcons.MessageTick,
-                                contentDescription = "همگام شده",
+                                contentDescription = stringResource(R.string.onboarding_synced),
                                 tint = XiloBlue,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("همگام شده", style = MaterialTheme.typography.labelLarge, fontSize = 12.sp)
+                            Text(stringResource(R.string.onboarding_synced), style = MaterialTheme.typography.labelLarge, fontSize = 12.sp)
                         } else {
-                            Text("همگام‌سازی", style = MaterialTheme.typography.labelLarge, fontSize = 12.sp)
+                            Text(stringResource(R.string.onboarding_sync), style = MaterialTheme.typography.labelLarge, fontSize = 12.sp)
                         }
                     }
                 }

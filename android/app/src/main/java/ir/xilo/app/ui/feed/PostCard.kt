@@ -17,15 +17,19 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
+import ir.xilo.app.ui.components.ContentAwareText
+import ir.xilo.app.ui.components.HashtagAwareText
 import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
@@ -42,6 +46,11 @@ fun PostCard(
     onRepostClick: () -> Unit = {},
     onShareClick: (() -> Unit)? = null,
     onAuthorClick: (() -> Unit)? = null,
+    onHashtagClick: ((String) -> Unit)? = null,
+    isOwner: Boolean = false,
+    onEditClick: (() -> Unit)? = null,
+    onArchiveClick: (() -> Unit)? = null,
+    onDeleteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val openAuthor = onAuthorClick?.takeIf { post.authorUsername.isNotBlank() }
@@ -60,105 +69,123 @@ fun PostCard(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // Post body navigates; action row below is intentionally outside this clickable.
-        Column(
+        // Post body navigates; owner menu + action row stay outside that clickable.
+        Row(
+            verticalAlignment = Alignment.Top,
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(
-                    role = Role.Button,
-                    onClick = { onPostClick(post.slug) }
-                )
                 .padding(
                     start = XiloSpacing.horizontal,
                     end = XiloSpacing.horizontal,
                     top = XiloSpacing.cardVertical
                 )
         ) {
-            Row(
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier.fillMaxWidth()
+            XiloAvatar(
+                imageUrl = post.authorAvatar,
+                size = 40.dp,
+                onClick = openAuthor,
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        role = Role.Button,
+                        onClick = { onPostClick(post.slug) }
+                    )
             ) {
-                XiloAvatar(
-                    imageUrl = post.authorAvatar,
-                    size = 40.dp,
-                    onClick = openAuthor,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = post.authorName ?: post.authorUsername,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = if (openAuthor != null) {
+                            Modifier.clickable(role = Role.Button, onClick = openAuthor)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    VerifiedBadge(size = 16.dp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "@${post.authorUsername}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = if (openAuthor != null) {
+                            Modifier.clickable(role = Role.Button, onClick = openAuthor)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "· ${getRelativeTimeSpan(context, post.createdAt)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = post.authorName ?: post.authorUsername,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                if (post.title.isNotBlank()) {
+                    ContentAwareText(
+                        text = post.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
+
+                val previewText = post.excerpt?.takeIf { it.isNotBlank() }
+                    ?: post.content.takeIf { !it.startsWith("{") && it.isNotBlank() }
+                    ?: ""
+                if (previewText.isNotBlank()) {
+                    if (onHashtagClick != null) {
+                        HashtagAwareText(
+                            text = previewText,
+                            onHashtagClick = onHashtagClick,
+                            onTextClick = { onPostClick(post.slug) },
+                            style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
-                            modifier = if (openAuthor != null) {
-                                Modifier.clickable(role = Role.Button, onClick = openAuthor)
-                            } else {
-                                Modifier
-                            }
+                            maxLines = 3,
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        VerifiedBadge(size = 16.dp)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "@${post.authorUsername}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = if (openAuthor != null) {
-                                Modifier.clickable(role = Role.Button, onClick = openAuthor)
-                            } else {
-                                Modifier
-                            }
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "· ${getRelativeTimeSpan(post.createdAt)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    if (post.title.isNotBlank()) {
-                        Text(
-                            text = post.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                    }
-
-                    val previewText = post.excerpt?.takeIf { it.isNotBlank() }
-                        ?: post.content.takeIf { !it.startsWith("{") && it.isNotBlank() }
-                        ?: ""
-                    if (previewText.isNotBlank()) {
-                        Text(
+                    } else {
+                        ContentAwareText(
                             text = previewText,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 3
-                        )
-                    }
-
-                    if (!post.coverImageUrl.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        AsyncImage(
-                            model = post.coverImageUrl,
-                            contentDescription = "تصویر پست",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
+                            maxLines = 3,
                         )
                     }
                 }
+
+                if (!post.coverImageUrl.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    AsyncImage(
+                        model = post.coverImageUrl,
+                        contentDescription = stringResource(R.string.cd_post_image),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
+                    )
+                }
+            }
+
+            if (isOwner && onEditClick != null && onArchiveClick != null && onDeleteClick != null) {
+                PostOwnerMenu(
+                    onEdit = onEditClick,
+                    onArchive = onArchiveClick,
+                    onDelete = onDeleteClick,
+                )
             }
         }
 
@@ -177,13 +204,13 @@ fun PostCard(
             PostAction(
                 icon = XiloIcons.Message,
                 count = post.commentCount.toString(),
-                contentDescription = "نظرات",
+                contentDescription = stringResource(R.string.cd_comments),
                 onClick = onCommentClick
             )
             PostAction(
                 icon = XiloIcons.Repeat,
                 count = post.repostCount.toString(),
-                contentDescription = "بازنشر",
+                contentDescription = stringResource(R.string.cd_repost),
                 tint = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
                 countColor = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
                 onClick = onRepostClick
@@ -200,7 +227,7 @@ fun PostCard(
             PostAction(
                 icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
                 count = post.likeCount.toString(),
-                contentDescription = "پسندیدن",
+                contentDescription = stringResource(R.string.cd_like),
                 tint = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
                 countColor = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
                 onClick = onLikeClick,
@@ -210,21 +237,21 @@ fun PostCard(
             PostAction(
                 icon = if (post.isBookmarked) XiloIcons.BookmarkFilled else XiloIcons.Bookmark,
                 count = null,
-                contentDescription = "ذخیره",
+                contentDescription = stringResource(R.string.cd_bookmark),
                 tint = if (post.isBookmarked) XiloBlue else MaterialTheme.colorScheme.secondary,
                 onClick = onBookmarkClick
             )
 
             PostAction(
                 icon = XiloIcons.Chart,
-                count = formatViewCount(post.likeCount * 18),
-                contentDescription = "بازدید"
+                count = formatViewCount(post.viewCount),
+                contentDescription = stringResource(R.string.cd_views)
             )
 
             PostAction(
                 icon = XiloIcons.Share,
                 count = null,
-                contentDescription = "اشتراک‌گذاری",
+                contentDescription = stringResource(R.string.cd_share),
                 onClick = sharePost
             )
         }
@@ -277,10 +304,10 @@ private fun PostAction(
     }
 }
 
-fun getRelativeTimeSpan(timestamp: Long): String =
-    DateFormatter.getRelativeTimeSpan(timestamp)
+fun getRelativeTimeSpan(context: android.content.Context, timestamp: Long): String =
+    DateFormatter.getRelativeTimeSpan(context, timestamp)
 
-private fun formatViewCount(n: Int): String = when {
+private fun formatViewCount(n: Long): String = when {
     n >= 1_000_000 -> "${n / 1_000_000}M"
     n >= 1_000 -> "${n / 1_000}K"
     else -> n.toString()

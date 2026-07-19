@@ -31,8 +31,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import ir.xilo.app.R
 import ir.xilo.app.data.remote.dto.SessionResponse
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.ui.components.XiloIcon
@@ -67,13 +70,13 @@ fun DevicesScreen(
     sessionToRevoke?.let { session ->
         AlertDialog(
             onDismissRequest = { sessionToRevoke = null },
-            title = { Text("قطع دسترسی دستگاه", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.devices_revoke_title), fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     if (session.isCurrent) {
-                        "این دستگاه فعلی شماست. با قطع دسترسی از حساب خارج می‌شوید."
+                        stringResource(R.string.devices_revoke_current_message)
                     } else {
-                        "آیا می‌خواهید این نشست را پایان دهید؟"
+                        stringResource(R.string.devices_revoke_other_message)
                     }
                 )
             },
@@ -82,12 +85,12 @@ fun DevicesScreen(
                     sessionToRevoke = null
                     viewModel.revokeSession(session)
                 }) {
-                    Text("قطع دسترسی", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.devices_revoke_action), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { sessionToRevoke = null }) {
-                    Text("انصراف")
+                    Text(stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -98,10 +101,10 @@ fun DevicesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             XiloTopAppBar(
-                title = { Text("دستگاه‌ها", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.devices_title), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onBackClick) {
-                        XiloIcon(icon = XiloIcons.Back, contentDescription = "بازگشت")
+                        XiloIcon(icon = XiloIcons.Back, contentDescription = stringResource(R.string.common_back))
                     }
                 }
             )
@@ -121,7 +124,7 @@ fun DevicesScreen(
                 }
                 uiState.sessions.isEmpty() -> {
                     Text(
-                        text = "نشست فعالی یافت نشد",
+                        text = stringResource(R.string.devices_empty),
                         modifier = Modifier.align(Alignment.Center),
                         color = MaterialTheme.colorScheme.secondary
                     )
@@ -149,6 +152,7 @@ private fun SessionRow(
     session: SessionResponse,
     onRevoke: () -> Unit
 ) {
+    val thisDeviceLabel = stringResource(R.string.devices_this_device)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -165,14 +169,14 @@ private fun SessionRow(
             Text(
                 text = session.deviceName?.ifBlank { null }
                     ?: session.platform?.ifBlank { null }
-                    ?: "دستگاه ناشناس",
+                    ?: stringResource(R.string.devices_unknown),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = buildString {
-                    if (session.isCurrent) append("همین دستگاه")
+                    if (session.isCurrent) append(thisDeviceLabel)
                     session.platform?.takeIf { it.isNotBlank() }?.let {
                         if (isNotEmpty()) append(" • ")
                         append(it)
@@ -188,7 +192,7 @@ private fun SessionRow(
         }
         TextButton(onClick = onRevoke) {
             Text(
-                text = if (session.isCurrent) "خروج" else "قطع",
+                text = stringResource(if (session.isCurrent) R.string.devices_sign_out else R.string.devices_disconnect),
                 color = MaterialTheme.colorScheme.error
             )
         }

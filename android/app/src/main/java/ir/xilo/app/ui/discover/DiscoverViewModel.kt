@@ -7,6 +7,7 @@ import ir.xilo.app.data.NetworkMonitor
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +23,7 @@ class DiscoverViewModel @Inject constructor(
     private val apiService: XiloApiService,
     private val commentRepository: CommentRepository,
     private val postRepository: PostRepository,
+    private val authRepository: AuthRepository,
     private val json: Json,
     private val errorMessageResolver: ErrorMessageResolver,
     networkMonitor: NetworkMonitor
@@ -47,6 +49,12 @@ class DiscoverViewModel @Inject constructor(
 
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    private val _currentUserId = MutableStateFlow(authRepository.getUserId())
+    val currentUserId: StateFlow<String?> = _currentUserId.asStateFlow()
+
+    private val _currentUsername = MutableStateFlow(authRepository.getUsername())
+    val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
 
     init {
         refreshDiscoverComments()
@@ -165,6 +173,32 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
+    fun archivePost(postId: String) {
+        viewModelScope.launch {
+            postRepository.archivePost(postId)
+                .onSuccess {
+                    _searchResults.update { posts -> posts.filterNot { it.id == postId } }
+                }
+                .onFailure {
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_archive_post)
+                }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            postRepository.deletePost(postId)
+                .onSuccess {
+                    _searchResults.update { posts -> posts.filterNot { it.id == postId } }
+                }
+                .onFailure {
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_delete_post)
+                }
+        }
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
         _errorMessage.value = null
@@ -217,6 +251,7 @@ class DiscoverViewModel @Inject constructor(
                             likeCount = remote.resolvedLikeCount(),
                             commentCount = remote.commentCount,
                             repostCount = remote.repostCount,
+                            viewCount = remote.viewCount,
                             isLiked = remote.resolvedIsLiked(),
                             isBookmarked = remote.isBookmarked,
                             isReposted = remote.isReposted,

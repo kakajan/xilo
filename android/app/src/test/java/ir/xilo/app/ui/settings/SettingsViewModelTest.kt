@@ -1,5 +1,6 @@
 package ir.xilo.app.ui.settings
 
+import ir.xilo.app.R
 import ir.xilo.app.core.util.CalendarPreference
 import ir.xilo.app.data.local.entity.UserEntity
 import ir.xilo.app.data.remote.dto.UserResponse
@@ -44,6 +45,7 @@ class SettingsViewModelTest {
         every { authRepository.getPreferredCalendar() } returns CalendarPreference.AUTO
         every { themeRepository.themeMode } returns MutableStateFlow(ThemeMode.SYSTEM)
         coEvery { authRepository.syncCalendarDefaults() } returns Result.success(Unit)
+        coEvery { authRepository.listLanguages() } returns Result.success(emptyList())
         coEvery { authRepository.getLocalProfile() } returns UserEntity(
             id = "u1",
             username = "alice",
@@ -57,6 +59,13 @@ class SettingsViewModelTest {
             UserResponse(id = "u1", username = "alice", phone = "+98912", displayName = "Alice")
         )
         every { errorMessageResolver.fromThrowable(any(), any()) } returns "error"
+        every { errorMessageResolver.string(any()) } answers {
+            when (firstArg<Int>()) {
+                R.string.settings_coming_soon -> "Coming soon"
+                R.string.settings_default_display_name -> "User"
+                else -> "string"
+            }
+        }
     }
 
     @After
@@ -71,7 +80,7 @@ class SettingsViewModelTest {
 
         viewModel.onWalletComingSoon()
 
-        assertEquals("به‌زودی", viewModel.uiState.value.infoMessage)
+        assertEquals("Coming soon", viewModel.uiState.value.infoMessage)
     }
 
     @Test

@@ -30,6 +30,7 @@ import ir.xilo.app.ui.components.XiloTextField
 import ir.xilo.app.ui.components.XiloTopAppBar
 import ir.xilo.app.ui.components.trackChromeVisibility
 import ir.xilo.app.ui.feed.PostCard
+import ir.xilo.app.ui.feed.isPostOwner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +39,7 @@ fun DiscoverScreen(
     onReplyToPost: (String) -> Unit = onCommentClick,
     onReplyToComment: (slug: String, commentId: String, authorUsername: String) -> Unit,
     onAuthorClick: (String) -> Unit = {},
+    onEditPost: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel()
 ) {
@@ -47,6 +49,8 @@ fun DiscoverScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val infoMessage by viewModel.infoMessage.collectAsState()
+    val currentUserId by viewModel.currentUserId.collectAsState()
+    val currentUsername by viewModel.currentUsername.collectAsState()
 
     var isSearchActive by remember { mutableStateOf(false) }
     var reportTargetId by remember { mutableStateOf<String?>(null) }
@@ -113,7 +117,7 @@ fun DiscoverScreen(
                         XiloTextField(
                             value = searchQuery,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            placeholder = "جستجو در موضوعات، پست‌ها...",
+                            placeholder = stringResource(R.string.discover_search_placeholder),
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
@@ -128,17 +132,17 @@ fun DiscoverScreen(
                             isSearchActive = false
                             viewModel.updateSearchQuery("")
                         }) {
-                            XiloIcon(icon = XiloIcons.Close, contentDescription = "بستن جستجو")
+                            XiloIcon(icon = XiloIcons.Close, contentDescription = stringResource(R.string.discover_close_search))
                         }
                     }
                 )
             } else {
                 XiloTopAppBar(
-                    title = "اکتشاف",
+                    title = stringResource(R.string.discover_title),
                     centered = true,
                     actions = {
                         IconButton(onClick = { isSearchActive = true }) {
-                            XiloIcon(icon = XiloIcons.Search, contentDescription = "جستجو")
+                            XiloIcon(icon = XiloIcons.Search, contentDescription = stringResource(R.string.common_search))
                         }
                     }
                 )
@@ -176,6 +180,12 @@ fun DiscoverScreen(
                             contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                         ) {
                             items(searchResults, key = { it.id }) { post ->
+                                val owner = isPostOwner(
+                                    authorId = post.authorId,
+                                    authorUsername = post.authorUsername,
+                                    currentUserId = currentUserId,
+                                    currentUsername = currentUsername,
+                                )
                                 PostCard(
                                     post = post,
                                     onPostClick = onCommentClick,
@@ -184,6 +194,10 @@ fun DiscoverScreen(
                                     onBookmarkClick = { viewModel.toggleBookmark(post.id, post.isBookmarked) },
                                     onRepostClick = { viewModel.toggleRepost(post.id, post.isReposted) },
                                     onAuthorClick = { onAuthorClick(post.authorUsername) },
+                                    isOwner = owner,
+                                    onEditClick = if (owner) ({ onEditPost(post.id) }) else null,
+                                    onArchiveClick = if (owner) ({ viewModel.archivePost(post.id) }) else null,
+                                    onDeleteClick = if (owner) ({ viewModel.deletePost(post.id) }) else null,
                                 )
                             }
                         }
@@ -191,7 +205,7 @@ fun DiscoverScreen(
                     "empty" -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                "نتیجه‌ای برای '$searchQuery' یافت نشد.",
+                                stringResource(R.string.discover_no_results, searchQuery),
                                 color = MaterialTheme.colorScheme.secondary
                             )
                         }
@@ -201,12 +215,12 @@ fun DiscoverScreen(
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
-                                        "برای کشف موضوعات روی دکمه جستجو کلیک کنید.",
+                                        stringResource(R.string.discover_prompt_search),
                                         color = MaterialTheme.colorScheme.secondary
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     TextButton(onClick = { viewModel.refreshDiscoverComments() }) {
-                                        Text("بروزرسانی")
+                                        Text(stringResource(R.string.common_refresh))
                                     }
                                 }
                             }

@@ -256,6 +256,7 @@ class ProfileViewModel @Inject constructor(
         likeCount = resolvedLikeCount(),
         commentCount = commentCount,
         repostCount = repostCount,
+        viewCount = viewCount,
         isLiked = resolvedIsLiked(),
         isBookmarked = isBookmarked,
         isReposted = isReposted,

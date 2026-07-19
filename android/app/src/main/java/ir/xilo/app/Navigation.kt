@@ -14,6 +14,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import ir.xilo.app.ui.chat.ChatConversationScreen
 import ir.xilo.app.ui.chat.ChatViewModel
+import ir.xilo.app.ui.chat.NewChatScreen
 import ir.xilo.app.ui.chat.SavedHubScreen
 import ir.xilo.app.ui.contact.ContactDetailScreen
 import ir.xilo.app.ui.main.MainScreen
@@ -53,7 +54,29 @@ fun MainNavigation() {
             onAuthorClick = { username ->
               if (username.isNotBlank()) backStack.add(ProfileKey(username))
             },
+            onEditPost = { postId ->
+              backStack.add(CreatePostKey(editPostId = postId))
+            },
+            onHashtagClick = { tag ->
+              if (tag.isNotBlank()) backStack.add(TagFeedKey(tag = tag))
+            },
             modifier = Modifier.fillMaxSize()
+          )
+        }
+        entry<TagFeedKey> { key ->
+          ir.xilo.app.ui.feed.TagFeedScreen(
+            tag = key.tag,
+            onBackClick = { backStack.removeLastOrNull() },
+            onPostClick = { slug -> backStack.add(PostDetailKey(slug = slug)) },
+            onHashtagClick = { tag ->
+              if (tag.isNotBlank() && tag != key.tag) {
+                backStack.add(TagFeedKey(tag = tag))
+              }
+            },
+            onAuthorClick = { username ->
+              if (username.isNotBlank()) backStack.add(ProfileKey(username))
+            },
+            modifier = Modifier.fillMaxSize(),
           )
         }
         entry<ProfileKey> { key ->
@@ -66,7 +89,7 @@ fun MainNavigation() {
             onSetPhotoClick = { backStack.add(SettingsKey) },
             onCreatePostClick = {
               // ProfileScreen hides FAB when role cannot create posts.
-              backStack.add(CreatePostKey)
+              backStack.add(CreatePostKey())
             },
             onChatClick = { chatId ->
               backStack.add(ChatConversationKey(chatId = chatId))
@@ -113,8 +136,19 @@ fun MainNavigation() {
             viewModel = chatViewModel
           )
         }
-        entry<CreatePostKey> {
+        entry<NewChatKey> {
+          NewChatScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onChatStarted = { chatId ->
+              backStack.removeLastOrNull()
+              backStack.add(ChatConversationKey(chatId = chatId))
+            },
+            modifier = Modifier.fillMaxSize(),
+          )
+        }
+        entry<CreatePostKey> { key ->
           ir.xilo.app.ui.feed.CreatePostScreen(
+            editPostId = key.editPostId,
             onBackClick = { backStack.removeLastOrNull() },
             onPostCreated = { backStack.removeLastOrNull() },
             modifier = Modifier.fillMaxSize()

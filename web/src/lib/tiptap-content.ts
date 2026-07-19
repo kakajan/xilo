@@ -2,6 +2,8 @@
  * Helpers for TipTap JSON stored in posts.content and plain text in content_md.
  */
 
+import { linkifyHashtagsInHtml } from "@/lib/hashtag";
+
 type TipTapNode = {
   type?: string;
   text?: string;
@@ -129,7 +131,7 @@ export function tipTapJSONToHTML(raw: string): string {
   try {
     const doc = JSON.parse(raw) as TipTapNode;
     if (!doc || typeof doc !== "object") return "";
-    return renderNode(doc);
+    return linkifyHashtagsInHtml(renderNode(doc));
   } catch {
     return "";
   }
@@ -156,5 +158,6 @@ export function resolvePostBodyHTML(post: {
   if (!plain || plain === "{}") {
     return { html: "", plain: "" };
   }
-  return { html: `<p>${escapeHtml(plain).replace(/\n/g, "<br>")}</p>`, plain };
+  const escaped = escapeHtml(plain).replace(/\n/g, "<br>");
+  return { html: `<p>${linkifyHashtagsInHtml(escaped)}</p>`, plain };
 }

@@ -51,9 +51,11 @@ import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
+import ir.xilo.app.ui.components.ContentAwareText
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
+import ir.xilo.app.ui.components.forInput
 import ir.xilo.app.ui.feed.getRelativeTimeSpan
 import kotlinx.coroutines.delay
 
@@ -265,7 +267,7 @@ private fun TwitterStyleReplyThread(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "@${parent.authorUsername} · ${getRelativeTimeSpan(parent.createdAt)}",
+                        text = "@${parent.authorUsername} · ${getRelativeTimeSpan(androidx.compose.ui.platform.LocalContext.current, parent.createdAt)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.secondary,
                         maxLines = 1,
@@ -331,10 +333,13 @@ private fun TwitterStyleReplyThread(
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
                         .padding(bottom = 24.dp),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor),
+                    // Content direction resolves per paragraph while typing.
+                    textStyle = MaterialTheme.typography.bodyLarge
+                        .forInput()
+                        .copy(color = textColor),
                     cursorBrush = SolidColor(XiloBlue),
                     decorationBox = { innerTextField ->
-                        Box {
+                        Box(modifier = Modifier.fillMaxWidth()) {
                             if (replyText.isEmpty()) {
                                 Text(
                                     text = placeholder,
@@ -361,21 +366,19 @@ private fun ExpandableBodyText(
     var expanded by remember(text) { mutableStateOf(false) }
     var canExpand by remember(text) { mutableStateOf(false) }
 
-    Text(
+    ContentAwareText(
         text = text,
         style = style,
         color = color,
         maxLines = if (expanded) Int.MAX_VALUE else collapsedMaxLines,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (canExpand || expanded) {
-                    Modifier.clickable(role = Role.Button) { expanded = !expanded }
-                } else {
-                    Modifier
-                }
-            ),
+        modifier = Modifier.then(
+            if (canExpand || expanded) {
+                Modifier.clickable(role = Role.Button) { expanded = !expanded }
+            } else {
+                Modifier
+            }
+        ),
         onTextLayout = { result ->
             if (!expanded) {
                 canExpand = result.hasVisualOverflow

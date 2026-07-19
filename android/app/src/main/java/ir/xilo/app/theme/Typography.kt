@@ -23,6 +23,20 @@ val IranSansXFontFamily = FontFamily(
 )
 
 val Typography = Typography(
+    displayLarge = TextStyle(
+        fontFamily = YekanBakhFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
+        textAlign = TextAlign.Center
+    ),
+    displayMedium = TextStyle(
+        fontFamily = YekanBakhFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        textAlign = TextAlign.Center
+    ),
     headlineLarge = TextStyle(
         fontFamily = YekanBakhFontFamily,
         fontWeight = FontWeight.Bold,
