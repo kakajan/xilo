@@ -13,10 +13,11 @@
         android:supportsRtl="true"
         android:windowSoftInputMode="adjustResize"
         android:usesCleartextTraffic="false"
-        android:theme="@style/Theme.Xilo">
+        android:theme="@style/Theme.Xilo.Splash">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.Xilo.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

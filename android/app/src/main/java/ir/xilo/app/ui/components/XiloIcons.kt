@@ -1,17 +1,11 @@
 package ir.xilo.app.ui.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -19,7 +13,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ir.xilo.app.theme.XiloBlue
 import io.eyram.iconsax.IconSax
 
@@ -160,17 +153,9 @@ fun XiloLogo(
     modifier: Modifier = Modifier,
     size: Dp = 32.dp
 ) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(XiloBlue),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "✈",
-            color = Color.White,
-            fontSize = (size.value * 0.45f).sp
-        )
-    }
+    AileBrandLogo(
+        variant = AileLogoVariant.MarkColored,
+        height = size,
+        modifier = modifier,
+    )
 }

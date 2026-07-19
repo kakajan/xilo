@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +25,8 @@ import ir.xilo.app.R
 import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.data.repository.BrandRepository
 import ir.xilo.app.theme.XiloBlue
+import ir.xilo.app.ui.components.AileBrandLogo
+import ir.xilo.app.ui.components.AileLogoVariant
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -166,22 +167,11 @@ fun OnboardingStepWelcome(brandName: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // App Logo
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(XiloBlue),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .rotate(45f)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.White)
-            )
-        }
+        AileBrandLogo(
+            variant = AileLogoVariant.MarkColored,
+            height = 88.dp,
+            contentDescription = brandName,
+        )
 
         Text(
             text = stringResource(R.string.onboarding_welcome, brandName),

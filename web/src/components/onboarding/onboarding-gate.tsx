@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useBrandStore } from "@/stores/brand-store";
 import { clearOnboardingPending, isOnboardingPending } from "@/lib/onboarding";
 
@@ -52,8 +53,8 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 p-6 backdrop-blur-sm">
         <div className="w-full max-w-md space-y-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-            {brandName.charAt(0)}
+          <div className="mx-auto flex items-center justify-center">
+            <BrandLogo variant="app-icon" className="h-16 w-16" alt={brandName} />
           </div>
           <h1 className="text-2xl font-bold">{slide.title}</h1>
           <p className="text-muted-foreground leading-relaxed">{slide.body}</p>

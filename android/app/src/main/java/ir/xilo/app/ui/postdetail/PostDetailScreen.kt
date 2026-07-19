@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +21,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Color
 import ir.xilo.app.R
+import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
@@ -32,7 +34,8 @@ import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
-import ir.xilo.app.ui.components.XiloLogo
+import ir.xilo.app.ui.components.AileBrandLogo
+import ir.xilo.app.ui.components.AileLogoVariant
 import ir.xilo.app.ui.components.XiloTopAppBar
 import ir.xilo.app.ui.feed.PostOwnerMenu
 import ir.xilo.app.ui.feed.isPostOwner
@@ -174,19 +177,12 @@ fun PostDetailScreen(
                 onBackClick = handleBack,
                 centered = true,
                 actions = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        XiloLogo(size = 24.dp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = XiloBlue
-                        )
-                    }
+                    AileBrandLogo(
+                        variant = AileLogoVariant.Wordmark,
+                        languageCode = AppLocale.languageCode(LocalContext.current),
+                        height = 28.dp,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
                 }
             )
         },

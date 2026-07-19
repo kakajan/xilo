@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { canCreatePost } from "@/lib/auth/permissions";
 import { useAuthStore } from "@/stores/auth-store";
-import { useBrandStore } from "@/stores/brand-store";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -31,7 +31,6 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
   const t = useTranslations("common.nav");
   const tLang = useTranslations("common.language");
   const { user, isAuthenticated } = useAuthStore();
-  const brandName = useBrandStore((s) => s.brand.name_fa);
   const router = useRouter();
   const [search, setSearch] = useState("");
 
@@ -50,8 +49,10 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
       className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur"
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <Link href="/" className="text-xl font-bold text-primary">
-          {brandName}
+        <Link href="/" className="flex items-center shrink-0" aria-label="aile">
+          {/* Compact mark on narrow screens; wordmark already includes the mark */}
+          <BrandLogo variant="mark" className="h-8 w-auto sm:hidden" />
+          <BrandLogo variant="wordmark" className="hidden h-8 w-auto sm:block" />
         </Link>
 
         <form

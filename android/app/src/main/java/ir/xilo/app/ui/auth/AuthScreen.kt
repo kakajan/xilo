@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.theme.XiloBlue
+import ir.xilo.app.ui.components.AileBrandLogo
+import ir.xilo.app.ui.components.AileLogoVariant
 import ir.xilo.app.ui.components.AuthField
 import ir.xilo.app.ui.components.XiloButton
 import ir.xilo.app.ui.components.XiloButtonStyle
@@ -86,10 +88,11 @@ fun AuthScreen(
                     .padding(bottom = 72.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = brandTitle.ifBlank { stringResource(R.string.app_name) },
-                    style = MaterialTheme.typography.displayLarge,
-                    color = XiloBlue
+                AileBrandLogo(
+                    variant = AileLogoVariant.Wordmark,
+                    languageCode = preferredLanguage,
+                    height = 64.dp,
+                    contentDescription = brandTitle.ifBlank { stringResource(R.string.app_name) },
                 )
                 Text(
                     text = when {
@@ -99,7 +102,7 @@ fun AuthScreen(
                     },
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
+                    modifier = Modifier.padding(top = 12.dp, bottom = 24.dp)
                 )
 
                 if (isOtpMode) {

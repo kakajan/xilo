@@ -6,8 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/auth-store";
-import { useBrandStore } from "@/stores/brand-store";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import { mapAuthApiError, passwordMeetsServerRules, passwordRulesHint } from "@/lib/auth-errors";
 
 const registerSchema = z.object({
@@ -23,9 +24,9 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const t = useTranslations("auth.register");
   const router = useRouter();
   const { register: registerUser } = useAuthStore();
-  const brandName = useBrandStore((s) => s.brand.name_fa);
   const {
     register,
     handleSubmit,
@@ -49,10 +50,13 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto mt-16 max-w-md">
-      <h1 className="mb-2 text-2xl font-bold">ساخت حساب {brandName}</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        فقط ایمیل و رمز کافی است. نام کاربری را بعد از ورود خودتان انتخاب می‌کنید.
-      </p>
+      <div className="mb-6 flex flex-col items-center text-center">
+        <BrandLogo variant="wordmark" className="mb-3 h-14 w-auto" alt="aile" />
+        <h1 className="sr-only">{t("title", { brand: "aile" })}</h1>
+        <p className="text-sm text-muted-foreground">
+          فقط ایمیل و رمز کافی است. نام کاربری را بعد از ورود خودتان انتخاب می‌کنید.
+        </p>
+      </div>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium">ایمیل</label>

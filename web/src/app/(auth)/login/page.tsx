@@ -8,7 +8,7 @@ import { z } from "zod";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/auth-store";
-import { useBrandStore } from "@/stores/brand-store";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { mapAuthApiError } from "@/lib/auth-errors";
@@ -23,7 +23,6 @@ export default function LoginPage() {
   const t = useTranslations("auth.login");
   const router = useRouter();
   const { login } = useAuthStore();
-  const brandName = useBrandStore((s) => s.brand.name_fa);
   const [mode, setMode] = useState<"password" | "otp">("password");
   const [otpEmail, setOtpEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -104,8 +103,11 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto mt-16 max-w-md">
-      <h1 className="mb-2 text-2xl font-bold">{t("title", { brand: brandName })}</h1>
-      <p className="mb-6 text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="mb-6 flex flex-col items-center text-center">
+        <BrandLogo variant="wordmark" className="mb-3 h-14 w-auto" alt="aile" />
+        <h1 className="sr-only">{t("title", { brand: "aile" })}</h1>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+      </div>
 
       <div className="mb-4 flex gap-2">
         <Button
