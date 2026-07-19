@@ -8,6 +8,7 @@ import { listSessions, revokeSession } from "@/lib/api/sessions";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 
 export default function DevicesPage() {
@@ -70,9 +71,16 @@ export default function DevicesPage() {
                   {s.device_name || s.platform || "دستگاه ناشناس"}
                   {s.is_current ? " · فعلی" : ""}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {s.ip || "IP نامشخص"}
-                  {s.last_seen_at ? ` · ${formatDate(s.last_seen_at)}` : ""}
+                <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                  <span dir="ltr" className="inline-block">
+                    {s.ip || "IP نامشخص"}
+                  </span>
+                  {s.last_seen_at ? (
+                    <>
+                      <span aria-hidden>·</span>
+                      <TimeLabel>{formatDate(s.last_seen_at)}</TimeLabel>
+                    </>
+                  ) : null}
                 </p>
                 {s.user_agent && (
                   <p className="mt-1 truncate text-xs text-muted-foreground">{s.user_agent}</p>

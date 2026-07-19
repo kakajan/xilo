@@ -48,6 +48,7 @@ import ir.xilo.app.core.util.DateFormatter
 fun ChatListScreen(
     onChatClick: (chatId: String) -> Unit,
     onNewChatClick: () -> Unit = {},
+    onContactsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel
 ) {
@@ -88,6 +89,13 @@ fun ChatListScreen(
                     centered = true,
                     actions = {
                         if (!showArchived && listMode == ChatListMode.Chats) {
+                            IconButton(onClick = onContactsClick) {
+                                XiloIcon(
+                                    icon = XiloIcons.UserAdd,
+                                    contentDescription = stringResource(R.string.cd_contacts),
+                                    tint = XiloBlue
+                                )
+                            }
                             IconButton(onClick = onNewChatClick) {
                                 XiloIcon(
                                     icon = XiloIcons.Edit,

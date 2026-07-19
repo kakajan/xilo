@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FollowButton } from "@/components/user/follow-button";
+import { UsernameHandle } from "@/components/user/username-handle";
 import { getInitials } from "@/lib/utils";
 
 export function FollowListPage({ mode }: { mode: "followers" | "following" }) {
@@ -37,8 +38,9 @@ export function FollowListPage({ mode }: { mode: "followers" | "following" }) {
         >
           <ArrowRight className="h-5 w-5" />
         </Button>
-        <h1 className="min-w-0 text-xl font-bold">
-          {mode === "followers" ? "دنبال‌کنندگان" : "دنبال‌شوندگان"} @{username}
+        <h1 className="flex min-w-0 flex-wrap items-center gap-x-2 text-xl font-bold">
+          <span>{mode === "followers" ? "دنبال‌کنندگان" : "دنبال‌شوندگان"}</span>
+          <UsernameHandle username={username} />
         </h1>
       </div>
 
@@ -62,7 +64,10 @@ export function FollowListPage({ mode }: { mode: "followers" | "following" }) {
                 <Link href={`/${u.username}`} className="font-semibold hover:underline">
                   {u.display_name || u.username}
                 </Link>
-                <p className="truncate text-sm text-muted-foreground">@{u.username}</p>
+                <UsernameHandle
+                  username={u.username}
+                  className="truncate text-sm text-muted-foreground"
+                />
               </div>
               <FollowButton username={u.username} initialFollowing={u.is_following} />
             </li>

@@ -56,6 +56,9 @@ import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.XiloTextField
 import ir.xilo.app.ui.components.XiloTopAppBar
+import ir.xilo.app.ui.components.forUsernameHandle
+import ir.xilo.app.ui.components.usernameHandle
+import androidx.compose.ui.text.style.TextDirection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -570,23 +573,35 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         val usernameUnset = stringResource(R.string.settings_username_unset)
-                        val subtitle = buildString {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             if (uiState.phone.isNotBlank()) {
-                                append(uiState.phone)
-                                append(" • ")
+                                Text(
+                                    text = uiState.phone,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        textDirection = TextDirection.Ltr,
+                                    ),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                                Text(
+                                    text = " • ",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
                             }
                             if (uiState.usernamePending) {
-                                append(usernameUnset)
+                                Text(
+                                    text = usernameUnset,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
                             } else {
-                                append("@")
-                                append(uiState.username)
+                                Text(
+                                    text = usernameHandle(uiState.username),
+                                    style = MaterialTheme.typography.bodyMedium.forUsernameHandle(),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
                             }
                         }
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
                     }
                 }
 

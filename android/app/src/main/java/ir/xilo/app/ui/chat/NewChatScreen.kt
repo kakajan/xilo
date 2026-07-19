@@ -48,6 +48,8 @@ import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.XiloTextField
 import ir.xilo.app.ui.components.XiloTopAppBar
+import ir.xilo.app.ui.components.forUsernameHandle
+import ir.xilo.app.ui.components.usernameHandle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -251,8 +253,8 @@ private fun NewChatContactRow(
                 }
             }
             Text(
-                text = "@${contact.username}",
-                style = MaterialTheme.typography.bodyMedium,
+                text = usernameHandle(contact.username),
+                style = MaterialTheme.typography.bodyMedium.forUsernameHandle(),
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

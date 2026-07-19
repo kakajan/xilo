@@ -12,9 +12,8 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
-import type { ChatMessage } from "@/types/chat";
-
 export default function ChatConversationPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -26,7 +25,7 @@ export default function ChatConversationPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const formatDate = useFormatDate();
   const queryClient = useQueryClient();
-  const { addHandler } = useWebSocket();
+  const { addHandler, joinChat, leaveChat } = useWebSocket();
 
   useEffect(() => {
     if (authChecked && !isAuthenticated) router.replace("/login");
@@ -36,6 +35,12 @@ export default function ChatConversationPage() {
     setActiveChat(id);
     return () => setActiveChat(null);
   }, [id, setActiveChat]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !id) return;
+    joinChat(id);
+    return () => leaveChat(id);
+  }, [isAuthenticated, id, joinChat, leaveChat]);
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
@@ -57,16 +62,21 @@ export default function ChatConversationPage() {
 
   useEffect(() => {
     return addHandler((event, payload) => {
+      const chatId =
+        payload && typeof payload === "object" && "chat_id" in payload
+          ? String((payload as { chat_id?: string }).chat_id ?? "")
+          : "";
+      if (chatId && chatId !== id) return;
+
       if (
-        event === "chat.message" ||
-        event === "message.created" ||
-        event === "chat:message"
+        event === "message.receive" ||
+        event === "message.edit" ||
+        event === "message.delete" ||
+        event === "message.read" ||
+        event === "message.reaction"
       ) {
-        const msg = payload as ChatMessage;
-        if (msg?.chat_id === id) {
-          queryClient.invalidateQueries({ queryKey: ["messages", id] });
-          queryClient.invalidateQueries({ queryKey: ["chats"] });
-        }
+        queryClient.invalidateQueries({ queryKey: ["messages", id] });
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
       }
     });
   }, [addHandler, id, queryClient]);
@@ -144,9 +154,14 @@ export default function ChatConversationPage() {
                     <p className="mb-1 text-xs font-semibold text-primary">{m.sender_name}</p>
                   )}
                   <p className="whitespace-pre-wrap">{m.is_deleted ? "پیام حذف شد" : m.content}</p>
-                  <p className="mt-1 text-end text-[11px] text-muted-foreground">
-                    {formatDate(m.created_at)}
-                    {m.is_edited ? " · ویرایش‌شده" : ""}
+                  <p className="mt-1 flex flex-wrap items-center justify-end gap-x-1.5 text-end text-[11px] text-muted-foreground">
+                    <TimeLabel>{formatDate(m.created_at)}</TimeLabel>
+                    {m.is_edited ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span>ویرایش‌شده</span>
+                      </>
+                    ) : null}
                   </p>
                 </div>
               </div>

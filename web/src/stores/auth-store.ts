@@ -1,8 +1,24 @@
 import { create } from "zustand";
 import type { User, AuthResponse, LoginRequest, RegisterRequest } from "@/types/user";
 import { apiFetch } from "@/lib/api-client";
-import { clearAuthTokens, setAuthTokens } from "@/lib/auth-tokens";
+import {
+  clearAuthTokens,
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
+} from "@/lib/auth-tokens";
 import { markOnboardingPending } from "@/lib/onboarding";
+
+function isUnauthorizedError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    /\(401\)/.test(msg) ||
+    /session expired/i.test(msg) ||
+    /unauthorized/i.test(msg) ||
+    /missing refresh token/i.test(msg) ||
+    /invalid refresh token/i.test(msg)
+  );
+}
 
 interface AuthState {
   user: User | null;
@@ -73,7 +89,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const wasAuthenticated = get().isAuthenticated;
     try {
       if (wasAuthenticated) {
-        await apiFetch("/api/auth/logout", { method: "POST" });
+        const refresh = getRefreshToken();
+        await apiFetch("/api/auth/logout", {
+          method: "POST",
+          body: JSON.stringify(refresh ? { refresh_token: refresh } : {}),
+        });
       }
     } catch {
       // ignore network errors on logout
@@ -95,14 +115,24 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       try {
         const user = await apiFetch<User>("/api/auth/me");
         set({ user, isAuthenticated: true, isLoading: false, authChecked: true });
-      } catch {
+      } catch (err) {
         if (force) {
           // Keep existing session UI; caller handles errors.
           set({ isLoading: false, authChecked: true });
           throw new Error("failed to refresh profile");
         }
-        clearAuthTokens();
-        set({ user: null, isAuthenticated: false, isLoading: false, authChecked: true });
+        if (isUnauthorizedError(err)) {
+          clearAuthTokens();
+          set({ user: null, isAuthenticated: false, isLoading: false, authChecked: true });
+          return;
+        }
+        // Transport/5xx: do not wipe a still-valid cookie/local session.
+        const hasTokenHint = Boolean(getAccessToken() || getRefreshToken());
+        set({
+          isLoading: false,
+          authChecked: true,
+          isAuthenticated: get().isAuthenticated || hasTokenHint,
+        });
       }
     };
 

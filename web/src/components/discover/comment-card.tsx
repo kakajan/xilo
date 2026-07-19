@@ -4,6 +4,10 @@ import Link from "next/link";
 import { Heart, MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials, cn } from "@/lib/utils";
+import {
+  AuthorHandleMeta,
+  UsernameHandle,
+} from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import type { Comment } from "@/types/comment";
 
@@ -52,9 +56,10 @@ export function CommentCard({ comment, onLike, liked }: CommentCardProps) {
           <Link href={username ? `/${username}` : "#"} className="font-semibold hover:underline">
             {name}
           </Link>
-          <p className="text-xs text-muted-foreground">
-            {username ? `@${username}` : ""} · {formatDate(comment.created_at)}
-          </p>
+          <AuthorHandleMeta
+            username={username}
+            timeLabel={formatDate(comment.created_at)}
+          />
         </div>
       </div>
 
@@ -63,7 +68,12 @@ export function CommentCard({ comment, onLike, liked }: CommentCardProps) {
         {comment.post_title && (
           <p className="mb-2 text-sm text-primary">
             روی پست: {comment.post_title}
-            {postAuthor ? ` از @${postAuthor}` : ""}
+            {postAuthor ? (
+              <>
+                {" از "}
+                <UsernameHandle username={postAuthor} />
+              </>
+            ) : null}
           </p>
         )}
       </Link>

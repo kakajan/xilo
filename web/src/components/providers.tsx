@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { I18nProvider } from "@/components/i18n-provider";
+import { GlobalWebSocketListener } from "@/components/layout/ws-listener";
 import { useAuthStore } from "@/stores/auth-store";
 import { useBrandStore } from "@/stores/brand-store";
 import { useThemeStore } from "@/stores/theme-store";
@@ -42,7 +43,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         <I18nProvider>
           <PlatformThemeInitializer>
-            <AuthInitializer>{children}</AuthInitializer>
+            <AuthInitializer>
+              <GlobalWebSocketListener />
+              {children}
+            </AuthInitializer>
           </PlatformThemeInitializer>
         </I18nProvider>
       </ThemeProvider>

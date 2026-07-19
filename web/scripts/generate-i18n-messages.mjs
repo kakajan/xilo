@@ -38,6 +38,7 @@ const catalogs = {
         feed: "فید",
         discover: "اکتشاف",
         messages: "پیام‌ها",
+        contacts: "مخاطبین",
         profile: "پروفایل",
         settings: "تنظیمات",
         notifications: "اعلان‌ها",
@@ -56,6 +57,17 @@ const catalogs = {
       },
       language: {
         unknownInitial: "؟",
+      },
+      contacts: {
+        subtitle: "افرادی که دنبال می‌کنید — برای چت یا دیدن پروفایل، پست‌ها و نظرات",
+        searchPlaceholder: "جستجوی مخاطب…",
+        empty: "هنوز کسی را دنبال نکرده‌اید",
+        emptySearch: "نتیجه‌ای پیدا نشد",
+        syncHint:
+          "همگام‌سازی دفترچه تلفن در اپ اندروید انجام می‌شود؛ بعد از آن برچسب «از مخاطبین» اینجا دیده می‌شود.",
+        fromContacts: "از مخاطبین",
+        message: "پیام",
+        profile: "پروفایل",
       },
     },
     en: {
@@ -83,6 +95,7 @@ const catalogs = {
         feed: "Feed",
         discover: "Discover",
         messages: "Messages",
+        contacts: "Contacts",
         profile: "Profile",
         settings: "Settings",
         notifications: "Notifications",
@@ -101,6 +114,17 @@ const catalogs = {
       },
       language: {
         unknownInitial: "?",
+      },
+      contacts: {
+        subtitle: "People you follow — open chat or view their profile, posts, and replies",
+        searchPlaceholder: "Search contacts…",
+        empty: "You are not following anyone yet",
+        emptySearch: "No matches",
+        syncHint:
+          "Address-book sync runs in the Android app; afterward, a “From contacts” badge appears here.",
+        fromContacts: "From contacts",
+        message: "Message",
+        profile: "Profile",
       },
     },
     ar: {
@@ -128,6 +152,7 @@ const catalogs = {
         feed: "الموجز",
         discover: "اكتشف",
         messages: "الرسائل",
+        contacts: "جهات الاتصال",
         profile: "الملف الشخصي",
         settings: "الإعدادات",
         notifications: "الإشعارات",
@@ -146,6 +171,17 @@ const catalogs = {
       },
       language: {
         unknownInitial: "؟",
+      },
+      contacts: {
+        subtitle: "الأشخاص الذين تتابعهم — افتح الدردشة أو عرض الملف والمنشورات والردود",
+        searchPlaceholder: "ابحث في جهات الاتصال…",
+        empty: "لا تتابع أحداً بعد",
+        emptySearch: "لا نتائج",
+        syncHint:
+          "مزامنة دفتر الهاتف تتم في تطبيق أندرويد؛ بعدها تظهر شارة «من جهات الاتصال» هنا.",
+        fromContacts: "من جهات الاتصال",
+        message: "رسالة",
+        profile: "الملف",
       },
     },
     ru: {
@@ -173,6 +209,7 @@ const catalogs = {
         feed: "Лента",
         discover: "Обзор",
         messages: "Сообщения",
+        contacts: "Контакты",
         profile: "Профиль",
         settings: "Настройки",
         notifications: "Уведомления",
@@ -191,6 +228,17 @@ const catalogs = {
       },
       language: {
         unknownInitial: "?",
+      },
+      contacts: {
+        subtitle: "Люди, на которых вы подписаны — чат или профиль, посты и ответы",
+        searchPlaceholder: "Поиск контактов…",
+        empty: "Вы пока ни на кого не подписаны",
+        emptySearch: "Ничего не найдено",
+        syncHint:
+          "Синхронизация телефонной книги выполняется в Android-приложении; затем здесь появится метка «Из контактов».",
+        fromContacts: "Из контактов",
+        message: "Сообщение",
+        profile: "Профиль",
       },
     },
     tr: {
@@ -218,6 +266,7 @@ const catalogs = {
         feed: "Akış",
         discover: "Keşfet",
         messages: "Mesajlar",
+        contacts: "Kişiler",
         profile: "Profil",
         settings: "Ayarlar",
         notifications: "Bildirimler",
@@ -236,6 +285,17 @@ const catalogs = {
       },
       language: {
         unknownInitial: "?",
+      },
+      contacts: {
+        subtitle: "Takip ettikleriniz — sohbet açın veya profil, gönderi ve yanıtlarını görün",
+        searchPlaceholder: "Kişi ara…",
+        empty: "Henüz kimseyi takip etmiyorsunuz",
+        emptySearch: "Sonuç yok",
+        syncHint:
+          "Rehber senkronizasyonu Android uygulamasında yapılır; ardından burada «Rehberden» rozeti görünür.",
+        fromContacts: "Rehberden",
+        message: "Mesaj",
+        profile: "Profil",
       },
     },
   },

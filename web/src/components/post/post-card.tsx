@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RepostButton } from "@/components/post/repost-button";
 import { PostOwnerMenu } from "@/components/post/post-owner-menu";
 import { HashtagText } from "@/components/post/hashtag-text";
+import { AuthorHandleMeta, TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import { bookmarkPost, unbookmarkPost } from "@/lib/api/bookmarks";
 import { apiFetch } from "@/lib/api-client";
@@ -93,27 +94,20 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
           >
             {authorName}
           </Link>
-          <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-            {post.author?.username ? (
-              <span dir="ltr" className="inline-block">
-                @{post.author.username}
-              </span>
-            ) : null}
-            {post.published_at ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{formatDate(post.published_at)}</span>
-              </>
-            ) : null}
-            {post.reading_time ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>
-                  <bdi>{post.reading_time}</bdi> دقیقه مطالعه
-                </span>
-              </>
-            ) : null}
-          </p>
+          <AuthorHandleMeta
+            username={post.author?.username}
+            timeLabel={post.published_at ? formatDate(post.published_at) : null}
+            trailing={
+              post.reading_time ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <TimeLabel>
+                    <bdi>{post.reading_time}</bdi> دقیقه مطالعه
+                  </TimeLabel>
+                </>
+              ) : null
+            }
+          />
         </div>
         {isOwner ? (
           <PostOwnerMenu

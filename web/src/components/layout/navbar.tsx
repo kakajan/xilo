@@ -29,7 +29,7 @@ interface NavbarProps {
 export function Navbar({ chromeVisible = true }: NavbarProps) {
   const t = useTranslations("common.nav");
   const tLang = useTranslations("common.language");
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, authChecked } = useAuthStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
 
@@ -72,7 +72,12 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
 
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          {isAuthenticated ? (
+          {!authChecked ? (
+            <div
+              className="h-8 w-20 animate-pulse rounded-md bg-muted"
+              aria-hidden
+            />
+          ) : isAuthenticated ? (
             <>
               {(user?.role === "admin" || user?.role === "superadmin") && (
                 <Button

@@ -34,6 +34,9 @@ import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
+import ir.xilo.app.ui.components.forRelativeTime
+import ir.xilo.app.ui.components.forUsernameHandle
+import ir.xilo.app.ui.components.usernameHandle
 import ir.xilo.app.core.util.DateFormatter
 
 @Composable
@@ -115,8 +118,8 @@ fun PostCard(
                     VerifiedBadge(size = 16.dp)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "@${post.authorUsername}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = usernameHandle(post.authorUsername),
+                        style = MaterialTheme.typography.bodyMedium.forUsernameHandle(),
                         color = MaterialTheme.colorScheme.secondary,
                         modifier = if (openAuthor != null) {
                             Modifier.clickable(role = Role.Button, onClick = openAuthor)
@@ -126,8 +129,14 @@ fun PostCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "· ${getRelativeTimeSpan(context, post.createdAt)}",
+                        text = "·",
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = getRelativeTimeSpan(context, post.createdAt),
+                        style = MaterialTheme.typography.bodyMedium.forRelativeTime(),
                         color = MaterialTheme.colorScheme.secondary
                     )
                 }

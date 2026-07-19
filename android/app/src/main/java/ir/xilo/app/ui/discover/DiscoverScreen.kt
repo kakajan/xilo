@@ -9,6 +9,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -16,10 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
+import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.ui.components.CommentCard
@@ -44,13 +47,17 @@ fun DiscoverScreen(
     viewModel: DiscoverViewModel = hiltViewModel()
 ) {
     val searchResults by viewModel.searchResults.collectAsState()
-    val recentComments by viewModel.recentComments.collectAsState()
+    val discoverComments by viewModel.discoverComments.collectAsState()
+    val topicInterests by viewModel.topicInterests.collectAsState()
+    val selectedInterestSlug by viewModel.selectedInterestSlug.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val infoMessage by viewModel.infoMessage.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
     val currentUsername by viewModel.currentUsername.collectAsState()
+    val languageCode = AppLocale.languageCode(LocalContext.current)
 
     var isSearchActive by remember { mutableStateOf(false) }
     var reportTargetId by remember { mutableStateOf<String?>(null) }
@@ -150,7 +157,7 @@ fun DiscoverScreen(
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
-            if (isSearching) {
+            if (isSearching || isRefreshing) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = XiloBlue)
             }
 
@@ -211,53 +218,77 @@ fun DiscoverScreen(
                         }
                     }
                     "discover" -> {
-                        if (recentComments.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        stringResource(R.string.discover_prompt_search),
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    TextButton(onClick = { viewModel.refreshDiscoverComments() }) {
-                                        Text(stringResource(R.string.common_refresh))
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            if (topicInterests.isNotEmpty()) {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    item(key = "all") {
+                                        FilterChip(
+                                            selected = selectedInterestSlug == null,
+                                            onClick = { viewModel.selectInterest(null) },
+                                            label = { Text(stringResource(R.string.discover_topic_all)) },
+                                        )
+                                    }
+                                    items(topicInterests, key = { it.id }) { interest ->
+                                        FilterChip(
+                                            selected = selectedInterestSlug == interest.slug,
+                                            onClick = { viewModel.selectInterest(interest.slug) },
+                                            label = { Text(interest.labelFor(languageCode)) },
+                                        )
                                     }
                                 }
                             }
-                        } else {
-                            LazyColumn(
-                                state = discoverListState,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .then(
-                                        if (chromeState != null) {
-                                            Modifier.trackChromeVisibility(chromeState, discoverListState)
-                                        } else {
-                                            Modifier
+
+                            if (discoverComments.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            stringResource(R.string.discover_prompt_search),
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        TextButton(onClick = { viewModel.refreshDiscoverComments() }) {
+                                            Text(stringResource(R.string.common_refresh))
                                         }
-                                    ),
-                                contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
-                            ) {
-                                items(recentComments, key = { it.id }) { comment ->
-                                    CommentCard(
-                                        comment = comment,
-                                        onClick = {
-                                            viewModel.openCommentPost(comment.postId, onCommentClick)
-                                        },
-                                        onReplyClick = {
-                                            viewModel.openCommentReply(
-                                                postId = comment.postId,
-                                                commentId = comment.id,
-                                                authorUsername = comment.authorUsername,
-                                                onNavigate = onReplyToComment,
-                                            )
-                                        },
-                                        onLikeClick = { viewModel.toggleCommentLike(comment) },
-                                        onDislikeClick = { viewModel.toggleCommentDislike(comment) },
-                                        onReportClick = { reportTargetId = comment.id },
-                                        onBookmarkClick = { viewModel.toggleCommentBookmark(comment) },
-                                        onAuthorClick = { onAuthorClick(comment.authorUsername) },
-                                    )
+                                    }
+                                }
+                            } else {
+                                LazyColumn(
+                                    state = discoverListState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(
+                                            if (chromeState != null) {
+                                                Modifier.trackChromeVisibility(chromeState, discoverListState)
+                                            } else {
+                                                Modifier
+                                            }
+                                        ),
+                                    contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
+                                ) {
+                                    items(discoverComments, key = { it.id }) { comment ->
+                                        CommentCard(
+                                            comment = comment,
+                                            onClick = {
+                                                viewModel.openCommentPost(comment.postId, onCommentClick)
+                                            },
+                                            onReplyClick = {
+                                                viewModel.openCommentReply(
+                                                    postId = comment.postId,
+                                                    commentId = comment.id,
+                                                    authorUsername = comment.authorUsername,
+                                                    onNavigate = onReplyToComment,
+                                                )
+                                            },
+                                            onLikeClick = { viewModel.toggleCommentLike(comment) },
+                                            onDislikeClick = { viewModel.toggleCommentDislike(comment) },
+                                            onReportClick = { reportTargetId = comment.id },
+                                            onBookmarkClick = { viewModel.toggleCommentBookmark(comment) },
+                                            onAuthorClick = { onAuthorClick(comment.authorUsername) },
+                                        )
+                                    }
                                 }
                             }
                         }

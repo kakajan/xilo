@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, CreditCard, AlertCircle, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
+import { TimeLabel } from "@/components/user/username-handle";
 import { formatDate } from "@/lib/utils";
 
 interface Plan {
@@ -198,8 +199,9 @@ export default function BillingPage() {
           </div>
           <p className="text-xl font-bold mb-1">{subscription.plan_name}</p>
           {subscription.expires_at && (
-            <p className="text-sm text-muted-foreground">
-              Expires {formatDate(subscription.expires_at)}
+            <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+              <span>Expires</span>
+              <TimeLabel>{formatDate(subscription.expires_at)}</TimeLabel>
             </p>
           )}
           <div className="mt-4">
@@ -312,8 +314,10 @@ export default function BillingPage() {
                   <p className="font-medium">
                     {formatPrice(inv.amount_cents, inv.currency)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {inv.payment_gateway || inv.payment_method} · {formatDate(inv.created_at)}
+                  <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                    <span>{inv.payment_gateway || inv.payment_method}</span>
+                    <span aria-hidden>·</span>
+                    <TimeLabel>{formatDate(inv.created_at)}</TimeLabel>
                   </p>
                 </div>
               </div>

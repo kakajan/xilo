@@ -23,6 +23,7 @@
     "feed": "Akış",
     "discover": "Keşfet",
     "messages": "Mesajlar",
+    "contacts": "Kişiler",
     "profile": "Profil",
     "settings": "Ayarlar",
     "notifications": "Bildirimler",
@@ -41,5 +42,15 @@
   },
   "language": {
     "unknownInitial": "?"
+  },
+  "contacts": {
+    "subtitle": "Takip ettikleriniz — sohbet açın veya profil, gönderi ve yanıtlarını görün",
+    "searchPlaceholder": "Kişi ara…",
+    "empty": "Henüz kimseyi takip etmiyorsunuz",
+    "emptySearch": "Sonuç yok",
+    "syncHint": "Rehber senkronizasyonu Android uygulamasında yapılır; ardından burada «Rehberden» rozeti görünür.",
+    "fromContacts": "Rehberden",
+    "message": "Mesaj",
+    "profile": "Profil"
   }
 }

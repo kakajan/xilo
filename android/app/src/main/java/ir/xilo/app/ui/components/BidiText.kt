@@ -97,6 +97,19 @@ fun TextStyle.withContentDirection(direction: LayoutDirection): TextStyle =
 fun TextStyle.forInput(): TextStyle = copy(textDirection = TextDirection.Content)
 
 /**
+ * Forces LTR so "@handle" never renders as "handle@" inside RTL chrome.
+ */
+fun TextStyle.forUsernameHandle(): TextStyle = copy(textDirection = TextDirection.Ltr)
+
+/**
+ * Keeps relative-time phrases (e.g. "۱ ساعت پیش") as one directional unit.
+ */
+fun TextStyle.forRelativeTime(): TextStyle = copy(textDirection = TextDirection.Content)
+
+/** Username with leading @, always intended for [forUsernameHandle] text. */
+fun usernameHandle(username: String): String = "@$username"
+
+/**
  * Body/title text that follows each paragraph's script, not the app chrome direction.
  * Multi-line bodies are split on `\n` so an English line after Persian stays left-aligned.
  */

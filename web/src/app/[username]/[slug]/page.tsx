@@ -9,6 +9,10 @@ import { CommentSection } from "@/components/comment/comment-section";
 import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
 import { PostBody } from "@/components/post/post-body";
 import { RecordPostView } from "@/components/post/record-post-view";
+import {
+  AuthorHandleMeta,
+  TimeLabel,
+} from "@/components/user/username-handle";
 
 async function getPost(slug: string): Promise<Post | null> {
   try {
@@ -58,28 +62,32 @@ export default async function PostPage({
             >
               {authorName}
             </Link>
-            <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
-              {post.published_at ? <span>{formatDate(post.published_at)}</span> : null}
-              {post.reading_time ? (
+            <AuthorHandleMeta
+              className="text-sm"
+              username={post.author?.username || username}
+              timeLabel={post.published_at ? formatDate(post.published_at) : null}
+              trailing={
                 <>
+                  {post.reading_time ? (
+                    <>
+                      <span aria-hidden>·</span>
+                      <TimeLabel>{readingTimeText(post.reading_time)}</TimeLabel>
+                    </>
+                  ) : null}
+                  {post.category ? (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{post.category}</span>
+                    </>
+                  ) : null}
                   <span aria-hidden>·</span>
-                  <span>{readingTimeText(post.reading_time)}</span>
+                  <RecordPostView
+                    postId={post.id}
+                    initialViewCount={post.view_count ?? 0}
+                  />
                 </>
-              ) : null}
-              {post.category ? (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{post.category}</span>
-                </>
-              ) : null}
-              <>
-                <span aria-hidden>·</span>
-                <RecordPostView
-                  postId={post.id}
-                  initialViewCount={post.view_count ?? 0}
-                />
-              </>
-            </p>
+              }
+            />
           </div>
         </div>
 

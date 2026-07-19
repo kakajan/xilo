@@ -2,16 +2,18 @@
 
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import type { Notification } from "@/types/notification";
 
 export function NotificationCenter() {
+  const t = useTranslations("notification");
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
   const { addHandler } = useWebSocket();
@@ -52,10 +54,10 @@ export function NotificationCenter() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold">Notifications</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
         {unreadCount > 0 && (
           <Button variant="ghost" size="sm" onClick={() => markAll.mutate()}>
-            Mark all read
+            {t("markAllRead")}
           </Button>
         )}
       </div>
@@ -73,20 +75,22 @@ export function NotificationCenter() {
           ))}
         </div>
       ) : notifications.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">No notifications yet</p>
+        <p className="text-center text-muted-foreground py-8">{t("empty")}</p>
       ) : (
         <div className="space-y-1">
           {notifications.map((n) => (
             <button
               key={n.id}
               onClick={() => markRead.mutate(n.id)}
-              className={`w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-accent ${
+              className={`w-full text-start px-3 py-2 rounded-lg transition-colors hover:bg-accent ${
                 !n.is_read ? "bg-accent/50" : ""
               }`}
             >
               <p className="text-sm font-medium">{n.title}</p>
               {n.body && <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>}
-              <p className="text-xs text-muted-foreground mt-1">{formatDate(n.created_at)}</p>
+              <TimeLabel className="mt-1 text-xs text-muted-foreground">
+                {formatDate(n.created_at)}
+              </TimeLabel>
             </button>
           ))}
         </div>

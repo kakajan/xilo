@@ -566,3 +566,115 @@ data class SendMessageRequest(
     @SerialName("reply_to_id")
     val replyToId: String? = null
 )
+
+// ────────────────────── Interests / Contacts / Discover ──────────────────────
+
+@Serializable
+data class InterestDto(
+    val id: String,
+    val slug: String,
+    val labels: Map<String, String> = emptyMap(),
+    val icon: String? = null,
+    val sortOrder: Int = 0,
+) {
+    fun labelFor(languageCode: String): String {
+        val code = languageCode.lowercase()
+        return labels[code]
+            ?: labels["en"]
+            ?: labels["fa"]
+            ?: labels.values.firstOrNull()
+            ?: slug
+    }
+}
+
+@Serializable
+data class InterestsResponse(
+    val interests: List<InterestDto> = emptyList(),
+)
+
+@Serializable
+data class UserInterestsResponse(
+    val interestIds: List<String> = emptyList(),
+    val interests: List<InterestDto> = emptyList(),
+)
+
+@Serializable
+data class UpdateInterestsRequest(
+    val interestIds: List<String>,
+)
+
+@Serializable
+data class ContactMatchRequest(
+    val phoneHashes: List<String> = emptyList(),
+    val emailHashes: List<String> = emptyList(),
+)
+
+@Serializable
+data class ContactMatchUserDto(
+    val id: String,
+    val username: String,
+    val displayName: String = "",
+    val avatarUrl: String? = null,
+    val alreadyFollowing: Boolean = false,
+)
+
+@Serializable
+data class ContactMatchResponse(
+    val matches: List<ContactMatchUserDto> = emptyList(),
+)
+
+/** Row from `GET /api/contacts` — followings with address-book sync badge. */
+@Serializable
+data class ContactUserDto(
+    val id: String,
+    val username: String,
+    val displayName: String = "",
+    val avatarUrl: String? = null,
+    val isVerified: Boolean = false,
+    val isFollowing: Boolean = true,
+    val fromContacts: Boolean = false,
+)
+
+@Serializable
+data class ContactsListResponse(
+    val data: List<ContactUserDto> = emptyList(),
+)
+
+@Serializable
+data class DiscoverCommentDto(
+    val id: String,
+    val postId: String,
+    val authorId: String,
+    val author: UserResponse? = null,
+    val parentId: String? = null,
+    val rootId: String? = null,
+    val depth: Int = 0,
+    val content: String,
+    val likeCount: Int = 0,
+    val replyCount: Int = 0,
+    val isLiked: Boolean = false,
+    val isPinned: Boolean = false,
+    val isBookmarked: Boolean = false,
+    val reactions: Map<String, Int> = emptyMap(),
+    @SerialName("viewer_reactions")
+    val viewerReactions: List<String> = emptyList(),
+    val createdAt: String,
+    val post: PostRefResponse? = null,
+) {
+    fun resolvedLikeCount(): Int =
+        reactions["like"] ?: reactions["heart"] ?: likeCount
+
+    fun resolvedDislikeCount(): Int =
+        reactions["dislike"] ?: 0
+
+    fun resolvedIsLiked(): Boolean =
+        viewerReactions.any { it == "like" || it == "heart" } || isLiked
+
+    fun resolvedIsDisliked(): Boolean =
+        viewerReactions.any { it == "dislike" }
+}
+
+@Serializable
+data class DiscoverCommentsResponse(
+    val data: List<DiscoverCommentDto> = emptyList(),
+)

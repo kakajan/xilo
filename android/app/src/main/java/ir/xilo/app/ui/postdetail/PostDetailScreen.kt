@@ -37,6 +37,9 @@ import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.AileBrandLogo
 import ir.xilo.app.ui.components.AileLogoVariant
 import ir.xilo.app.ui.components.XiloTopAppBar
+import ir.xilo.app.ui.components.forRelativeTime
+import ir.xilo.app.ui.components.forUsernameHandle
+import ir.xilo.app.ui.components.usernameHandle
 import ir.xilo.app.ui.feed.PostOwnerMenu
 import ir.xilo.app.ui.feed.isPostOwner
 
@@ -411,16 +414,35 @@ fun PostDetailHeader(
                     Spacer(modifier = Modifier.width(4.dp))
                     VerifiedBadge(size = 18.dp)
                 }
-                Text(
-                    text = "@${post.authorUsername} · ${getRelativeTimeSpan(androidx.compose.ui.platform.LocalContext.current, post.createdAt)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = if (openAuthor != null) {
                         Modifier.clickable(role = Role.Button, onClick = openAuthor)
                     } else {
                         Modifier
                     }
-                )
+                ) {
+                    Text(
+                        text = usernameHandle(post.authorUsername),
+                        style = MaterialTheme.typography.bodyMedium.forUsernameHandle(),
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "·",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = getRelativeTimeSpan(
+                            androidx.compose.ui.platform.LocalContext.current,
+                            post.createdAt,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium.forRelativeTime(),
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
             }
             if (isOwner && onEditClick != null && onArchiveClick != null && onDeleteClick != null) {
                 PostOwnerMenu(

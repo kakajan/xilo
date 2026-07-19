@@ -12,6 +12,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/xilo-platform/xilo/internal/auth/model"
+	"github.com/xilo-platform/xilo/pkg/contacthash"
 )
 
 var (
@@ -23,24 +24,30 @@ var (
 )
 
 type UserRepo struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	pepper string
 }
 
 func NewUserRepo(db *sqlx.DB) *UserRepo {
-	return &UserRepo{db: db}
+	return NewUserRepoWithPepper(db, contacthash.ResolvePepper())
+}
+
+func NewUserRepoWithPepper(db *sqlx.DB, pepper string) *UserRepo {
+	return &UserRepo{db: db, pepper: pepper}
 }
 
 func (r *UserRepo) Create(ctx context.Context, req *model.RegisterRequest, passwordHash string) (*model.User, error) {
+	emailHash := r.nullableEmailHash(req.Email)
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
-		INSERT INTO users (email, username, password_hash)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (email, username, password_hash, email_hash)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, email, username, phone, password_hash,
 		          COALESCE(display_name, '') AS display_name,
 		          COALESCE(avatar_url, '') AS avatar_url,
 		          COALESCE(bio, '') AS bio,
 		          role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
-	`, req.Email, req.Username, passwordHash)
+	`, req.Email, req.Username, passwordHash, emailHash)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return nil, ErrEmailExists
@@ -51,16 +58,18 @@ func (r *UserRepo) Create(ctx context.Context, req *model.RegisterRequest, passw
 }
 
 func (r *UserRepo) CreateWithPhone(ctx context.Context, email, username, phone, passwordHash string) (*model.User, error) {
+	emailHash := r.nullableEmailHash(email)
+	phoneHash := r.nullablePhoneHash(phone)
 	var user model.User
 	err := r.db.GetContext(ctx, &user, `
-		INSERT INTO users (email, username, phone, password_hash)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (email, username, phone, password_hash, email_hash, phone_hash)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, email, username, phone, password_hash,
 		          COALESCE(display_name, '') AS display_name,
 		          COALESCE(avatar_url, '') AS avatar_url,
 		          COALESCE(bio, '') AS bio,
 		          role, email_verified, preferred_language, preferred_calendar, created_at, updated_at
-	`, email, username, phone, passwordHash)
+	`, email, username, phone, passwordHash, emailHash, phoneHash)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return nil, ErrEmailExists
@@ -342,8 +351,83 @@ func (r *UserRepo) VerifySMSOTP(ctx context.Context, phone, code, purpose string
 }
 
 func (r *UserRepo) UpdatePhone(ctx context.Context, userID, phone string) error {
+	phoneHash := r.nullablePhoneHash(phone)
 	_, err := r.db.ExecContext(ctx, `
-		UPDATE users SET phone = $2, updated_at = NOW() WHERE id = $1
-	`, userID, phone)
+		UPDATE users SET phone = $2, phone_hash = $3, updated_at = NOW() WHERE id = $1
+	`, userID, phone, phoneHash)
 	return err
+}
+
+// BackfillHashes computes phone_hash/email_hash for users that still have NULL hashes.
+// Intended for optional one-shot use at gateway/auth startup after migration 000021.
+func (r *UserRepo) BackfillHashes(ctx context.Context) (int64, error) {
+	if r.pepper == "" {
+		return 0, fmt.Errorf("contact match pepper not configured")
+	}
+
+	type row struct {
+		ID    string  `db:"id"`
+		Email string  `db:"email"`
+		Phone *string `db:"phone"`
+	}
+	var rows []row
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT id, email, phone
+		FROM users
+		WHERE deleted_at IS NULL
+		  AND (
+		    (email IS NOT NULL AND email <> '' AND email_hash IS NULL)
+		    OR (phone IS NOT NULL AND phone <> '' AND phone_hash IS NULL)
+		  )
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("select users for hash backfill: %w", err)
+	}
+
+	var updated int64
+	for _, u := range rows {
+		emailHash := r.nullableEmailHash(u.Email)
+		var phoneHash *string
+		if u.Phone != nil {
+			phoneHash = r.nullablePhoneHash(*u.Phone)
+		}
+		res, err := r.db.ExecContext(ctx, `
+			UPDATE users
+			SET email_hash = COALESCE($2, email_hash),
+			    phone_hash = COALESCE($3, phone_hash)
+			WHERE id = $1
+			  AND (
+			    (email_hash IS NULL AND $2 IS NOT NULL)
+			    OR (phone_hash IS NULL AND $3 IS NOT NULL)
+			  )
+		`, u.ID, emailHash, phoneHash)
+		if err != nil {
+			return updated, fmt.Errorf("backfill hashes for user %s: %w", u.ID, err)
+		}
+		n, _ := res.RowsAffected()
+		updated += n
+	}
+	return updated, nil
+}
+
+func (r *UserRepo) nullableEmailHash(email string) *string {
+	if r.pepper == "" {
+		return nil
+	}
+	h := contacthash.HashEmail(r.pepper, email)
+	if h == "" {
+		return nil
+	}
+	return &h
+}
+
+func (r *UserRepo) nullablePhoneHash(phone string) *string {
+	if r.pepper == "" {
+		return nil
+	}
+	h := contacthash.HashPhone(r.pepper, phone)
+	if h == "" {
+		return nil
+	}
+	return &h
 }

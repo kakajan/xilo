@@ -74,8 +74,14 @@ import (
 
 	userhandler "github.com/xilo-platform/xilo/internal/user/handler"
 
+	contacthandler "github.com/xilo-platform/xilo/internal/contact/handler"
+	discoverpkg "github.com/xilo-platform/xilo/internal/discover"
+	interesthandler "github.com/xilo-platform/xilo/internal/interest/handler"
+	interestrepo "github.com/xilo-platform/xilo/internal/interest/repository"
+
 	platformhandler "github.com/xilo-platform/xilo/internal/platform/handler"
 
+	"github.com/xilo-platform/xilo/pkg/contacthash"
 	"github.com/xilo-platform/xilo/pkg/i18n"
 	"github.com/xilo-platform/xilo/pkg/jwt"
 	"github.com/xilo-platform/xilo/pkg/payment/zarinpal"
@@ -115,8 +121,18 @@ func main() {
 	}
 
 	authRepo := authrepo.NewUserRepo(db)
+	if n, err := authRepo.BackfillHashes(context.Background()); err != nil {
+		slog.Warn("contact hash backfill failed", "error", err)
+	} else if n > 0 {
+		slog.Info("contact hash backfill complete", "updated", n)
+	}
 	authSvc := authsvc.NewAuthServiceWithSMS(authRepo, jwtMgr, smsDriver)
 	authH := authhandler.NewAuthHandler(authSvc)
+
+	interestRepo := interestrepo.NewInterestRepo(db)
+	interestH := interesthandler.NewInterestHandler(interestRepo)
+	contactH := contacthandler.NewContactHandler(db, contacthash.ResolvePepper())
+	discoverH := discoverpkg.NewDiscoverHandler(db)
 
 	postRepo := postrepo.NewPostRepo(db)
 	postSvc := postsvc.NewPostService(postRepo, rdb)
@@ -214,6 +230,11 @@ func main() {
 	admin := app.Group("/api/admin", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"))
 	admin.Get("/users", adminH.ListUsers)
 	admin.Patch("/users/:id/role", adminH.UpdateUserRole)
+	admin.Get("/interests", interestH.ListAll)
+	admin.Post("/interests", interestH.Create)
+	admin.Put("/interests/reorder", interestH.Reorder) // before /:id
+	admin.Patch("/interests/:id", interestH.Patch)
+	admin.Delete("/interests/:id", interestH.Delete)
 
 	clientIP := func(c *fiber.Ctx) string {
 		if ip := c.IP(); ip != "" {
@@ -234,6 +255,16 @@ func main() {
 		Expiration: 1 * time.Minute,
 		KeyGenerator: func(c *fiber.Ctx) string {
 			return "auth:" + clientIP(c)
+		},
+	})
+	applyContactMatchRateLimit := limiter.New(limiter.Config{
+		Max:        30,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			if uid, ok := c.Locals("userID").(string); ok && uid != "" {
+				return "contacts:" + uid
+			}
+			return "contacts:" + clientIP(c)
 		},
 	})
 
@@ -321,6 +352,13 @@ func main() {
 	notif.Patch("/preferences", authmw.AuthRequired(jwtMgr), prefsH.UpdatePreferences)
 	notif.Post("/sms/send", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), smsH.SendSMS)
 	notif.Post("/sms/broadcast", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), smsH.BroadcastToAll)
+
+	app.Get("/api/interests", applyPublicRateLimit, interestH.ListActive)
+	app.Get("/api/users/me/interests", authmw.AuthRequired(jwtMgr), interestH.GetMyInterests)
+	app.Put("/api/users/me/interests", authmw.AuthRequired(jwtMgr), interestH.PutMyInterests)
+	app.Get("/api/contacts", authmw.AuthRequired(jwtMgr), contactH.List)
+	app.Post("/api/contacts/match", authmw.AuthRequired(jwtMgr), applyContactMatchRateLimit, contactH.Match)
+	app.Get("/api/discover/comments", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), discoverH.ListComments)
 
 	social := app.Group("/api")
 	social.Post("/posts/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleBookmark)

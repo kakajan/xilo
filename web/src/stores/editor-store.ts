@@ -11,6 +11,11 @@ interface EditorState {
   status: "draft" | "published";
   isPremium: boolean;
   hasUnsaved: boolean;
+  /** TipTap JSON for the new-post composer (local draft). */
+  contentJson: string;
+  /** In-progress edit recovery keyed by post id. */
+  editDraftId: string | null;
+  editContentJson: string;
 
   setTitle: (title: string) => void;
   setSlug: (slug: string) => void;
@@ -23,6 +28,9 @@ interface EditorState {
   setStatus: (status: "draft" | "published") => void;
   setIsPremium: (v: boolean) => void;
   setHasUnsaved: (v: boolean) => void;
+  setContentJson: (json: string) => void;
+  setEditDraft: (postId: string, json: string) => void;
+  clearEditDraft: () => void;
   reset: () => void;
 }
 
@@ -36,6 +44,9 @@ const initial = {
   status: "draft" as const,
   isPremium: false,
   hasUnsaved: false,
+  contentJson: "",
+  editDraftId: null as string | null,
+  editContentJson: "",
 };
 
 export const useEditorStore = create<EditorState>()(
@@ -56,6 +67,10 @@ export const useEditorStore = create<EditorState>()(
       setStatus: (status) => set({ status, hasUnsaved: true }),
       setIsPremium: (isPremium) => set({ isPremium, hasUnsaved: true }),
       setHasUnsaved: (hasUnsaved) => set({ hasUnsaved }),
+      setContentJson: (contentJson) => set({ contentJson, hasUnsaved: true }),
+      setEditDraft: (postId, json) =>
+        set({ editDraftId: postId, editContentJson: json, hasUnsaved: true }),
+      clearEditDraft: () => set({ editDraftId: null, editContentJson: "" }),
       reset: () => set(initial),
     }),
     { name: "xilo-editor-draft" }

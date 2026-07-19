@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials, cn } from "@/lib/utils";
+import { TimeLabel, UsernameHandle } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Comment, CommentListResponse } from "@/types/comment";
@@ -213,9 +214,15 @@ function CommentBubble({
           <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
         </Avatar>
         <span className="min-w-0 text-sm font-semibold">{name}</span>
-        <span className="text-xs text-muted-foreground">
+        {comment.author?.username ? (
+          <UsernameHandle
+            username={comment.author.username}
+            className="text-xs text-muted-foreground"
+          />
+        ) : null}
+        <TimeLabel className="text-xs text-muted-foreground">
           {formatDate(comment.created_at)}
-        </span>
+        </TimeLabel>
       </div>
 
       <div

@@ -82,7 +82,10 @@ import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
+import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.trackChromeVisibility
+import ir.xilo.app.ui.components.usernameHandle
+import androidx.compose.ui.text.TextStyle
 
 /** Single flat teal for the whole header — including the “ears” above the white sheet. */
 private val ProfileTeal = Color(0xFF14919B)
@@ -915,8 +918,9 @@ private fun ProfileInfoFields(
             ProfileInfoRow(value = bio, label = stringResource(R.string.profile_label_bio))
         }
         ProfileInfoRow(
-            value = "@$username",
-            label = stringResource(R.string.profile_label_username)
+            value = usernameHandle(username),
+            label = stringResource(R.string.profile_label_username),
+            forceLtr = true,
         )
     }
 }
@@ -925,6 +929,7 @@ private fun ProfileInfoFields(
 private fun ProfileInfoRow(
     value: String,
     label: String,
+    forceLtr: Boolean = false,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -932,7 +937,12 @@ private fun ProfileInfoRow(
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
-            lineHeight = 22.sp
+            lineHeight = 22.sp,
+            style = if (forceLtr) {
+                TextStyle.Default.forUsernameHandle()
+            } else {
+                TextStyle.Default
+            },
         )
         Text(
             text = label,

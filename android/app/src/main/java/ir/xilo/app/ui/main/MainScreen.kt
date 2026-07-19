@@ -48,6 +48,7 @@ import ir.xilo.app.R
 import ir.xilo.app.ChatConversationKey
 import ir.xilo.app.CreatePostKey
 import ir.xilo.app.FollowListKey
+import ir.xilo.app.ContactsKey
 import ir.xilo.app.NewChatKey
 import ir.xilo.app.PostDetailKey
 import ir.xilo.app.ProfileKey
@@ -311,6 +312,7 @@ fun MainScreen(
                                         onItemClick(ChatConversationKey(chatId = chatId))
                                     },
                                     onNewChatClick = { onItemClick(NewChatKey) },
+                                    onContactsClick = { onItemClick(ContactsKey) },
                                     modifier = Modifier.fillMaxSize(),
                                     viewModel = chatViewModel
                                 )

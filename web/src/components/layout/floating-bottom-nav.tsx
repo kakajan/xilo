@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Home, MessageCircle, User } from "lucide-react";
+import { Compass, Contact, Home, MessageCircle, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
@@ -29,6 +29,12 @@ export function FloatingBottomNav({ visible = true }: FloatingBottomNavProps) {
       label: t("messages"),
       icon: MessageCircle,
       match: (p: string) => p.startsWith("/chat") || p.startsWith("/saved"),
+    },
+    {
+      href: "/contacts",
+      label: t("contacts"),
+      icon: Contact,
+      match: (p: string) => p.startsWith("/contacts"),
     },
     {
       href: "/profile",

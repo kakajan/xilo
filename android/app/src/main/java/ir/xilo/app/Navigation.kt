@@ -17,6 +17,7 @@ import ir.xilo.app.ui.chat.ChatViewModel
 import ir.xilo.app.ui.chat.NewChatScreen
 import ir.xilo.app.ui.chat.SavedHubScreen
 import ir.xilo.app.ui.contact.ContactDetailScreen
+import ir.xilo.app.ui.contacts.ContactsScreen
 import ir.xilo.app.ui.main.MainScreen
 import ir.xilo.app.ui.main.MainScreenViewModel
 import ir.xilo.app.ui.postdetail.PostDetailScreen
@@ -139,6 +140,19 @@ fun MainNavigation() {
         entry<NewChatKey> {
           NewChatScreen(
             onBackClick = { backStack.removeLastOrNull() },
+            onChatStarted = { chatId ->
+              backStack.removeLastOrNull()
+              backStack.add(ChatConversationKey(chatId = chatId))
+            },
+            modifier = Modifier.fillMaxSize(),
+          )
+        }
+        entry<ContactsKey> {
+          ContactsScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onProfileClick = { username ->
+              if (username.isNotBlank()) backStack.add(ProfileKey(username))
+            },
             onChatStarted = { chatId ->
               backStack.removeLastOrNull()
               backStack.add(ChatConversationKey(chatId = chatId))

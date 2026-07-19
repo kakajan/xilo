@@ -25,6 +25,7 @@
   - Acceptance: `REQ-AND-004` plus shared `discover-spec.md`, `search-spec.md`, and post/profile contracts are exercised online and from cached Room data.
 - [ ] **ANP-2.3** Deliver post drafting/editing/publishing, media selection/upload, and draft recovery.
   - Acceptance: `REQ-AND-004` plus media and post contract tests pass; interrupted draft and upload behavior has a user-visible recovery state.
+  - Progress: local debounced draft recovery shipped via `ComposeDraftStore` (create/edit). Media upload + server draft list remain.
 - [ ] **ANP-2.4** Deliver comments, reactions, mentions, report/moderation entry points, and realtime reconciliation.
   - Acceptance: `REQ-AND-005` and shared `comment-spec.md` scenarios pass, including optimistic update rollback and permission-denied states.
 - [ ] **Gate ANP-G2**

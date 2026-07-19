@@ -19,6 +19,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AvatarCropDialog } from "@/components/settings/avatar-crop-dialog";
+import { UsernameHandle } from "@/components/user/username-handle";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiUpload } from "@/lib/api-client";
 import { getInitials } from "@/lib/utils";
@@ -161,9 +162,14 @@ function UserSettingsContent() {
         </Avatar>
         <div className="min-w-0">
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="truncate text-sm text-muted-foreground">
-            {user.username_pending ? t("usernamePending") : `@${user.username}`}
-          </p>
+          {user.username_pending ? (
+            <p className="truncate text-sm text-muted-foreground">{t("usernamePending")}</p>
+          ) : (
+            <UsernameHandle
+              username={user.username}
+              className="truncate text-sm text-muted-foreground"
+            />
+          )}
         </div>
       </div>
 

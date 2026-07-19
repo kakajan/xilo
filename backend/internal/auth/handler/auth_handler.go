@@ -80,6 +80,21 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// resolveRefreshToken prefers body, then X-Refresh-Token, then HttpOnly cookie.
+// SPA clients often POST {} with credentials; BodyParser succeeds with an empty
+// token, so cookie fallback must run even when JSON parses cleanly.
+func resolveRefreshToken(c *fiber.Ctx) string {
+	var req model.RefreshRequest
+	_ = c.BodyParser(&req)
+	if t := strings.TrimSpace(req.RefreshToken); t != "" {
+		return t
+	}
+	if t := strings.TrimSpace(c.Get("X-Refresh-Token")); t != "" {
+		return t
+	}
+	return strings.TrimSpace(c.Cookies(cookieRefresh))
+}
+
 // @Summary      Refresh access token
 // @Description  Refresh access token using refresh token
 // @Tags         auth
@@ -91,17 +106,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 // @Failure      401  {object}  map[string]string
 // @Router       /auth/refresh [post]
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
-	var req model.RefreshRequest
-	if err := c.BodyParser(&req); err != nil {
-		refreshToken := c.Cookies(cookieRefresh)
-		if refreshToken != "" {
-			req.RefreshToken = refreshToken
-		} else {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
-		}
+	refreshToken := resolveRefreshToken(c)
+	if refreshToken == "" {
+		// Missing token is not proof the cookie session is invalid — do not clear.
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing refresh token"})
 	}
 
-	resp, err := h.svc.Refresh(authContextWithDevice(c), req.RefreshToken)
+	resp, err := h.svc.Refresh(authContextWithDevice(c), refreshToken)
 	if err != nil {
 		if errors.Is(err, service.ErrTokenReused) {
 			clearAuthCookies(c)
@@ -125,13 +136,10 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 // @Success      200  {object}  map[string]string
 // @Router       /auth/logout [post]
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
-	var req model.RefreshRequest
-	if err := c.BodyParser(&req); err != nil {
-		req.RefreshToken = c.Cookies(cookieRefresh)
-	}
+	refreshToken := resolveRefreshToken(c)
 
-	if req.RefreshToken != "" {
-		if err := h.svc.Logout(c.UserContext(), req.RefreshToken); err != nil {
+	if refreshToken != "" {
+		if err := h.svc.Logout(c.UserContext(), refreshToken); err != nil {
 			slog.Warn("logout failed", "error", err)
 		}
 	}
@@ -363,11 +371,22 @@ func setAuthCookies(c *fiber.Ctx, access, refresh string, expiresIn int) {
 		SameSite: "Lax",
 	})
 
+	// Path /api/auth covers refresh + logout (not host-wide).
 	c.Cookie(&fiber.Cookie{
 		Name:     cookieRefresh,
 		Value:    refresh,
-		Path:     "/api/auth/refresh",
+		Path:     "/api/auth",
 		Expires:  time.Now().Add(7 * 24 * time.Hour),
+		HTTPOnly: true,
+		Secure:   secure,
+		SameSite: "Lax",
+	})
+	// Clear legacy path so old clients do not keep a stale refresh cookie.
+	c.Cookie(&fiber.Cookie{
+		Name:     cookieRefresh,
+		Value:    "",
+		Path:     "/api/auth/refresh",
+		Expires:  time.Now().Add(-1 * time.Hour),
 		HTTPOnly: true,
 		Secure:   secure,
 		SameSite: "Lax",
@@ -386,15 +405,17 @@ func clearAuthCookies(c *fiber.Ctx) {
 		SameSite: "Lax",
 	})
 
-	c.Cookie(&fiber.Cookie{
-		Name:     cookieRefresh,
-		Value:    "",
-		Path:     "/api/auth/refresh",
-		Expires:  time.Now().Add(-1 * time.Hour),
-		HTTPOnly: true,
-		Secure:   secure,
-		SameSite: "Lax",
-	})
+	for _, path := range []string{"/api/auth", "/api/auth/refresh"} {
+		c.Cookie(&fiber.Cookie{
+			Name:     cookieRefresh,
+			Value:    "",
+			Path:     path,
+			Expires:  time.Now().Add(-1 * time.Hour),
+			HTTPOnly: true,
+			Secure:   secure,
+			SameSite: "Lax",
+		})
+	}
 }
 
 func writeAuthError(c *fiber.Ctx, status int, err error) error {

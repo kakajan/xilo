@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Home, MessageCircle, User } from "lucide-react";
+import { Compass, Contact, Home, MessageCircle, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth-store";
@@ -16,6 +16,7 @@ export function DesktopSideNav() {
     { href: "/", label: t("feed"), icon: Home },
     { href: "/discover", label: t("discover"), icon: Compass },
     { href: "/chat", label: t("messages"), icon: MessageCircle },
+    { href: "/contacts", label: t("contacts"), icon: Contact },
   ] as const;
 
   return (

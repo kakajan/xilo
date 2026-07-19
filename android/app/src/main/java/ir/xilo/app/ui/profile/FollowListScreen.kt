@@ -45,6 +45,8 @@ import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloTopAppBar
+import ir.xilo.app.ui.components.forUsernameHandle
+import ir.xilo.app.ui.components.usernameHandle
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -174,8 +176,8 @@ private fun FollowListRow(
                 }
             }
             Text(
-                text = "@${user.username}",
-                style = MaterialTheme.typography.bodyMedium,
+                text = usernameHandle(user.username),
+                style = MaterialTheme.typography.bodyMedium.forUsernameHandle(),
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

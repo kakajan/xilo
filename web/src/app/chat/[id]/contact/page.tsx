@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UsernameHandle } from "@/components/user/username-handle";
 import { getInitials } from "@/lib/utils";
 
 export default function ContactDetailPage() {
@@ -84,7 +85,7 @@ export default function ContactDetailPage() {
           <p className="text-xl font-bold">{other.display_name || chat.name || "گفتگو"}</p>
           {other.username ? (
             <Link href={`/${other.username}`} className="text-primary hover:underline">
-              @{other.username}
+              <UsernameHandle username={other.username} />
             </Link>
           ) : null}
           <p className="mt-2 text-sm text-muted-foreground">

@@ -147,8 +147,8 @@ fun CommentCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "@${comment.authorUsername}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = usernameHandle(comment.authorUsername),
+                        style = MaterialTheme.typography.bodyMedium.forUsernameHandle(),
                         color = MaterialTheme.colorScheme.secondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -160,8 +160,15 @@ fun CommentCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "· ${getRelativeTimeSpan(LocalContext.current, comment.createdAt)}",
+                        text = "·",
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = getRelativeTimeSpan(LocalContext.current, comment.createdAt),
+                        style = MaterialTheme.typography.bodyMedium.forRelativeTime(),
                         color = MaterialTheme.colorScheme.secondary,
                         maxLines = 1
                     )

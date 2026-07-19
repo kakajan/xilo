@@ -48,6 +48,7 @@ import ir.xilo.app.ui.components.ContentAwareText
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
+import ir.xilo.app.ui.components.forRelativeTime
 import ir.xilo.app.ui.components.trackChromeVisibility
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -235,7 +236,7 @@ fun SavedPostCard(
                 )
                 Text(
                     text = DateFormatter.getRelativeTimeSpan(androidx.compose.ui.platform.LocalContext.current, post.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.forRelativeTime(),
                     color = MaterialTheme.colorScheme.secondary
                 )
             }

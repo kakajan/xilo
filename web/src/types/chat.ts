@@ -114,4 +114,9 @@ export interface FollowListUser {
   avatar_url?: string;
   bio?: string;
   is_following?: boolean;
+  is_verified?: boolean;
+}
+
+export interface ContactUser extends FollowListUser {
+  from_contacts: boolean;
 }

@@ -249,4 +249,27 @@ interface XiloApiService {
         @Path("id") id: String,
         @Body request: SetChatFolderChatsRequest
     ): ChatFolderResponse
+
+    // ── Interests / Contacts / Discover ────────────────────────────────────
+
+    @GET("api/interests")
+    suspend fun listInterests(): InterestsResponse
+
+    @GET("api/users/me/interests")
+    suspend fun getMyInterests(): UserInterestsResponse
+
+    @PUT("api/users/me/interests")
+    suspend fun updateMyInterests(@Body request: UpdateInterestsRequest): UserInterestsResponse
+
+    @GET("api/contacts")
+    suspend fun listContacts(): ContactsListResponse
+
+    @POST("api/contacts/match")
+    suspend fun matchContacts(@Body request: ContactMatchRequest): ContactMatchResponse
+
+    @GET("api/discover/comments")
+    suspend fun discoverComments(
+        @Query("limit") limit: Int = 50,
+        @Query("interest") interest: String? = null,
+    ): DiscoverCommentsResponse
 }

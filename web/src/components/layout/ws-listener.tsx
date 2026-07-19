@@ -1,36 +1,44 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useAuthStore } from "@/stores/auth-store";
-import type { Notification } from "@/types/notification";
 
 export function GlobalWebSocketListener() {
   const { addHandler } = useWebSocket();
   const { isAuthenticated } = useAuthStore();
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const remove = addHandler((event, data) => {
-      switch (event) {
-        case "notification.created": {
-          const notif = data as Notification;
-          if (notif.type === "comment_reply") {
-            router.push(`/notifications`);
-          }
-          break;
+      if (event.startsWith("notification.")) {
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        return;
+      }
+
+      if (
+        event === "message.receive" ||
+        event === "message.edit" ||
+        event === "message.delete" ||
+        event === "chat.created" ||
+        event === "chat.updated"
+      ) {
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+        const chatId =
+          data && typeof data === "object" && "chat_id" in data
+            ? String((data as { chat_id?: string }).chat_id ?? "")
+            : "";
+        if (chatId) {
+          queryClient.invalidateQueries({ queryKey: ["messages", chatId] });
         }
-        case "comment.created":
-        case "comment.reaction":
-          break;
       }
     });
 
     return remove;
-  }, [isAuthenticated, addHandler, router]);
+  }, [isAuthenticated, addHandler, queryClient]);
 
   return null;
 }

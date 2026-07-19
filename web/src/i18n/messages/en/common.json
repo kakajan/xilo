@@ -23,6 +23,7 @@
     "feed": "Feed",
     "discover": "Discover",
     "messages": "Messages",
+    "contacts": "Contacts",
     "profile": "Profile",
     "settings": "Settings",
     "notifications": "Notifications",
@@ -41,5 +42,15 @@
   },
   "language": {
     "unknownInitial": "?"
+  },
+  "contacts": {
+    "subtitle": "People you follow — open chat or view their profile, posts, and replies",
+    "searchPlaceholder": "Search contacts…",
+    "empty": "You are not following anyone yet",
+    "emptySearch": "No matches",
+    "syncHint": "Address-book sync runs in the Android app; afterward, a “From contacts” badge appears here.",
+    "fromContacts": "From contacts",
+    "message": "Message",
+    "profile": "Profile"
   }
 }

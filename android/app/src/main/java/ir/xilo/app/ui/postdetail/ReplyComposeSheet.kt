@@ -56,6 +56,9 @@ import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.forInput
+import ir.xilo.app.ui.components.forRelativeTime
+import ir.xilo.app.ui.components.forUsernameHandle
+import ir.xilo.app.ui.components.usernameHandle
 import ir.xilo.app.ui.feed.getRelativeTimeSpan
 import kotlinx.coroutines.delay
 
@@ -266,17 +269,38 @@ private fun TwitterStyleReplyThread(
                         }
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "@${parent.authorUsername} · ${getRelativeTimeSpan(androidx.compose.ui.platform.LocalContext.current, parent.createdAt)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.secondary,
-                        maxLines = 1,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = if (openAuthor != null) {
                             Modifier.clickable(role = Role.Button, onClick = openAuthor)
                         } else {
                             Modifier
                         }
-                    )
+                    ) {
+                        Text(
+                            text = usernameHandle(parent.authorUsername),
+                            style = MaterialTheme.typography.bodyMedium.forUsernameHandle(),
+                            color = MaterialTheme.colorScheme.secondary,
+                            maxLines = 1,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "·",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                            maxLines = 1,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = getRelativeTimeSpan(
+                                androidx.compose.ui.platform.LocalContext.current,
+                                parent.createdAt,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium.forRelativeTime(),
+                            color = MaterialTheme.colorScheme.secondary,
+                            maxLines = 1,
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 ExpandableBodyText(
@@ -319,10 +343,11 @@ private fun TwitterStyleReplyThread(
                         color = MaterialTheme.colorScheme.secondary,
                     )
                     Text(
-                        text = "@${parent.authorUsername}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = usernameHandle(parent.authorUsername),
+                        style = MaterialTheme.typography.bodyMedium
+                            .forUsernameHandle()
+                            .copy(fontWeight = FontWeight.SemiBold),
                         color = XiloBlue,
-                        fontWeight = FontWeight.SemiBold,
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))

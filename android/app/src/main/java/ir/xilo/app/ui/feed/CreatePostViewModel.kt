@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import ir.xilo.app.R
 import ir.xilo.app.core.util.HashtagParser
 import ir.xilo.app.core.util.canCreatePost
+import ir.xilo.app.data.local.prefs.ComposeDraftStore
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.TagSuggestion
 import ir.xilo.app.data.repository.AuthRepository
@@ -27,6 +28,7 @@ class CreatePostViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val apiService: XiloApiService,
     private val errorMessageResolver: ErrorMessageResolver,
+    private val composeDraftStore: ComposeDraftStore,
 ) : ViewModel() {
 
     private val _isSubmitting = MutableStateFlow(false)
@@ -60,6 +62,10 @@ class CreatePostViewModel @Inject constructor(
     val tagSuggestions: StateFlow<List<TagSuggestion>> = _tagSuggestions.asStateFlow()
 
     private var suggestJob: Job? = null
+    private var draftSaveJob: Job? = null
+    private var draftKey: String = ComposeDraftStore.KEY_NEW
+    private var restoreDoneForKey: String? = null
+
     /** Exclusive end index of the active `#query` in [content]. */
     private var activeHashtagFrom: Int = -1
     private var activeHashtagTo: Int = -1
@@ -80,10 +86,11 @@ class CreatePostViewModel @Inject constructor(
         _fieldErrors.value = emptyMap()
         _isSubmitting.value = false
         _isLoadingEdit.value = false
+        draftSaveJob?.cancel()
+        draftKey = composeDraftStore.draftKey(editPostId)
         if (editPostId.isNullOrBlank()) {
             _editPostId.value = null
-            _title.value = ""
-            _content.value = ""
+            restoreLocalDraft(force = restoreDoneForKey != draftKey)
         } else {
             loadForEdit(editPostId, force = true)
         }
@@ -97,17 +104,24 @@ class CreatePostViewModel @Inject constructor(
             return
         }
         _editPostId.value = postId
+        draftKey = composeDraftStore.draftKey(postId)
         _success.value = false
         viewModelScope.launch {
             _isLoadingEdit.value = true
             // Local cache first; API GetBySlug also accepts post id as a fallback.
             val post = postRepository.getPostById(postId)
                 ?: postRepository.getPostBySlug(postId).getOrNull()
-            if (post != null) {
+            val local = composeDraftStore.load(draftKey)
+            if (local != null) {
+                _title.value = local.title
+                _content.value = local.content
+                restoreDoneForKey = draftKey
+            } else if (post != null) {
                 _title.value = post.title
                 _content.value = extractPlainText(post.content).ifBlank {
                     post.excerpt.orEmpty()
                 }
+                restoreDoneForKey = draftKey
             } else {
                 _error.value = errorMessageResolver.string(R.string.error_load_post)
             }
@@ -122,12 +136,14 @@ class CreatePostViewModel @Inject constructor(
     fun updateTitle(value: String) {
         _title.value = value
         clearFieldError(PostField.Title)
+        scheduleDraftSave()
     }
 
     fun updateContent(value: String) {
         _content.value = value
         clearFieldError(PostField.Content)
         refreshHashtagSuggestions(value, value.length)
+        scheduleDraftSave()
     }
 
     fun refreshHashtagSuggestions(text: String, cursor: Int) {
@@ -162,6 +178,7 @@ class CreatePostViewModel @Inject constructor(
         activeHashtagFrom = -1
         activeHashtagTo = -1
         _tagSuggestions.value = emptyList()
+        scheduleDraftSave()
     }
 
     fun submit() {
@@ -192,6 +209,7 @@ class CreatePostViewModel @Inject constructor(
 
             postRepository.createPost(title, content)
                 .onSuccess {
+                    clearLocalDraft()
                     _success.value = true
                     postRepository.refreshFeed()
                 }
@@ -226,6 +244,7 @@ class CreatePostViewModel @Inject constructor(
 
             postRepository.updatePost(postId, title, content)
                 .onSuccess {
+                    clearLocalDraft()
                     _success.value = true
                     postRepository.refreshFeed()
                 }
@@ -261,5 +280,51 @@ class CreatePostViewModel @Inject constructor(
     fun clearErrors() {
         _error.value = null
         _fieldErrors.value = emptyMap()
+    }
+
+    override fun onCleared() {
+        flushDraftNow()
+        super.onCleared()
+    }
+
+    private fun restoreLocalDraft(force: Boolean) {
+        if (!force && restoreDoneForKey == draftKey) return
+        val draft = composeDraftStore.load(draftKey)
+        _title.value = draft?.title.orEmpty()
+        _content.value = draft?.content.orEmpty()
+        restoreDoneForKey = draftKey
+    }
+
+    private fun scheduleDraftSave() {
+        draftSaveJob?.cancel()
+        draftSaveJob = viewModelScope.launch {
+            delay(DRAFT_DEBOUNCE_MS)
+            composeDraftStore.save(
+                title = _title.value,
+                content = _content.value,
+                key = draftKey,
+            )
+        }
+    }
+
+    private fun flushDraftNow() {
+        draftSaveJob?.cancel()
+        composeDraftStore.save(
+            title = _title.value,
+            content = _content.value,
+            key = draftKey,
+        )
+    }
+
+    private fun clearLocalDraft() {
+        draftSaveJob?.cancel()
+        composeDraftStore.clear(draftKey)
+        restoreDoneForKey = null
+        _title.value = ""
+        _content.value = ""
+    }
+
+    private companion object {
+        const val DRAFT_DEBOUNCE_MS = 800L
     }
 }

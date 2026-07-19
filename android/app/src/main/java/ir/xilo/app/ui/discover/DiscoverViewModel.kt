@@ -2,20 +2,31 @@ package ir.xilo.app.ui.discover
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.data.NetworkMonitor
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.remote.dto.DiscoverCommentDto
+import ir.xilo.app.data.remote.dto.InterestDto
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import ir.xilo.app.util.ErrorMessageResolver
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import ir.xilo.app.util.ErrorMessageResolver
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
 
 @HiltViewModel
@@ -29,14 +40,32 @@ class DiscoverViewModel @Inject constructor(
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
-    val recentComments: StateFlow<List<CommentEntity>> = commentRepository.getRecentComments(50)
+    private val recentComments: StateFlow<List<CommentEntity>> = commentRepository.getRecentComments(50)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _apiComments = MutableStateFlow<List<CommentEntity>?>(null)
+    private val postSlugById = mutableMapOf<String, String>()
+    private val _selectedInterestSlug = MutableStateFlow<String?>(null)
+    val selectedInterestSlug: StateFlow<String?> = _selectedInterestSlug.asStateFlow()
+
+    private val _topicInterests = MutableStateFlow<List<InterestDto>>(emptyList())
+    val topicInterests: StateFlow<List<InterestDto>> = _topicInterests.asStateFlow()
+
+    val discoverComments: StateFlow<List<CommentEntity>> = combine(
+        _apiComments,
+        recentComments,
+    ) { api, cached ->
+        api ?: cached
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _searchResults = MutableStateFlow<List<PostEntity>>(emptyList())
     val searchResults: StateFlow<List<PostEntity>> = _searchResults.asStateFlow()
 
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -56,22 +85,52 @@ class DiscoverViewModel @Inject constructor(
     private val _currentUsername = MutableStateFlow(authRepository.getUsername())
     val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
 
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+
     init {
+        loadTopicChips()
+        refreshDiscoverComments()
+    }
+
+    fun selectInterest(slug: String?) {
+        if (_selectedInterestSlug.value == slug) return
+        _selectedInterestSlug.value = slug
         refreshDiscoverComments()
     }
 
     fun refreshDiscoverComments() {
         viewModelScope.launch {
+            _isRefreshing.value = true
             try {
-                val postsMap = apiService.listPosts(limit = 10)
-                val dataElement = postsMap["data"] ?: return@launch
-                val posts = json.decodeFromJsonElement<List<ir.xilo.app.data.remote.dto.PostResponse>>(dataElement)
-                posts.forEach { post ->
-                    commentRepository.refreshComments(post.id)
+                val response = apiService.discoverComments(
+                    limit = 50,
+                    interest = _selectedInterestSlug.value,
+                )
+                response.data.forEach { dto ->
+                    val slug = dto.post?.slug?.takeIf { it.isNotBlank() }
+                    if (slug != null) postSlugById[dto.postId] = slug
                 }
+                _apiComments.value = response.data.map { it.toEntity() }
             } catch (_: Exception) {
-                // Offline — cached comments still shown via recentComments flow
+                // Offline / API unavailable — fall back to cached recent comments path.
+                if (_apiComments.value == null) {
+                    try {
+                        val postsMap = apiService.listPosts(limit = 10)
+                        val dataElement = postsMap["data"]
+                        if (dataElement != null) {
+                            val posts = json.decodeFromJsonElement<List<ir.xilo.app.data.remote.dto.PostResponse>>(dataElement)
+                            posts.forEach { post ->
+                                commentRepository.refreshComments(post.id)
+                            }
+                        }
+                    } catch (_: Exception) {
+                        // Keep Room cache via discoverComments combine
+                    }
+                }
             }
+            _isRefreshing.value = false
         }
     }
 
@@ -94,6 +153,22 @@ class DiscoverViewModel @Inject constructor(
                 _errorMessage.value =
                     errorMessageResolver.fromThrowable(it, R.string.error_unknown)
             }
+            // Keep in-memory discover list in sync for API-sourced rows.
+            _apiComments.update { list ->
+                list?.map { c ->
+                    if (c.id != comment.id) c
+                    else c.copy(
+                        isLiked = !comment.isLiked,
+                        likeCount = (c.likeCount + if (!comment.isLiked) 1 else -1).coerceAtLeast(0),
+                        isDisliked = if (!comment.isLiked) false else c.isDisliked,
+                        dislikeCount = if (!comment.isLiked && comment.isDisliked) {
+                            (c.dislikeCount - 1).coerceAtLeast(0)
+                        } else {
+                            c.dislikeCount
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -108,6 +183,21 @@ class DiscoverViewModel @Inject constructor(
                 _errorMessage.value =
                     errorMessageResolver.fromThrowable(it, R.string.error_unknown)
             }
+            _apiComments.update { list ->
+                list?.map { c ->
+                    if (c.id != comment.id) c
+                    else c.copy(
+                        isDisliked = !comment.isDisliked,
+                        dislikeCount = (c.dislikeCount + if (!comment.isDisliked) 1 else -1).coerceAtLeast(0),
+                        isLiked = if (!comment.isDisliked) false else c.isLiked,
+                        likeCount = if (!comment.isDisliked && comment.isLiked) {
+                            (c.likeCount - 1).coerceAtLeast(0)
+                        } else {
+                            c.likeCount
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -118,6 +208,12 @@ class DiscoverViewModel @Inject constructor(
                     _errorMessage.value =
                         errorMessageResolver.fromThrowable(it, R.string.error_unknown)
                 }
+            _apiComments.update { list ->
+                list?.map { c ->
+                    if (c.id != comment.id) c
+                    else c.copy(isBookmarked = !comment.isBookmarked)
+                }
+            }
         }
     }
 
@@ -211,8 +307,8 @@ class DiscoverViewModel @Inject constructor(
 
     fun openCommentPost(postId: String, onNavigate: (String) -> Unit) {
         viewModelScope.launch {
-            val slug = postRepository.getPostSlugById(postId)
-            if (slug != null) onNavigate(slug)
+            val slug = resolvePostSlug(postId) ?: return@launch
+            onNavigate(slug)
         }
     }
 
@@ -223,8 +319,26 @@ class DiscoverViewModel @Inject constructor(
         onNavigate: (slug: String, commentId: String, authorUsername: String) -> Unit,
     ) {
         viewModelScope.launch {
-            val slug = postRepository.getPostSlugById(postId) ?: return@launch
+            val slug = resolvePostSlug(postId) ?: return@launch
             onNavigate(slug, commentId, authorUsername)
+        }
+    }
+
+    private suspend fun resolvePostSlug(postId: String): String? =
+        postSlugById[postId] ?: postRepository.getPostSlugById(postId)
+
+    private fun loadTopicChips() {
+        viewModelScope.launch {
+            try {
+                val mine = runCatching { apiService.getMyInterests() }.getOrNull()
+                val chips = when {
+                    !mine?.interests.isNullOrEmpty() -> mine!!.interests.sortedBy { it.sortOrder }
+                    else -> apiService.listInterests().interests.sortedBy { it.sortOrder }
+                }
+                _topicInterests.value = chips
+            } catch (_: Exception) {
+                _topicInterests.value = emptyList()
+            }
         }
     }
 
@@ -266,6 +380,36 @@ class DiscoverViewModel @Inject constructor(
                 _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_search)
             }
             _isSearching.value = false
+        }
+    }
+
+    private fun DiscoverCommentDto.toEntity(): CommentEntity = CommentEntity(
+        id = id,
+        postId = postId,
+        authorId = authorId,
+        authorName = author?.displayName ?: "",
+        authorUsername = author?.username ?: "",
+        authorAvatar = author?.avatarUrl ?: "",
+        parentId = parentId,
+        rootId = rootId,
+        depth = depth,
+        content = content,
+        likeCount = resolvedLikeCount(),
+        dislikeCount = resolvedDislikeCount(),
+        replyCount = replyCount,
+        isLiked = resolvedIsLiked(),
+        isDisliked = resolvedIsDisliked(),
+        isBookmarked = isBookmarked,
+        isPinned = isPinned,
+        createdAt = parseDateToEpoch(createdAt)
+    )
+
+    private fun parseDateToEpoch(dateStr: String): Long {
+        return try {
+            val cleanStr = dateStr.substringBefore("Z").substringBefore("+")
+            dateFormat.parse(cleanStr)?.time ?: System.currentTimeMillis()
+        } catch (_: Exception) {
+            System.currentTimeMillis()
         }
     }
 }

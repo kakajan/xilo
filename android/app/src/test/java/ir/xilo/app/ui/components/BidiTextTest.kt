@@ -51,6 +51,11 @@ class BidiTextTest {
     }
 
     @Test
+    fun usernameHandle_prefixesAt() {
+        assertEquals("@usher", usernameHandle("usher"))
+    }
+
+    @Test
     fun mixedParagraphs_resolveIndependently() {
         val annotated = buildContentAwareAnnotatedString(
             "سلام خانواده ❤️\nHi",

@@ -11,6 +11,7 @@ import { useChatStore } from "@/stores/chat-store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials } from "@/lib/utils";
+import { TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import type { Chat } from "@/types/chat";
 
@@ -146,9 +147,9 @@ export default function ChatListPage() {
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate font-semibold">{title}</p>
                       {chat.last_message_at && (
-                        <span className="shrink-0 text-xs text-muted-foreground">
+                        <TimeLabel className="shrink-0 text-xs text-muted-foreground">
                           {formatDate(chat.last_message_at)}
-                        </span>
+                        </TimeLabel>
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-2">

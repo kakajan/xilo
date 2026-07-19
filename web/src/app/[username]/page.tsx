@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FollowButton } from "@/components/user/follow-button";
+import { UsernameHandle } from "@/components/user/username-handle";
 import { cn, getInitials } from "@/lib/utils";
 import type { Post } from "@/types/post";
 import type { Comment } from "@/types/comment";
@@ -130,7 +131,10 @@ export default function AuthorProfilePage() {
             <BadgeCheck className="h-5 w-5 shrink-0 text-primary" aria-label="تأییدشده" />
           )}
         </div>
-        <p className="text-muted-foreground">@{profile.username}</p>
+        <UsernameHandle
+          username={profile.username}
+          className="text-muted-foreground"
+        />
         {profile.bio && <p className="mt-3 max-w-md text-[15px] leading-relaxed">{profile.bio}</p>}
 
         <div className="mt-4 grid w-full max-w-sm grid-cols-3 gap-2">

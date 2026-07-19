@@ -5,7 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { MetadataSidebar } from "@/components/editor/metadata-sidebar";
 import { useEditorStore } from "@/stores/editor-store";
-import { useAuthStore } from "@/stores/auth-store";
+import { useDraftAutosave, useEditorDraftHydrated } from "@/hooks/use-draft-autosave";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 import { apiFetch } from "@/lib/api-client";
 import { fetchPostForEdit } from "@/lib/api/posts";
 import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
@@ -19,7 +20,10 @@ export default function EditPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const slugHint = searchParams.get("slug");
-  const { isAuthenticated } = useAuthStore();
+  const hydrated = useEditorDraftHydrated();
+  const { isAuthenticated, ready: authReady } = useRequireAuth({
+    redirectToLogin: false,
+  });
   const store = useEditorStore();
   const contentRef = useRef<{ html: string; json: string } | null>(null);
   const [json, setJson] = useState("");
@@ -30,7 +34,18 @@ export default function EditPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const { schedule } = useDraftAutosave({
+    persist: (nextJson) => {
+      if (!postId) return;
+      store.setEditDraft(postId, nextJson);
+    },
+    contentRef,
+    enabled: hydrated && isAuthenticated && !!postId,
+  });
+
   useEffect(() => {
+    if (!hydrated) return;
+
     async function load() {
       setLoading(true);
       setError("");
@@ -45,8 +60,16 @@ export default function EditPage() {
         store.setTags(post.tags || []);
         store.setStatus(post.status as "draft" | "published");
         store.setIsPremium(post.is_premium);
-        store.setHasUnsaved(false);
-        setJson(post.content && post.content !== "{}" ? post.content : "");
+
+        const serverContent = post.content && post.content !== "{}" ? post.content : "";
+        const snap = useEditorStore.getState();
+        const localEdit =
+          snap.editDraftId === post.id && snap.editContentJson && snap.editContentJson !== "{}"
+            ? snap.editContentJson
+            : "";
+        const initial = localEdit || serverContent;
+        setJson(initial);
+        store.setHasUnsaved(Boolean(localEdit));
         setAuthorUsername(post.author?.username || "");
         setPostSlug(post.slug);
       } catch {
@@ -55,12 +78,16 @@ export default function EditPage() {
       setLoading(false);
     }
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load when route identity changes
-  }, [id, slugHint]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load when route identity / hydration changes
+  }, [id, slugHint, hydrated]);
 
-  const handleSave = useCallback((newHtml: string, newJson: string) => {
-    setJson(newJson);
-  }, []);
+  const handleSave = useCallback(
+    (_html: string, newJson: string) => {
+      setJson(newJson);
+      schedule(newJson);
+    },
+    [schedule]
+  );
 
   const handleSubmit = async () => {
     if (!store.title.trim()) {
@@ -101,6 +128,7 @@ export default function EditPage() {
         }),
       });
 
+      store.clearEditDraft();
       store.reset();
       const username = post.author?.username || authorUsername;
       const slug = post.slug || postSlug || store.slug;
@@ -112,7 +140,7 @@ export default function EditPage() {
     setSaving(false);
   };
 
-  if (loading) {
+  if (!authReady || !hydrated || loading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-48" />

@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AlertCircle, CheckCircle2, Search, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
+import { UsernameHandle } from "@/components/user/username-handle";
 import { useAuthStore } from "@/stores/auth-store";
 import type { User } from "@/types/user";
 
@@ -31,9 +32,10 @@ export default function DashboardUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
-    null
-  );
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    content: ReactNode;
+  } | null>(null);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -49,7 +51,7 @@ export default function DashboardUsersPage() {
     } catch (e) {
       setMessage({
         type: "error",
-        text: e instanceof Error ? e.message : "بارگذاری کاربران ناموفق بود",
+        content: e instanceof Error ? e.message : "بارگذاری کاربران ناموفق بود",
       });
     } finally {
       setLoading(false);
@@ -74,11 +76,18 @@ export default function DashboardUsersPage() {
         body: JSON.stringify({ role }),
       });
       setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
-      setMessage({ type: "success", text: `نقش @${updated.username} به ${role} تغییر کرد` });
+      setMessage({
+        type: "success",
+        content: (
+          <>
+            نقش <UsernameHandle username={updated.username} /> به {role} تغییر کرد
+          </>
+        ),
+      });
     } catch (e) {
       setMessage({
         type: "error",
-        text: e instanceof Error ? e.message : "تغییر نقش ناموفق بود",
+        content: e instanceof Error ? e.message : "تغییر نقش ناموفق بود",
       });
     } finally {
       setSavingId(null);
@@ -117,7 +126,7 @@ export default function DashboardUsersPage() {
           ) : (
             <AlertCircle className="h-4 w-4 shrink-0" />
           )}
-          <span className="min-w-0">{message.text}</span>
+          <span className="min-w-0">{message.content}</span>
         </div>
       )}
 
@@ -149,9 +158,12 @@ export default function DashboardUsersPage() {
           {users.map((u) => (
             <li key={u.id} className="flex flex-wrap items-center gap-3 p-4">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">
-                  {u.display_name || u.username}{" "}
-                  <span className="text-muted-foreground">@{u.username}</span>
+                <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 truncate font-medium">
+                  <span className="min-w-0 truncate">{u.display_name || u.username}</span>
+                  <UsernameHandle
+                    username={u.username}
+                    className="text-muted-foreground"
+                  />
                 </p>
                 <p className="truncate text-xs text-muted-foreground">{u.email}</p>
               </div>

@@ -28,14 +28,18 @@ function authHeaders(extra?: HeadersInit): Record<string, string> {
 }
 
 async function refreshSession(): Promise<boolean> {
+  // Body may be {}; backend falls back to HttpOnly refresh cookie.
   const body: Record<string, string> = {};
   const refresh = getRefreshToken();
   if (refresh) body.refresh_token = refresh;
 
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (refresh) headers["X-Refresh-Token"] = refresh;
+
   const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
 

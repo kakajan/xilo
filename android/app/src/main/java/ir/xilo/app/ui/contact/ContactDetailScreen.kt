@@ -50,6 +50,7 @@ import ir.xilo.app.ui.components.ProfileHeaderSkeleton
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.XiloTopAppBar
+import ir.xilo.app.ui.components.forUsernameHandle
 
 @Composable
 fun ContactDetailScreen(
@@ -183,7 +184,11 @@ fun ContactDetailScreen(
                     }
                     if (contact.username.isNotBlank()) {
                         Text(stringResource(R.string.profile_label_username), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-                        Text(contact.username, style = MaterialTheme.typography.bodyLarge, color = XiloBlue)
+                        Text(
+                            contact.username,
+                            style = MaterialTheme.typography.bodyLarge.forUsernameHandle(),
+                            color = XiloBlue,
+                        )
                     }
                 }
             }
