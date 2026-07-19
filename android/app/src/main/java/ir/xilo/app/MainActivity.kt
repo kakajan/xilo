@@ -10,6 +10,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import ir.xilo.app.core.util.AppLocale
@@ -33,6 +37,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
+        hideSystemNavigationBar()
+        // Re-hide after IME / transient system UI reveals the navigation bar.
+        ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { view, insets ->
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            val navVisible = insets.isVisible(WindowInsetsCompat.Type.navigationBars())
+            if (navVisible && !imeVisible) {
+                view.post { hideSystemNavigationBar() }
+            }
+            ViewCompat.onApplyWindowInsets(view, insets)
+        }
         setContent {
             val platformTheme by themeRepository.theme.collectAsStateWithLifecycle()
             val themeMode by themeRepository.themeMode.collectAsStateWithLifecycle()
@@ -48,5 +62,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hideSystemNavigationBar()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            hideSystemNavigationBar()
+        }
+    }
+
+    private fun hideSystemNavigationBar() {
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller.hide(WindowInsetsCompat.Type.navigationBars())
     }
 }

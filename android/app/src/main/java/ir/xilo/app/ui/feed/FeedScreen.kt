@@ -12,11 +12,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -101,14 +105,16 @@ fun FeedScreen(
 
     val isTopChromeVisible = chromeState?.isVisible != false
     val density = LocalDensity.current
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     var stickyHeaderHeight by remember { mutableStateOf(112.dp) }
+    val totalHeaderHeight = stickyHeaderHeight + statusBarPadding
     val animatedHeaderHeight by animateDpAsState(
-        targetValue = if (isTopChromeVisible) stickyHeaderHeight else 0.dp,
+        targetValue = if (isTopChromeVisible) totalHeaderHeight else 0.dp,
         animationSpec = tween(durationMillis = 250),
         label = "stickyHeaderHeight"
     )
     val topContentPadding by animateDpAsState(
-        targetValue = if (isTopChromeVisible) stickyHeaderHeight else 0.dp,
+        targetValue = if (isTopChromeVisible) totalHeaderHeight else 0.dp,
         animationSpec = tween(durationMillis = 250),
         label = "topContentPadding"
     )
@@ -214,23 +220,29 @@ fun FeedScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .onSizeChanged { size ->
-                        val measured = with(density) { size.height.toDp() }
-                        if (measured > stickyHeaderHeight - 1.dp) {
-                            stickyHeaderHeight = measured
-                        }
-                    }
+                    .statusBarsPadding()
             ) {
-                FeedHeader(
-                    avatarUrl = currentUserAvatarUrl,
-                    onSettingsClick = onSettingsClick,
-                    onProfileClick = onProfileClick
-                )
-                FeedCategoryTabs(
-                    categories = viewModel.categoryResIds.map { stringResource(it) },
-                    selectedCategory = selectedCategory,
-                    onCategorySelected = viewModel::selectCategory
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged { size ->
+                            val measured = with(density) { size.height.toDp() }
+                            if (measured > stickyHeaderHeight - 1.dp) {
+                                stickyHeaderHeight = measured
+                            }
+                        }
+                ) {
+                    FeedHeader(
+                        avatarUrl = currentUserAvatarUrl,
+                        onSettingsClick = onSettingsClick,
+                        onProfileClick = onProfileClick
+                    )
+                    FeedCategoryTabs(
+                        categories = viewModel.categoryResIds.map { stringResource(it) },
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = viewModel::selectCategory
+                    )
+                }
             }
         }
 

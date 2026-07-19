@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react";
 import { Heart, ThumbsUp, Laugh, PartyPopper, Lightbulb, Flame } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-client";
 
@@ -64,12 +63,12 @@ export function ReactionBar({ targetType, targetId, reactions, className }: Reac
   return (
     <div className={cn("flex items-center gap-1", className)}>
       {EMOJIS.map(({ key, icon: Icon, label, color }) => (
-        <motion.button
+        <button
           key={key}
+          type="button"
           onClick={() => toggleReaction(key)}
-          whileTap={{ scale: 1.3 }}
           className={cn(
-            "relative flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors hover:bg-accent",
+            "relative flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-transform hover:bg-accent active:scale-125",
             active === key && "bg-accent"
           )}
           title={label}
@@ -78,19 +77,12 @@ export function ReactionBar({ targetType, targetId, reactions, className }: Reac
           {counts[key] ? (
             <span className="text-muted-foreground">{counts[key]}</span>
           ) : null}
-          <AnimatePresence>
-            {animating === key && active !== null && (
-              <motion.span
-                className="absolute -top-6 left-1/2 -translate-x-1/2 text-lg"
-                initial={{ opacity: 1, y: 0 }}
-                animate={{ opacity: 0, y: -20 }}
-                exit={{ opacity: 0 }}
-              >
-                <Icon className={cn("h-4 w-4", color)} />
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.button>
+          {animating === key && active !== null ? (
+            <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 animate-pulse">
+              <Icon className={cn("h-4 w-4", color)} />
+            </span>
+          ) : null}
+        </button>
       ))}
     </div>
   );

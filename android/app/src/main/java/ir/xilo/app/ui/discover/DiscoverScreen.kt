@@ -97,8 +97,8 @@ fun DiscoverScreen(
         )
     }
 
-    // Nested under MainScreen, which already pads for the status bar. Zero content
-    // window insets here so Scaffold + TopAppBar do not stack a second (or third) gap.
+    // Nested under MainScreen (zero scaffold insets). TopAppBar applies status-bar padding;
+    // zero content insets here so Scaffold does not stack a second gap below the bar.
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },

@@ -94,7 +94,8 @@ function renderNode(node: TipTapNode): string {
     case "doc":
       return children;
     case "paragraph":
-      return `<p>${children || "<br>"}</p>`;
+      // Avoid raw newlines inside <p> — browsers normalize them and React 19 hydrates as a mismatch.
+      return `<p>${(children || "<br>").replace(/\n+/g, " ")}</p>`;
     case "heading": {
       const level = Math.min(3, Math.max(1, Number(node.attrs?.level) || 1));
       return `<h${level}>${children}</h${level}>`;

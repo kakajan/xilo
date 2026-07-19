@@ -27,13 +27,13 @@ export default function LanguageSettingsPage() {
     if (authChecked && !isAuthenticated) router.replace("/login");
   }, [authChecked, isAuthenticated, router]);
 
+  // Only sync from saved preference. Preview updates currentLocale via setLocale;
+  // depending on it here reset the radio on the first click.
   useEffect(() => {
     if (user?.preferred_language) {
       setLanguage(user.preferred_language as AppLanguageCode);
-    } else {
-      setLanguage(currentLocale);
     }
-  }, [user?.preferred_language, currentLocale]);
+  }, [user?.preferred_language]);
 
   const onSave = async () => {
     setSaving(true);

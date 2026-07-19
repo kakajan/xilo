@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { canCreatePost } from "@/lib/auth/permissions";
 import { useAuthStore } from "@/stores/auth-store";
+import { cn } from "@/lib/utils";
 
 interface XiloFabProps {
   chromeVisible?: boolean;
@@ -21,17 +21,14 @@ export function XiloFab({ chromeVisible = true }: XiloFabProps) {
     pathname === "/" && isAuthenticated && canCreatePost(role) && chromeVisible;
 
   return (
-    <motion.div
-      initial={false}
-      animate={{
-        scale: show ? 1 : 0,
-        opacity: show ? 1 : 0,
-      }}
-      transition={{ duration: 0.25 }}
-      className="pointer-events-none fixed bottom-[5.5rem] end-6 z-50 md:bottom-8"
-      style={{ transformOrigin: "bottom center" }}
+    <div
+      className={cn(
+        "pointer-events-none fixed bottom-[5.5rem] end-6 z-50 origin-bottom md:bottom-8",
+        "transition-[transform,opacity] duration-200 ease-out",
+        show ? "scale-100 opacity-100" : "scale-0 opacity-0"
+      )}
     >
-      {show && (
+      {show ? (
         <Link
           href="/write"
           className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-1 ring-white/50"
@@ -39,7 +36,7 @@ export function XiloFab({ chromeVisible = true }: XiloFabProps) {
         >
           <Plus className="h-7 w-7" strokeWidth={2.5} />
         </Link>
-      )}
-    </motion.div>
+      ) : null}
+    </div>
   );
 }

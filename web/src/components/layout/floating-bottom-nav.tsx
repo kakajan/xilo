@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import { Compass, Home, MessageCircle, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -40,17 +39,13 @@ export function FloatingBottomNav({ visible = true }: FloatingBottomNavProps) {
   ] as const;
 
   return (
-    <motion.nav
+    <nav
       aria-label={t("mainNavigation")}
-      initial={false}
-      animate={{
-        y: visible ? 0 : 88,
-        opacity: visible ? 1 : 0,
-      }}
-      transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
       className={cn(
         "pointer-events-none fixed inset-x-0 bottom-0 z-50 px-6 pb-3 pt-2 md:hidden",
-        "bg-gradient-to-t from-background via-background/80 to-transparent"
+        "bg-gradient-to-t from-background via-background/80 to-transparent",
+        "transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+        visible ? "translate-y-0 opacity-100" : "translate-y-[88px] opacity-0"
       )}
     >
       <div
@@ -86,6 +81,6 @@ export function FloatingBottomNav({ visible = true }: FloatingBottomNavProps) {
           );
         })}
       </div>
-    </motion.nav>
+    </nav>
   );
 }

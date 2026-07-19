@@ -2,7 +2,10 @@ package ir.xilo.app.ui.components
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -16,7 +19,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import ir.xilo.app.R
-import ir.xilo.app.theme.XiloSpacing
+
+/**
+ * Horizontal safe-drawing insets for top chrome. Top (status bar) clearance is applied
+ * via [Modifier.statusBarsPadding] so Material3's fixed bar height cannot clip into the
+ * system status bar under edge-to-edge.
+ */
+@Composable
+fun xiloTopAppBarWindowInsets(): WindowInsets =
+    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +38,7 @@ fun XiloTopAppBar(
     onBackClick: () -> Unit = {},
     centered: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.background,
+    windowInsets: WindowInsets = xiloTopAppBarWindowInsets(),
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     XiloTopAppBar(
@@ -52,7 +64,8 @@ fun XiloTopAppBar(
         },
         actions = actions,
         containerColor = containerColor,
-        centerAligned = centered
+        centerAligned = centered,
+        windowInsets = windowInsets,
     )
 }
 
@@ -64,12 +77,13 @@ fun XiloTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     containerColor: Color = MaterialTheme.colorScheme.background,
-    centerAligned: Boolean = false
+    centerAligned: Boolean = false,
+    windowInsets: WindowInsets = xiloTopAppBarWindowInsets(),
 ) {
     val colors = TopAppBarDefaults.topAppBarColors(containerColor = containerColor)
-    // MainScreen already applies status-bar padding for tab content; avoid a second inset here.
-    val barModifier = modifier.height(XiloSpacing.topAppBarHeight)
-    val noWindowInsets = WindowInsets(0, 0, 0, 0)
+    // Pad below the status bar outside TopAppBar so the bar's fixed 64dp row is not
+    // squeezed into the system chrome.
+    val barModifier = modifier.statusBarsPadding()
 
     if (centerAligned) {
         CenterAlignedTopAppBar(
@@ -77,7 +91,7 @@ fun XiloTopAppBar(
             navigationIcon = navigationIcon,
             actions = actions,
             colors = colors,
-            windowInsets = noWindowInsets,
+            windowInsets = windowInsets,
             modifier = barModifier
         )
     } else {
@@ -86,7 +100,7 @@ fun XiloTopAppBar(
             navigationIcon = navigationIcon,
             actions = actions,
             colors = colors,
-            windowInsets = noWindowInsets,
+            windowInsets = windowInsets,
             modifier = barModifier
         )
     }

@@ -13,7 +13,6 @@ import {
   Settings,
   Bookmark,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { canCreatePost } from "@/lib/auth/permissions";
 import { useAuthStore } from "@/stores/auth-store";
@@ -21,7 +20,7 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { getInitials } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 interface NavbarProps {
   chromeVisible?: boolean;
@@ -42,11 +41,11 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
   };
 
   return (
-    <motion.header
-      initial={false}
-      animate={{ y: chromeVisible ? 0 : -56, opacity: chromeVisible ? 1 : 0.85 }}
-      transition={{ duration: 0.25 }}
-      className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur"
+    <header
+      className={cn(
+        "sticky top-0 z-50 border-b bg-background/95 backdrop-blur transition-[transform,opacity] duration-200 ease-out",
+        chromeVisible ? "translate-y-0 opacity-100" : "-translate-y-14 opacity-[0.85]"
+      )}
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <Link href="/" className="flex items-center shrink-0" aria-label="aile">
@@ -162,6 +161,6 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
           )}
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 }

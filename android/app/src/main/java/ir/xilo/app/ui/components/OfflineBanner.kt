@@ -31,6 +31,9 @@ fun OfflineBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                // Clear the status bar, then consume so nested top bars do not pad twice.
+                .statusBarsPadding()
+                .consumeWindowInsets(WindowInsets.statusBars)
                 .background(ColorWarning.copy(alpha = 0.15f))
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,

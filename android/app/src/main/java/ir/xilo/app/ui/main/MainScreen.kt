@@ -11,10 +11,12 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -123,7 +125,10 @@ fun MainScreen(
         }
 
         CompositionLocalProvider(LocalChromeVisibility provides chromeState) {
+            // Status-bar insets are handled by each tab's top chrome / TopAppBar so we do not
+            // stack a second gap here. Keep only bottom safe insets for the floating nav.
             Scaffold(
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 topBar = {
                     OfflineBanner(isOffline = !isOnline)
                 },
@@ -169,6 +174,7 @@ fun MainScreen(
                                         )
                                     )
                                 )
+                                .navigationBarsPadding()
                                 .padding(top = XiloSpacing.bottomNavGradientTopPadding)
                         ) {
                             Column(modifier = Modifier.fillMaxWidth()) {

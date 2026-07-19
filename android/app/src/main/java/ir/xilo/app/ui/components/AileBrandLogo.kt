@@ -4,8 +4,9 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -28,6 +29,11 @@ enum class AileLogoVariant {
     Lockup,
 }
 
+/** Shared FA/EN wordmark canvas (~2.07:1) — keeps layout stable across locales. */
+private const val WordmarkAspectRatio = 2.07f
+
+private const val LockupAspectRatio = 2.2f
+
 /**
  * Aile brand art for in-app surfaces.
  * Prefer [Wordmark] / [Lockup] over plain brand text on auth and splash.
@@ -45,25 +51,23 @@ fun AileBrandLogo(
     contentDescription: String? = stringResource(R.string.app_name),
 ) {
     val resId = drawableFor(variant, languageCode)
-    val scale = when (variant) {
-        AileLogoVariant.MarkColored, AileLogoVariant.MarkMono -> ContentScale.Fit
-        else -> ContentScale.Fit
-    }
     Image(
         painter = painterResource(resId),
         contentDescription = contentDescription,
-        contentScale = scale,
+        contentScale = ContentScale.Fit,
+        alignment = Alignment.Center,
         modifier = when (variant) {
             AileLogoVariant.MarkColored, AileLogoVariant.MarkMono ->
                 modifier.size(height)
             AileLogoVariant.Wordmark ->
+                // Fixed box for every locale so language switches do not resize the logo.
                 modifier
                     .height(height)
-                    .widthIn(max = height * 3.2f)
+                    .width(height * WordmarkAspectRatio)
             AileLogoVariant.Lockup ->
                 modifier
                     .height(height)
-                    .widthIn(max = height * 2.2f)
+                    .width(height * LockupAspectRatio)
         },
     )
 }
