@@ -91,6 +91,7 @@ export function HashtagSuggestion({ editor }: HashtagSuggestionProps) {
           type="button"
           role="option"
           className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-start text-sm hover:bg-accent"
+          aria-selected={false}
           onMouseDown={(e) => {
             e.preventDefault();
             apply(item.tag);
