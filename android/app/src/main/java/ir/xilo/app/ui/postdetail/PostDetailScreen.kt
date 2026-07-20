@@ -118,9 +118,22 @@ fun PostDetailScreen(
     val replyParentComment = remember(comments, replyingToCommentId) {
         replyingToCommentId?.let { id -> comments.find { it.id == id } }
     }
-    val activeReplyParent = remember(replyParentComment, isReplyingToPost, post) {
+    val activeReplyParent = remember(
+        replyParentComment,
+        isReplyingToPost,
+        post,
+        replyingToCommentId,
+        replyingToAuthor,
+    ) {
         when {
             replyParentComment != null -> replyParentComment.toReplyComposeParent()
+            !replyingToCommentId.isNullOrBlank() -> ReplyComposeParent(
+                authorUsername = replyingToAuthor.orEmpty(),
+                authorName = replyingToAuthor,
+                authorAvatar = null,
+                content = "",
+                createdAt = 0L,
+            )
             isReplyingToPost && post != null -> post!!.toReplyComposeParent()
             else -> null
         }
@@ -372,7 +385,7 @@ fun PostDetailScreen(
             },
             onSubmit = {
                 if (replyDraftText.isNotBlank()) {
-                    viewModel.addComment(replyDraftText, replyParentComment?.id)
+                    viewModel.addComment(replyDraftText, replyingToCommentId)
                     replyDraftText = ""
                     replyingToCommentId = null
                     replyingToAuthor = null

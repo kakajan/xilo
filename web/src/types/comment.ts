@@ -20,6 +20,9 @@ export interface Comment {
   };
   replies?: Comment[];
   reactions?: Record<string, number>;
+  /** Present on discover / denormalized payloads. */
+  like_count?: number;
+  reply_count?: number;
 }
 
 export interface CreateCommentRequest {

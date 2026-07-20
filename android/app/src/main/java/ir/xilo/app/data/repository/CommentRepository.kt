@@ -46,7 +46,7 @@ class CommentRepository @Inject constructor(
             val dataElement = responseMap["data"] ?: throw Exception("Invalid response structure")
             val commentsList = json.decodeFromJsonElement<List<CommentResponse>>(dataElement)
 
-            val entities = commentsList.map { it.toEntity() }
+            val entities = flattenComments(commentsList).map { it.toEntity() }
 
             commentDao.clearCommentsForPost(postId)
             commentDao.insertComments(entities)
@@ -184,4 +184,19 @@ class CommentRepository @Inject constructor(
         isPinned = isPinned,
         createdAt = parseDateToEpoch(createdAt)
     )
+
+    companion object {
+        /** Depth-first flatten of nested `replies` trees from the list-comments API. */
+        fun flattenComments(comments: List<CommentResponse>): List<CommentResponse> {
+            val out = ArrayList<CommentResponse>(comments.size)
+            fun walk(list: List<CommentResponse>) {
+                for (c in list) {
+                    out += c.copy(replies = emptyList())
+                    if (c.replies.isNotEmpty()) walk(c.replies)
+                }
+            }
+            walk(comments)
+            return out
+        }
+    }
 }

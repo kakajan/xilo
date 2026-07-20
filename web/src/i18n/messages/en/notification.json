@@ -5,6 +5,13 @@
   "newComment": "New comment",
   "newFollower": "New follower",
   "newLike": "New like",
+  "types": {
+    "postComment": "New comment on your post",
+    "commentReply": "New reply to your comment",
+    "newFollower": "New follower",
+    "postPublished": "New post",
+    "newMessage": "New message"
+  },
   "prefs": {
     "commentReply": "Comment replies",
     "newFollower": "New followers",

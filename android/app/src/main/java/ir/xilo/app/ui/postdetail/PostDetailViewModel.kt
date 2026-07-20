@@ -72,6 +72,10 @@ class PostDetailViewModel @Inject constructor(
 
                     webSocketManager.subscribeToPost(postEntity.id)
                     commentRepository.refreshComments(postEntity.id)
+                        .onFailure { e ->
+                            _errorMessage.value =
+                                errorMessageResolver.fromThrowable(e, R.string.error_load_post)
+                        }
                     recordView(postEntity.id)
 
                     commentsJob?.cancel()

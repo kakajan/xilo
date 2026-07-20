@@ -73,6 +73,12 @@ class ProfileViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _infoMessage = MutableStateFlow<String?>(null)
+    val infoMessage: StateFlow<String?> = _infoMessage.asStateFlow()
+
+    private val _isUploadingAvatar = MutableStateFlow(false)
+    val isUploadingAvatar: StateFlow<Boolean> = _isUploadingAvatar.asStateFlow()
+
     private val _openChatId = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val openChatId: SharedFlow<String> = _openChatId.asSharedFlow()
 
@@ -90,6 +96,37 @@ class ProfileViewModel @Inject constructor(
 
     fun clearError() {
         _error.value = null
+    }
+
+    fun clearInfo() {
+        _infoMessage.value = null
+    }
+
+    fun onChangePhoto(imageBytes: ByteArray) {
+        if (!_isOwnProfile.value) return
+        viewModelScope.launch {
+            _isUploadingAvatar.value = true
+            _error.value = null
+            authRepository.uploadAndSetAvatar(imageBytes, mimeType = "image/png")
+                .onSuccess { user ->
+                    _isUploadingAvatar.value = false
+                    // Room observer merges avatar; also patch immediately for snappy UI.
+                    _userProfile.update { current ->
+                        current?.copy(
+                            avatarUrl = user.avatarUrl ?: current.avatarUrl,
+                            displayName = user.displayName ?: current.displayName,
+                            username = user.username.ifBlank { current.username },
+                        )
+                    }
+                    _infoMessage.value =
+                        errorMessageResolver.string(R.string.settings_avatar_updated)
+                }
+                .onFailure { e ->
+                    _isUploadingAvatar.value = false
+                    _error.value =
+                        errorMessageResolver.fromThrowable(e, R.string.error_avatar_upload)
+                }
+        }
     }
 
     /** Soft refresh when returning to the profile tab / after Settings. */

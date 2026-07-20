@@ -255,6 +255,28 @@ func (r *CommentRepo) Update(ctx context.Context, id, content string) (*model.Co
 	return &comment, nil
 }
 
+// GetPostNotifyTarget returns the post author's user id, username, and slug for deep links.
+func (r *CommentRepo) GetPostNotifyTarget(ctx context.Context, postID string) (authorID, username, slug string, err error) {
+	var row struct {
+		AuthorID string `db:"author_id"`
+		Username string `db:"username"`
+		Slug     string `db:"slug"`
+	}
+	err = r.db.GetContext(ctx, &row, `
+		SELECT p.author_id, u.username, p.slug
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		WHERE p.id = $1 AND p.deleted_at IS NULL
+	`, postID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", "", fmt.Errorf("post not found")
+		}
+		return "", "", "", fmt.Errorf("get post notify target: %w", err)
+	}
+	return row.AuthorID, row.Username, row.Slug, nil
+}
+
 func (r *CommentRepo) Delete(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE comments SET deleted_at = NOW() WHERE id = $1`, id)

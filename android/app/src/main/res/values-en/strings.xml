@@ -175,6 +175,12 @@
     <string name="validation_comment_too_long">Comment must be at most 5000 characters.</string>
     <string name="profile_set_photo">Set Photo</string>
     <string name="profile_edit_info">Edit Info</string>
+    <string name="edit_profile_title">Edit Info</string>
+    <string name="edit_profile_display_name">Display name</string>
+    <string name="edit_profile_display_name_hint">Name others see</string>
+    <string name="edit_profile_bio_hint">A short bio about you</string>
+    <string name="edit_profile_name_required">Display name is required</string>
+    <string name="edit_profile_name_too_long">Display name must be at most 64 characters</string>
     <string name="profile_settings">Settings</string>
     <string name="profile_tab_posts">Posts</string>
     <string name="profile_tab_archived">Archived Posts</string>

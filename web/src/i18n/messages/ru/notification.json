@@ -5,6 +5,13 @@
   "newComment": "Новый комментарий",
   "newFollower": "Новый подписчик",
   "newLike": "Новый лайк",
+  "types": {
+    "postComment": "Новый комментарий к вашему посту",
+    "commentReply": "Новый ответ на ваш комментарий",
+    "newFollower": "Новый подписчик",
+    "postPublished": "Новый пост",
+    "newMessage": "Новое сообщение"
+  },
   "prefs": {
     "commentReply": "Ответы на комментарии",
     "newFollower": "Новые подписчики",

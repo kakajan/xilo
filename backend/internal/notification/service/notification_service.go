@@ -19,6 +19,7 @@ import (
 
 const (
 	TypeCommentReply         = "comment_reply"
+	TypePostComment          = "post_comment"
 	TypeNewFollower          = "new_follower"
 	TypePostPublished        = "post_published"
 	TypeNewMessage           = "new_message"
@@ -357,7 +358,8 @@ func (s *NotificationService) prefsEnabled(ctx context.Context, userID, notifTyp
 
 func prefColumns(notifType string) (webCol, pushCol string) {
 	switch notifType {
-	case TypeCommentReply:
+	case TypeCommentReply, TypePostComment:
+		// Top-level post comments share the comment_reply preference toggles.
 		return "comment_reply_web", "comment_reply_push"
 	case TypeNewFollower:
 		return "new_follower_web", "new_follower_push"

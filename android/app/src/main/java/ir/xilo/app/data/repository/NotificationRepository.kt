@@ -218,6 +218,8 @@ class NotificationRepository @Inject constructor(
             "follower_id",
             "author_id",
             "comment_id",
+            "parent_id",
+            "post_author_username",
             "follower_username",
             "username",
             "title",

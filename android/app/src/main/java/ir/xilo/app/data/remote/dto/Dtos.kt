@@ -349,6 +349,8 @@ data class CommentResponse(
     @SerialName("viewer_reactions")
     val viewerReactions: List<String> = emptyList(),
     val createdAt: String,
+    /** Nested children from `ListByPost` (tree response). Flatten before Room persist. */
+    val replies: List<CommentResponse> = emptyList(),
     /** Present on profile replies (`ListUserReplies`). */
     val post: PostRefResponse? = null,
 ) {

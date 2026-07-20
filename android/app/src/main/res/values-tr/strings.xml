@@ -167,6 +167,12 @@
     <string name="validation_comment_too_long">Yorum en fazla 5000 karakter olabilir.</string>
     <string name="profile_set_photo">Fotoğraf ayarla</string>
     <string name="profile_edit_info">Bilgileri düzenle</string>
+    <string name="edit_profile_title">Bilgileri düzenle</string>
+    <string name="edit_profile_display_name">Görünen ad</string>
+    <string name="edit_profile_display_name_hint">Başkalarının gördüğü ad</string>
+    <string name="edit_profile_bio_hint">Kendiniz hakkında kısa bir yazı</string>
+    <string name="edit_profile_name_required">Görünen ad gerekli</string>
+    <string name="edit_profile_name_too_long">Görünen ad en fazla 64 karakter olabilir</string>
     <string name="profile_settings">Ayarlar</string>
     <string name="profile_tab_posts">Gönderiler</string>
     <string name="profile_tab_archived">Arşiv</string>

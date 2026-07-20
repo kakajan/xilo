@@ -167,6 +167,12 @@
     <string name="validation_comment_too_long">Комментарий не длиннее 5000 символов.</string>
     <string name="profile_set_photo">Установить фото</string>
     <string name="profile_edit_info">Изменить данные</string>
+    <string name="edit_profile_title">Изменить данные</string>
+    <string name="edit_profile_display_name">Отображаемое имя</string>
+    <string name="edit_profile_display_name_hint">Имя, которое видят другие</string>
+    <string name="edit_profile_bio_hint">Кратко о себе</string>
+    <string name="edit_profile_name_required">Укажите отображаемое имя</string>
+    <string name="edit_profile_name_too_long">Отображаемое имя не длиннее 64 символов</string>
     <string name="profile_settings">Настройки</string>
     <string name="profile_tab_posts">Посты</string>
     <string name="profile_tab_archived">Архив</string>

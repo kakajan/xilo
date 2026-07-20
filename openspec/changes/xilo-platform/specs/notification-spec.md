@@ -14,7 +14,7 @@ Real-time push notifications delivered via WebSocket for in-app notifications, w
 | Email digests / SSE `/stream` / Web Push | Deferred (spec remains authoritative for later phases) |
 | NATS `notification.created` consumer | Deferred (outbox gate) |
 
-**v1 event types produced:** `comment_reply`, `new_follower`, `post_published`, `new_message`.
+**v1 event types produced:** `comment_reply`, `post_comment`, `new_follower`, `post_published`, `new_message`.
 
 ---
 
@@ -27,6 +27,7 @@ The system supports these notification types:
 | Type | Trigger | Delivery |
 |------|---------|----------|
 | `comment_reply` | Someone replies to your comment | WS + Email digest |
+| `post_comment` | Someone comments on your post (top-level) | WS + Push (shares `comment_reply` prefs) |
 | `comment_mention` | Someone @mentions you | WS + Email |
 | `post_reaction` | Someone reacts to your post | WS |
 | `new_follower` | Someone follows you | WS |

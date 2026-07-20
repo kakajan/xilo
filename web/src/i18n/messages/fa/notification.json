@@ -5,6 +5,13 @@
   "newComment": "نظر جدید",
   "newFollower": "دنبال‌کننده جدید",
   "newLike": "پسند جدید",
+  "types": {
+    "postComment": "نظر جدید روی پست شما",
+    "commentReply": "پاسخ جدید به نظر شما",
+    "newFollower": "دنبال‌کننده جدید",
+    "postPublished": "پست جدید",
+    "newMessage": "پیام جدید"
+  },
   "prefs": {
     "commentReply": "پاسخ به نظر",
     "newFollower": "دنبال‌کننده جدید",

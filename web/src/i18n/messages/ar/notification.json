@@ -5,6 +5,13 @@
   "newComment": "تعليق جديد",
   "newFollower": "متابع جديد",
   "newLike": "إعجاب جديد",
+  "types": {
+    "postComment": "تعليق جديد على منشورك",
+    "commentReply": "رد جديد على تعليقك",
+    "newFollower": "متابع جديد",
+    "postPublished": "منشور جديد",
+    "newMessage": "رسالة جديدة"
+  },
   "prefs": {
     "commentReply": "الردود على التعليقات",
     "newFollower": "متابعون جدد",

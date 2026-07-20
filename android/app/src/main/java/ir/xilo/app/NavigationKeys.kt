@@ -31,6 +31,7 @@ data class CreatePostKey(val editPostId: String? = null) : NavKey
 @Serializable
 data class TagFeedKey(val tag: String) : NavKey
 @Serializable data object SettingsKey : NavKey
+@Serializable data object EditProfileKey : NavKey
 @Serializable data object SavedHubKey : NavKey
 @Serializable data class ContactDetailKey(val chatId: String) : NavKey
 @Serializable data object DevicesKey : NavKey

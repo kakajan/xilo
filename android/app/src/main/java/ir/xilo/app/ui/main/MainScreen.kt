@@ -53,6 +53,7 @@ import ir.xilo.app.NewChatKey
 import ir.xilo.app.NotificationsKey
 import ir.xilo.app.PostDetailKey
 import ir.xilo.app.ProfileKey
+import ir.xilo.app.EditProfileKey
 import ir.xilo.app.SettingsKey
 import ir.xilo.app.TagFeedKey
 import ir.xilo.app.ui.profile.FollowListMode
@@ -340,8 +341,7 @@ fun MainScreen(
                                             }
                                         },
                                         onSettingsClick = { onItemClick(SettingsKey) },
-                                        onEditProfileClick = { onItemClick(SettingsKey) },
-                                        onSetPhotoClick = { onItemClick(SettingsKey) },
+                                        onEditProfileClick = { onItemClick(EditProfileKey) },
                                         onCreatePostClick = {
                                             if (canCreatePost) onItemClick(CreatePostKey())
                                         },

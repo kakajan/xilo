@@ -193,6 +193,27 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    /** Updates public profile fields (display name, bio, optional username). */
+    suspend fun updateProfileInfo(
+        displayName: String,
+        bio: String,
+        username: String? = null,
+    ): Result<UserResponse> {
+        return try {
+            val updated = apiService.updateProfile(
+                UpdateProfileRequest(
+                    displayName = displayName.trim(),
+                    bio = bio.trim(),
+                    username = username?.trim().orEmpty(),
+                )
+            )
+            saveUserLocal(updated)
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updatePreferredLanguage(language: String): Result<UserResponse> {
         val normalized = language.trim().ifBlank { "fa" }
         tokenManager.setPreferredLanguage(normalized, chosen = true)

@@ -175,6 +175,12 @@
     <string name="validation_comment_too_long">نظر نباید بیش از ۵۰۰۰ کاراکتر باشد.</string>
     <string name="profile_set_photo">تنظیم عکس</string>
     <string name="profile_edit_info">ویرایش اطلاعات</string>
+    <string name="edit_profile_title">ویرایش اطلاعات</string>
+    <string name="edit_profile_display_name">نام نمایشی</string>
+    <string name="edit_profile_display_name_hint">نامی که دیگران می‌بینند</string>
+    <string name="edit_profile_bio_hint">چند جمله درباره خودتان بنویسید</string>
+    <string name="edit_profile_name_required">نام نمایشی الزامی است</string>
+    <string name="edit_profile_name_too_long">نام نمایشی نباید بیش از ۶۴ کاراکتر باشد</string>
     <string name="profile_settings">تنظیمات</string>
     <string name="profile_tab_posts">پست‌ها</string>
     <string name="profile_tab_archived">پست‌های آرشیو</string>

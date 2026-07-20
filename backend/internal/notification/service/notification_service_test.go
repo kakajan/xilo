@@ -35,6 +35,13 @@ func (p *capturePublisher) events() []string {
 	return out
 }
 
+func TestPrefColumns_PostCommentSharesCommentReply(t *testing.T) {
+	web, push := prefColumns(TypePostComment)
+	if web != "comment_reply_web" || push != "comment_reply_push" {
+		t.Fatalf("got %q/%q", web, push)
+	}
+}
+
 func TestNotifySkipsSelf(t *testing.T) {
 	db, _, err := sqlmock.New()
 	if err != nil {

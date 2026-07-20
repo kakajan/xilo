@@ -95,11 +95,12 @@ func (r *Repository) ListComments(ctx context.Context, userID, interestFilter st
 				AvatarURL:   row.AvatarURL,
 			},
 			Post: PostContext{
-				ID:       row.PostID,
-				Title:    row.PostTitle,
-				Slug:     row.PostSlug,
-				Category: row.PostCategory,
-				Tags:     tags,
+				ID:             row.PostID,
+				Title:          row.PostTitle,
+				Slug:           row.PostSlug,
+				AuthorUsername: row.PostAuthorUsername,
+				Category:       row.PostCategory,
+				Tags:           tags,
 			},
 		}
 		scoredRows = append(scoredRows, scored{
@@ -159,11 +160,13 @@ func (r *Repository) fetchCandidates(ctx context.Context, interestFilter string,
 			p.id AS post_id,
 			p.title AS post_title,
 			p.slug AS post_slug,
+			pu.username AS post_author_username,
 			COALESCE(p.category, '') AS post_category,
 			COALESCE(p.tags, '{}') AS post_tags
 		FROM comments c
 		JOIN users u ON u.id = c.author_id AND u.deleted_at IS NULL
 		JOIN posts p ON p.id = c.post_id AND p.deleted_at IS NULL AND p.status = 'published'
+		JOIN users pu ON pu.id = p.author_id AND pu.deleted_at IS NULL
 		WHERE c.deleted_at IS NULL
 		  AND c.is_spam = FALSE
 	`

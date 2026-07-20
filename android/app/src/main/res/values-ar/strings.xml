@@ -167,6 +167,12 @@
     <string name="validation_comment_too_long">يجب ألا يتجاوز التعليق 5000 حرف.</string>
     <string name="profile_set_photo">تعيين صورة</string>
     <string name="profile_edit_info">تعديل المعلومات</string>
+    <string name="edit_profile_title">تعديل المعلومات</string>
+    <string name="edit_profile_display_name">الاسم الظاهر</string>
+    <string name="edit_profile_display_name_hint">الاسم الذي يراه الآخرون</string>
+    <string name="edit_profile_bio_hint">نبذة قصيرة عنك</string>
+    <string name="edit_profile_name_required">الاسم الظاهر مطلوب</string>
+    <string name="edit_profile_name_too_long">يجب ألا يتجاوز الاسم الظاهر 64 حرفًا</string>
     <string name="profile_settings">الإعدادات</string>
     <string name="profile_tab_posts">المنشورات</string>
     <string name="profile_tab_archived">المنشورات المؤرشفة</string>

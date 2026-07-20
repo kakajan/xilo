@@ -8,9 +8,48 @@ import { CommentCard, type DiscoverComment } from "@/components/discover/comment
 import { PostCard } from "@/components/post/post-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import type { CommentListResponse } from "@/types/comment";
+import type { Comment, CommentListResponse } from "@/types/comment";
 import type { Post, PostListResponse } from "@/types/post";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+
+type DiscoverApiComment = Comment & {
+  like_count?: number;
+  reply_count?: number;
+  post?: {
+    id?: string;
+    title?: string;
+    slug?: string;
+    author_username?: string;
+  };
+};
+
+function flattenTree(comments: Comment[]): Comment[] {
+  const out: Comment[] = [];
+  const walk = (list: Comment[]) => {
+    for (const c of list) {
+      out.push({ ...c, replies: undefined });
+      if (c.replies?.length) walk(c.replies);
+    }
+  };
+  walk(comments);
+  return out;
+}
+
+function toDiscoverComment(
+  c: Comment | DiscoverApiComment,
+  extras?: Partial<DiscoverComment>
+): DiscoverComment {
+  const api = c as DiscoverApiComment;
+  return {
+    ...c,
+    post_slug: extras?.post_slug ?? api.post?.slug ?? extras?.post_slug,
+    post_title: extras?.post_title ?? api.post?.title ?? extras?.post_title,
+    post_author_username: extras?.post_author_username,
+    author_username: c.author?.username,
+    reply_count: api.reply_count ?? c.replies?.length ?? 0,
+    reactions: c.reactions ?? (api.like_count != null ? { like: api.like_count } : undefined),
+  };
+}
 
 export default function DiscoverPage() {
   const [searchActive, setSearchActive] = useState(false);
@@ -23,6 +62,27 @@ export default function DiscoverPage() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
+      try {
+        const discoverRes = await apiFetch<{ data?: DiscoverApiComment[] }>(
+          "/api/discover/comments?limit=50"
+        );
+        const rows = discoverRes.data ?? [];
+        if (rows.length > 0) {
+          setComments(
+            rows.map((c) =>
+              toDiscoverComment(c, {
+                post_slug: c.post?.slug,
+                post_title: c.post?.title,
+                post_author_username: c.post?.author_username,
+              })
+            )
+          );
+          return;
+        }
+      } catch {
+        // Fall through to per-post comments.
+      }
+
       const postsRes = await apiFetch<PostListResponse>("/api/posts?limit=10");
       const posts = postsRes.data ?? [];
       const nested = await Promise.all(
@@ -31,12 +91,13 @@ export default function DiscoverPage() {
             const res = await apiFetch<CommentListResponse>(
               `/api/posts/${post.id}/comments?limit=5&sort=newest`
             );
-            return (res.data ?? []).map((c) => ({
-              ...c,
-              post_slug: post.slug,
-              post_title: post.title,
-              post_author_username: post.author?.username,
-            }));
+            return flattenTree(res.data ?? []).map((c) =>
+              toDiscoverComment(c, {
+                post_slug: post.slug,
+                post_title: post.title,
+                post_author_username: post.author?.username,
+              })
+            );
           } catch {
             return [] as DiscoverComment[];
           }
@@ -65,9 +126,7 @@ export default function DiscoverPage() {
       if (Array.isArray((res as PostListResponse).data)) {
         return (res as PostListResponse).data;
       }
-      const postsRes = await apiFetch<PostListResponse>(
-        `/api/posts?limit=20`
-      );
+      const postsRes = await apiFetch<PostListResponse>(`/api/posts?limit=20`);
       const q = debounced.trim().toLowerCase();
       return (postsRes.data ?? []).filter(
         (p) =>

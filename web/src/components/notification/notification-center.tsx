@@ -7,46 +7,31 @@ import { useTranslations } from "next-intl";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useAuthStore } from "@/stores/auth-store";
 import { apiFetch } from "@/lib/api-client";
+import { hrefForNotification } from "@/lib/notification-href";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import type { Notification } from "@/types/notification";
 
-function parseData(data: Notification["data"]): Record<string, unknown> {
-  if (!data) return {};
-  if (typeof data === "string") {
-    try {
-      return JSON.parse(data) as Record<string, unknown>;
-    } catch {
-      return {};
-    }
+function titleForType(
+  n: Notification,
+  t: (key: "types.postComment" | "types.commentReply" | "types.newFollower" | "types.postPublished" | "types.newMessage") => string
+): string {
+  switch (n.type) {
+    case "post_comment":
+      return t("types.postComment");
+    case "comment_reply":
+      return t("types.commentReply");
+    case "new_follower":
+      return t("types.newFollower");
+    case "post_published":
+      return t("types.postPublished");
+    case "new_message":
+      return t("types.newMessage");
+    default:
+      return n.title;
   }
-  return data;
-}
-
-function hrefForNotification(n: Notification): string | null {
-  const data = parseData(n.data);
-  if (typeof data.link === "string" && data.link) {
-    const link = data.link;
-    if (link.startsWith("/") && !link.startsWith("//")) return link;
-    if (typeof window !== "undefined") {
-      try {
-        const url = new URL(link);
-        if (url.origin === window.location.origin) {
-          return `${url.pathname}${url.search}${url.hash}`;
-        }
-      } catch {
-        // ignore invalid URL
-      }
-    }
-  }
-  if (typeof data.slug === "string" && data.slug) return `/${data.slug}`;
-  if (typeof data.chat_id === "string" && data.chat_id) return `/chat/${data.chat_id}`;
-  if (typeof data.follower_id === "string" && data.follower_id) {
-    if (typeof data.username === "string" && data.username) return `/${data.username}`;
-  }
-  return null;
 }
 
 export function NotificationCenter() {
@@ -136,7 +121,7 @@ export function NotificationCenter() {
                 !n.is_read ? "bg-accent/50" : ""
               }`}
             >
-              <p className="text-sm font-medium">{n.title}</p>
+              <p className="text-sm font-medium">{titleForType(n, t)}</p>
               {n.body && <p className="mt-0.5 text-xs text-muted-foreground">{n.body}</p>}
               <TimeLabel className="mt-1 text-xs text-muted-foreground">
                 {formatDate(n.created_at)}

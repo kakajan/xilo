@@ -62,7 +62,6 @@ import androidx.compose.ui.text.style.TextDirection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 private data class SettingsMenuItem(
     val title: String,
@@ -654,31 +653,6 @@ fun SettingsScreen(
                 )
             }
         }
-    }
-}
-
-private fun copyPickedImageToCache(context: android.content.Context, source: Uri): Uri? {
-    return runCatching {
-        val dir = File(context.cacheDir, "avatar_crop").apply { mkdirs() }
-        val dest = File(dir, "source_${System.nanoTime()}.img")
-        context.contentResolver.openInputStream(source)?.use { input ->
-            dest.outputStream().use { output -> input.copyTo(output) }
-        } ?: return null
-        if (dest.length() == 0L) {
-            dest.delete()
-            return null
-        }
-        Uri.fromFile(dest)
-    }.getOrNull()
-}
-
-private fun deleteCachedCropSource(context: android.content.Context, uri: Uri) {
-    if (uri.scheme != "file") return
-    val path = uri.path ?: return
-    val cacheRoot = File(context.cacheDir, "avatar_crop").canonicalFile
-    val file = File(path).canonicalFile
-    if (file.path.startsWith(cacheRoot.path)) {
-        file.delete()
     }
 }
 

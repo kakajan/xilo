@@ -25,6 +25,7 @@ import ir.xilo.app.ui.contacts.ContactsScreen
 import ir.xilo.app.ui.main.MainScreen
 import ir.xilo.app.ui.main.MainScreenViewModel
 import ir.xilo.app.ui.postdetail.PostDetailScreen
+import ir.xilo.app.ui.profile.EditProfileScreen
 import ir.xilo.app.ui.profile.FollowListMode
 import ir.xilo.app.ui.profile.FollowListScreen
 import ir.xilo.app.ui.profile.ProfileScreen
@@ -120,8 +121,7 @@ fun MainNavigation() {
             onBackClick = { backStack.removeLastOrNull() },
             onPostClick = { slug -> backStack.add(PostDetailKey(slug = slug)) },
             onSettingsClick = { backStack.add(SettingsKey) },
-            onEditProfileClick = { backStack.add(SettingsKey) },
-            onSetPhotoClick = { backStack.add(SettingsKey) },
+            onEditProfileClick = { backStack.add(EditProfileKey) },
             onCreatePostClick = {
               // ProfileScreen hides FAB when role cannot create posts.
               backStack.add(CreatePostKey())
@@ -144,6 +144,7 @@ fun MainNavigation() {
                 PostDetailKey(slug = slug, replyToCommentId = commentId)
               )
             },
+            refreshOnResume = false,
             modifier = Modifier.fillMaxSize()
           )
         }
@@ -223,6 +224,13 @@ fun MainNavigation() {
             onChatFoldersClick = { backStack.add(ChatFoldersKey) },
             onNotificationPreferencesClick = { backStack.add(NotificationPreferencesKey) },
             modifier = Modifier.fillMaxSize()
+          )
+        }
+        entry<EditProfileKey> {
+          EditProfileScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onSaved = { backStack.removeLastOrNull() },
+            modifier = Modifier.fillMaxSize(),
           )
         }
         entry<SavedHubKey> {

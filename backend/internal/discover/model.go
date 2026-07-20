@@ -16,11 +16,12 @@ type Author struct {
 
 // PostContext is the parent post summary for a Discover card.
 type PostContext struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Slug     string   `json:"slug"`
-	Category string   `json:"category,omitempty"`
-	Tags     []string `json:"tags,omitempty"`
+	ID             string   `json:"id"`
+	Title          string   `json:"title"`
+	Slug           string   `json:"slug"`
+	AuthorUsername string   `json:"author_username,omitempty"`
+	Category       string   `json:"category,omitempty"`
+	Tags           []string `json:"tags,omitempty"`
 }
 
 // Comment is a Discover feed item (shape aligned with Android DiscoverCommentDto).
@@ -42,18 +43,19 @@ type CommentsResponse struct {
 }
 
 type commentRow struct {
-	ID           string         `db:"id"`
-	Content      string         `db:"content"`
-	CreatedAt    time.Time      `db:"created_at"`
-	LikesCount   int            `db:"likes_count"`
-	RepliesCount int            `db:"replies_count"`
-	AuthorID     string         `db:"author_id"`
-	Username     string         `db:"username"`
-	DisplayName  string         `db:"display_name"`
-	AvatarURL    string         `db:"avatar_url"`
-	PostID       string         `db:"post_id"`
-	PostTitle    string         `db:"post_title"`
-	PostSlug     string         `db:"post_slug"`
-	PostCategory string         `db:"post_category"`
-	PostTags     pq.StringArray `db:"post_tags"`
+	ID                 string         `db:"id"`
+	Content            string         `db:"content"`
+	CreatedAt          time.Time      `db:"created_at"`
+	LikesCount         int            `db:"likes_count"`
+	RepliesCount       int            `db:"replies_count"`
+	AuthorID           string         `db:"author_id"`
+	Username           string         `db:"username"`
+	DisplayName        string         `db:"display_name"`
+	AvatarURL          string         `db:"avatar_url"`
+	PostID             string         `db:"post_id"`
+	PostTitle          string         `db:"post_title"`
+	PostSlug           string         `db:"post_slug"`
+	PostAuthorUsername string         `db:"post_author_username"`
+	PostCategory       string         `db:"post_category"`
+	PostTags           pq.StringArray `db:"post_tags"`
 }

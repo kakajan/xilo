@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -36,13 +37,13 @@ export function CommentSection({
   const [sort, setSort] = useState<SortKey>("newest");
   const [focusStack, setFocusStack] = useState<string[]>([]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["comments", postId, sort],
     queryFn: async () => {
       const res = await apiFetch<CommentListResponse>(
         `/api/posts/${postId}/comments?limit=50&sort=${sort}`
       );
-      return res.data;
+      return res.data ?? [];
     },
   });
 
@@ -51,6 +52,20 @@ export function CommentSection({
     () => (replyToId ? flatComments.find((c) => c.id === replyToId) ?? null : null),
     [flatComments, replyToId]
   );
+
+  useEffect(() => {
+    if (!initialReplyTo) return;
+    setReplyToId(initialReplyTo);
+  }, [initialReplyTo]);
+
+  // When deep-linking to a nested reply, open its branch so the composer is visible.
+  useEffect(() => {
+    if (!initialReplyTo || !data?.length) return;
+    const path = pathToComment(data, initialReplyTo);
+    if (path.length > 1) {
+      setFocusStack(path.slice(0, -1));
+    }
+  }, [initialReplyTo, data]);
 
   const focusCommentId = focusStack[focusStack.length - 1] ?? null;
   const visibleRoots = useMemo(() => {
@@ -80,6 +95,17 @@ export function CommentSection({
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-20 w-full rounded-2xl" />
         ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-3 py-8 text-center">
+        <p className="text-muted-foreground">خطا در بارگذاری نظرات</p>
+        <Button type="button" variant="outline" onClick={() => void refetch()}>
+          تلاش مجدد
+        </Button>
       </div>
     );
   }
@@ -167,6 +193,43 @@ export function CommentSection({
         )}
       </div>
 
+      {replyToId && !replyParent && (
+        <div className="rounded-2xl border bg-muted/40 p-3">
+          <p className="mb-2 text-xs text-muted-foreground">پاسخ به نظر</p>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!replyDraft.trim()) return;
+              createMutation.mutate({ content: replyDraft, parentId: replyToId });
+            }}
+          >
+            <input
+              value={replyDraft}
+              onChange={(e) => setReplyDraft(e.target.value)}
+              className="min-h-11 flex-1 rounded-2xl border bg-background px-3 text-sm"
+              placeholder="پاسخ..."
+              autoFocus
+            />
+            <Button type="submit" size="sm" className="min-h-11">
+              ارسال
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-11"
+              onClick={() => {
+                setReplyToId(null);
+                setReplyDraft("");
+              }}
+            >
+              لغو
+            </Button>
+          </form>
+        </div>
+      )}
+
       {replyParent && (
         <p className="text-xs text-muted-foreground">
           پاسخ به {replyParent.author?.display_name || replyParent.author?.username}
@@ -202,23 +265,45 @@ function CommentBubble({
   const formatDate = useFormatDate();
   const isOwn = currentUserId && comment.author_id === currentUserId;
   const name = comment.author?.display_name || comment.author?.username || "کاربر";
+  const username = comment.author?.username?.trim() || "";
+  const profileHref = username ? `/${username}` : null;
   const reactionEntries = Object.entries(comment.reactions ?? {}).filter(([, n]) => n > 0);
 
   return (
-    <div className={cn("relative", depth > 0 && "ms-4")}>
+    <div className={cn("relative", depth > 0 && "ms-4")} id={`comment-${comment.id}`}>
       <div className="mb-1 flex items-center gap-2">
-        <Avatar className="h-8 w-8 shrink-0">
-          {comment.author?.avatar_url ? (
-            <AvatarImage src={comment.author.avatar_url} alt="" />
-          ) : null}
-          <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
-        </Avatar>
-        <span className="min-w-0 text-sm font-semibold">{name}</span>
-        {comment.author?.username ? (
-          <UsernameHandle
-            username={comment.author.username}
-            className="text-xs text-muted-foreground"
-          />
+        {profileHref ? (
+          <Link href={profileHref} className="shrink-0">
+            <Avatar className="h-8 w-8">
+              {comment.author?.avatar_url ? (
+                <AvatarImage src={comment.author.avatar_url} alt="" />
+              ) : null}
+              <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
+            </Avatar>
+          </Link>
+        ) : (
+          <Avatar className="h-8 w-8 shrink-0">
+            {comment.author?.avatar_url ? (
+              <AvatarImage src={comment.author.avatar_url} alt="" />
+            ) : null}
+            <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
+          </Avatar>
+        )}
+        {profileHref ? (
+          <Link href={profileHref} className="min-w-0 text-sm font-semibold hover:underline">
+            {name}
+          </Link>
+        ) : (
+          <span className="min-w-0 text-sm font-semibold">{name}</span>
+        )}
+        {username ? (
+          profileHref ? (
+            <Link href={profileHref} className="text-xs text-muted-foreground hover:underline">
+              <UsernameHandle username={username} />
+            </Link>
+          ) : (
+            <UsernameHandle username={username} className="text-xs text-muted-foreground" />
+          )
         ) : null}
         <TimeLabel className="text-xs text-muted-foreground">
           {formatDate(comment.created_at)}
@@ -326,4 +411,17 @@ function findCommentById(comments: Comment[], id: string): Comment | null {
     }
   }
   return null;
+}
+
+/** Ancestor ids from root to target (inclusive). Empty if not found. */
+function pathToComment(comments: Comment[], id: string, trail: string[] = []): string[] {
+  for (const c of comments) {
+    const next = [...trail, c.id];
+    if (c.id === id) return next;
+    if (c.replies?.length) {
+      const found = pathToComment(c.replies, id, next);
+      if (found.length) return found;
+    }
+  }
+  return [];
 }

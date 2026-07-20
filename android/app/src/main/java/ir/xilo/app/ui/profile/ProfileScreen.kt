@@ -1,6 +1,10 @@
 package ir.xilo.app.ui.profile
 
 import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.fadeIn
@@ -21,11 +25,13 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -33,6 +39,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -46,7 +53,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,6 +104,12 @@ import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.trackChromeVisibility
 import ir.xilo.app.ui.components.usernameHandle
+import ir.xilo.app.ui.settings.AvatarCropDialog
+import ir.xilo.app.ui.settings.copyPickedImageToCache
+import ir.xilo.app.ui.settings.deleteCachedCropSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Single flat teal for the whole header — including the “ears” above the white sheet. */
 private val ProfileTeal = Color(0xFF14919B)
@@ -117,9 +132,20 @@ private val PersianSafeCaptionStyle = TextStyle(
     ),
 )
 
+/**
+ * Glass action labels — Persian descenders (س / ش / پ) need extra line box;
+ * IranSansX metrics alone under-report descent at this size.
+ */
+private val PersianSafeGlassActionLabelStyle = PersianSafeCaptionStyle.copy(
+    fontWeight = FontWeight.Medium,
+    fontSize = 11.sp,
+    lineHeight = 22.sp,
+)
+
 private val CollapsedBarHeight = 64.dp
 private val AvatarExpandedSize = 112.dp
-private val ActionRowHeight = 72.dp
+private val ActionRowHeight = 84.dp
+private val GlassActionMinHeight = 72.dp
 private val ExpandedHeaderExtra = 260.dp
 private val InfoCardTopRadius = 28.dp
 
@@ -129,15 +155,16 @@ fun ProfileScreen(
     onBackClick: () -> Unit,
     onPostClick: (String) -> Unit,
     onSettingsClick: () -> Unit = {},
-    onEditProfileClick: () -> Unit = onSettingsClick,
-    onSetPhotoClick: () -> Unit = onEditProfileClick,
+    onEditProfileClick: () -> Unit = {},
     onCreatePostClick: () -> Unit = {},
     onChatClick: (String) -> Unit = {},
     onFollowersClick: (String) -> Unit = {},
     onFollowingClick: (String) -> Unit = {},
     onReplyClick: (slug: String, commentId: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
-    viewModel: ProfileViewModel = hiltViewModel()
+    /** When false, skip ON_RESUME refresh (avoids Main-tab own-profile overwriting a pushed profile). */
+    refreshOnResume: Boolean = true,
+    viewModel: ProfileViewModel = hiltViewModel(key = username),
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
     val userPosts by viewModel.userPosts.collectAsState()
@@ -147,9 +174,49 @@ fun ProfileScreen(
     val isOwnProfile by viewModel.isOwnProfile.collectAsState()
     val canCreatePost by viewModel.canCreatePost.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isUploadingAvatar by viewModel.isUploadingAvatar.collectAsState()
     val error by viewModel.error.collectAsState()
+    val infoMessage by viewModel.infoMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var cropImageUri by remember { mutableStateOf<Uri?>(null) }
+    var isPreparingCrop by remember { mutableStateOf(false) }
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        isPreparingCrop = true
+        scope.launch {
+            val localUri = withContext(Dispatchers.IO) {
+                copyPickedImageToCache(context, uri)
+            }
+            isPreparingCrop = false
+            if (localUri != null) {
+                cropImageUri = localUri
+            } else {
+                snackbarHostState.showSnackbar(
+                    context.getString(R.string.avatar_crop_load_failed)
+                )
+            }
+        }
+    }
+
+    cropImageUri?.let { uri ->
+        AvatarCropDialog(
+            imageUri = uri,
+            onDismiss = {
+                deleteCachedCropSource(context, uri)
+                cropImageUri = null
+            },
+            onConfirm = { bytes ->
+                deleteCachedCropSource(context, uri)
+                cropImageUri = null
+                viewModel.onChangePhoto(bytes)
+            },
+        )
+    }
 
     LaunchedEffect(error) {
         error?.let {
@@ -158,13 +225,23 @@ fun ProfileScreen(
         }
     }
 
+    LaunchedEffect(infoMessage) {
+        infoMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearInfo()
+        }
+    }
+
     LaunchedEffect(username) {
         viewModel.loadProfile(username)
     }
 
-    // Pager keeps this screen alive under Settings; re-fetch when visible again.
+    // Pager keeps own-profile alive under Settings; re-fetch when that instance is visible again.
+    // Pushed ProfileKey screens use a keyed ViewModel and refreshOnResume=false so Main cannot race.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        viewModel.refreshProfile()
+        if (refreshOnResume) {
+            viewModel.refreshProfile()
+        }
     }
 
     LaunchedEffect(viewModel) {
@@ -352,7 +429,11 @@ fun ProfileScreen(
                     phase1 = eased1,
                     phase2 = eased2,
                     topChromePad = headerChromePad,
-                    onSetPhotoClick = onSetPhotoClick,
+                    onSetPhotoClick = {
+                        photoPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
                     onEditProfileClick = onEditProfileClick,
                     onSettingsClick = onSettingsClick,
                     onFollowClick = { viewModel.toggleFollow() },
@@ -606,6 +687,18 @@ fun ProfileScreen(
                             )
                         }
                     }
+                }
+            }
+
+            if (isPreparingCrop || isUploadingAvatar) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.25f))
+                        .zIndex(5f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Color.White)
                 }
             }
         }
@@ -892,7 +985,10 @@ private fun ProfileGlassAction(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.height(60.dp),
+        // Wrap height so Persian descenders are never clipped by a fixed box.
+        modifier = modifier
+            .heightIn(min = GlassActionMinHeight)
+            .wrapContentHeight(),
         shape = RoundedCornerShape(16.dp),
         color = GlassButtonBg,
         contentColor = Color.White,
@@ -901,8 +997,8 @@ private fun ProfileGlassAction(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 10.dp, horizontal = 8.dp),
+                .fillMaxWidth()
+                .padding(top = 8.dp, bottom = 8.dp, start = 8.dp, end = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -912,13 +1008,13 @@ private fun ProfileGlassAction(
                 tint = Color.White,
                 modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(1.dp))
             Text(
                 text = label,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
+                style = PersianSafeGlassActionLabelStyle,
+                color = Color.White,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Clip,
             )
         }
     }

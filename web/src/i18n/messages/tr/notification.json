@@ -5,6 +5,13 @@
   "newComment": "Yeni yorum",
   "newFollower": "Yeni takipçi",
   "newLike": "Yeni beğeni",
+  "types": {
+    "postComment": "Yazınıza yeni yorum",
+    "commentReply": "Yorumunuza yeni yanıt",
+    "newFollower": "Yeni takipçi",
+    "postPublished": "Yeni yazı",
+    "newMessage": "Yeni mesaj"
+  },
   "prefs": {
     "commentReply": "Yorum yanıtları",
     "newFollower": "Yeni takipçiler",
