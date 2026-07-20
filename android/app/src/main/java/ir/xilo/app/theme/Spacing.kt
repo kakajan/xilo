@@ -14,7 +14,8 @@ object XiloSpacing {
     val fabSize = 56.dp
     val bottomNavBarHeight = 56.dp
     val bottomNavOuterTopPadding = 12.dp
-    val bottomNavOuterBottomPadding = 24.dp
+    // Visual gap above the system navigation bar (inset itself comes from navigationBarsPadding).
+    val bottomNavOuterBottomPadding = 8.dp
     val bottomNavGradientTopPadding = 16.dp
     val bottomNavPadding =
         bottomNavGradientTopPadding + bottomNavOuterTopPadding + bottomNavBarHeight + bottomNavOuterBottomPadding

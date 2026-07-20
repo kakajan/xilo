@@ -7,16 +7,23 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -54,6 +61,25 @@ fun AuthScreen(
 
     val fieldErrors = (state as? AuthUiState.Error)?.fieldErrors.orEmpty()
     val generalError = (state as? AuthUiState.Error)?.generalError
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val isLoading = state is AuthUiState.Loading
+
+    fun submitAuth() {
+        if (isLoading) return
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        when {
+            isOtpMode && state is AuthUiState.OtpSent -> viewModel.verifyOtpLogin(phone, otpCode)
+            isOtpMode -> viewModel.requestOtp(phone)
+            isLoginMode -> viewModel.login(email, password)
+            else -> viewModel.register(
+                email,
+                password,
+                displayName.takeIf { it.isNotBlank() },
+            )
+        }
+    }
 
     LaunchedEffect(state) {
         when (state) {
@@ -111,14 +137,24 @@ fun AuthScreen(
                             value = otpCode,
                             onValueChange = { otpCode = it },
                             placeholder = stringResource(R.string.auth_hint_otp_code),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Done,
+                            ),
+                            keyboardActions = KeyboardActions(onDone = { submitAuth() }),
                         )
                     } else {
                         XiloTextField(
                             value = phone,
                             onValueChange = { phone = it },
                             placeholder = stringResource(R.string.auth_hint_phone),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Phone,
+                                imeAction = ImeAction.Done,
+                            ),
+                            keyboardActions = KeyboardActions(onDone = { submitAuth() }),
                         )
                     }
                 } else if (isLoginMode) {
@@ -132,6 +168,11 @@ fun AuthScreen(
                         modifier = Modifier.fillMaxWidth(),
                         isError = fieldErrors.containsKey(AuthField.Email),
                         errorText = fieldErrors[AuthField.Email],
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(onDone = { submitAuth() }),
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -150,6 +191,11 @@ fun AuthScreen(
                                 textAlign = TextAlign.Left,
                                 textDirection = TextDirection.Ltr,
                             ),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done,
+                            ),
+                            keyboardActions = KeyboardActions(onDone = { submitAuth() }),
                         )
                     }
                 } else {
@@ -163,6 +209,13 @@ fun AuthScreen(
                         modifier = Modifier.fillMaxWidth(),
                         isError = fieldErrors.containsKey(AuthField.Email),
                         errorText = fieldErrors[AuthField.Email],
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                        ),
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     XiloTextField(
@@ -175,6 +228,10 @@ fun AuthScreen(
                         modifier = Modifier.fillMaxWidth(),
                         isError = fieldErrors.containsKey(AuthField.DisplayName),
                         errorText = fieldErrors[AuthField.DisplayName],
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                        ),
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -193,6 +250,8 @@ fun AuthScreen(
                                 textAlign = TextAlign.Left,
                                 textDirection = TextDirection.Ltr,
                             ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { submitAuth() }),
                         )
                     }
                     Text(
@@ -211,20 +270,20 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                if (state is AuthUiState.Loading) {
+                if (isLoading) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 } else {
                     if (isOtpMode) {
                         if (state is AuthUiState.OtpSent) {
                             XiloButton(
                                 text = stringResource(R.string.auth_otp_verify),
-                                onClick = { viewModel.verifyOtpLogin(phone, otpCode) },
+                                onClick = { submitAuth() },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         } else {
                             XiloButton(
                                 text = stringResource(R.string.auth_otp_send_code),
-                                onClick = { viewModel.requestOtp(phone) },
+                                onClick = { submitAuth() },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -235,17 +294,7 @@ fun AuthScreen(
                             } else {
                                 stringResource(R.string.auth_register_submit)
                             },
-                            onClick = {
-                                if (isLoginMode) {
-                                    viewModel.login(email, password)
-                                } else {
-                                    viewModel.register(
-                                        email,
-                                        password,
-                                        displayName.takeIf { it.isNotBlank() },
-                                    )
-                                }
-                            },
+                            onClick = { submitAuth() },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
