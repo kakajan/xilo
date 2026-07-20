@@ -622,10 +622,15 @@ if [ ! -f ${remoteDir}/infra/secrets/jwt/private.pem ]; then
   openssl rsa -in ${remoteDir}/infra/secrets/jwt/private.pem -pubout -out ${remoteDir}/infra/secrets/jwt/public.pem
   chmod 600 ${remoteDir}/infra/secrets/jwt/*.pem
 fi
-# Keep an empty firebase dir so the compose volume mount always succeeds.
+# Keep firebase secrets dir mountable by container user (uid 1000 / xilo).
 # Drop service-account.json here and set FIREBASE_* in infra/env/prod.env to enable FCM.
 touch ${remoteDir}/infra/secrets/firebase/.keep
+chown -R 1000:1000 ${remoteDir}/infra/secrets/firebase || true
 chmod 700 ${remoteDir}/infra/secrets/firebase
+if [ -f ${remoteDir}/infra/secrets/firebase/service-account.json ]; then
+  chown 1000:1000 ${remoteDir}/infra/secrets/firebase/service-account.json || true
+  chmod 600 ${remoteDir}/infra/secrets/firebase/service-account.json
+fi
 
 if [ ! -f ${remoteDir}/infra/.compose.secrets.env ]; then
   PG=$(openssl rand -base64 24 | tr -d '=+/')

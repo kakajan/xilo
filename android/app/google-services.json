@@ -1,26 +1,66 @@
 {
   "project_info": {
-    "project_number": "100000000001",
-    "project_id": "xilo-debug-placeholder",
-    "storage_bucket": "xilo-debug-placeholder.appspot.com"
+    "project_number": "293035679677",
+    "firebase_url": "https://aile-298218-default-rtdb.firebaseio.com",
+    "project_id": "aile-298218",
+    "storage_bucket": "aile-298218.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:100000000001:android:0000000000000000000001",
+        "mobilesdk_app_id": "1:293035679677:android:2cc533d36fdbe1ad877cd4",
         "android_client_info": {
-          "package_name": "ir.xilo.app"
+          "package_name": "ir.aile.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "293035679677-omv30vhp0jilpkofmikk5pnuq197ln23.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyDebugPlaceholderKey000000000000000"
+          "current_key": "AIzaSyA88Y8lBO1ZEWvfq15q71uz7bIi0oXoynM"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "293035679677-omv30vhp0jilpkofmikk5pnuq197ln23.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:293035679677:android:db85eb7957b35ae6877cd4",
+        "android_client_info": {
+          "package_name": "ir.xilo.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "293035679677-omv30vhp0jilpkofmikk5pnuq197ln23.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA88Y8lBO1ZEWvfq15q71uz7bIi0oXoynM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "293035679677-omv30vhp0jilpkofmikk5pnuq197ln23.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

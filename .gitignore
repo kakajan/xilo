@@ -63,6 +63,9 @@ infra/env/prod.env
 infra/.compose.secrets.env
 infra/.env
 infra/secrets/
+tmp-fcm/
+**/service-account.json
+firebase-debug.log
 
 Docs/*
 Fonts
