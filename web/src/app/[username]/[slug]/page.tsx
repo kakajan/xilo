@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "@/components/comment/comment-section";
 import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
+import { StickyAudioPlayer } from "@/components/post/sticky-audio-player";
 import { PostBody } from "@/components/post/post-body";
 import { RecordPostView } from "@/components/post/record-post-view";
 import {
@@ -111,6 +112,10 @@ export default async function PostPage({
         content_md={post.content_md}
         excerpt={post.excerpt}
       />
+
+      {post.audio_url ? (
+        <StickyAudioPlayer src={post.audio_url} title={post.title} />
+      ) : null}
 
       <StickyReactionBar postId={post.id} reactions={post.reactions} />
 

@@ -98,7 +98,11 @@ class PostRepository @Inject constructor(
         }
     }
 
-    suspend fun createPost(title: String, content: String): Result<PostEntity> {
+    suspend fun createPost(
+        title: String,
+        content: String,
+        audioUrl: String? = null,
+    ): Result<PostEntity> {
         return try {
             val slug = title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
             // Backend expects Tiptap JSON; wrap plain text with structured encoding (safe escaping).
@@ -111,6 +115,7 @@ class PostRepository @Inject constructor(
                 content = tiptapJson,
                 contentMd = content,
                 excerpt = content.take(100),
+                audioUrl = audioUrl?.takeIf { it.isNotBlank() },
                 tags = tags.takeIf { it.isNotEmpty() },
                 status = "published",
             )
@@ -198,6 +203,7 @@ class PostRepository @Inject constructor(
         content = content,
         excerpt = excerpt,
         coverImageUrl = coverImageUrl,
+        audioUrl = audioUrl,
         likeCount = resolvedLikeCount(),
         commentCount = commentCount,
         repostCount = repostCount,
@@ -288,7 +294,12 @@ class PostRepository @Inject constructor(
 
     suspend fun getPostById(id: String): PostEntity? = postDao.getPostById(id)
 
-    suspend fun updatePost(postId: String, title: String, content: String): Result<PostEntity> {
+    suspend fun updatePost(
+        postId: String,
+        title: String,
+        content: String,
+        audioUrl: String? = null,
+    ): Result<PostEntity> {
         return try {
             val tiptapJson = buildTiptapDoc(content)
             val tags = ir.xilo.app.core.util.HashtagParser.extract(content)
@@ -300,6 +311,7 @@ class PostRepository @Inject constructor(
                     content = tiptapJson,
                     contentMd = content,
                     excerpt = content.take(100),
+                    audioUrl = audioUrl ?: "",
                     tags = tags,
                 ),
             )

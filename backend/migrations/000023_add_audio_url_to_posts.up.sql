@@ -1,0 +1,1 @@
+ALTER TABLE posts ADD COLUMN audio_url VARCHAR(500);

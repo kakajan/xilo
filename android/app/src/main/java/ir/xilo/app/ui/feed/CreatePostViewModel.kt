@@ -1,7 +1,11 @@
 package ir.xilo.app.ui.feed
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import ir.xilo.app.R
 import ir.xilo.app.core.util.HashtagParser
 import ir.xilo.app.core.util.canCreatePost
@@ -13,13 +17,15 @@ import ir.xilo.app.data.repository.PostRepository
 import ir.xilo.app.ui.components.PostField
 import ir.xilo.app.ui.postdetail.extractPlainText
 import ir.xilo.app.util.ErrorMessageResolver
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
 @HiltViewModel
@@ -29,6 +35,7 @@ class CreatePostViewModel @Inject constructor(
     private val apiService: XiloApiService,
     private val errorMessageResolver: ErrorMessageResolver,
     private val composeDraftStore: ComposeDraftStore,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _isSubmitting = MutableStateFlow(false)
@@ -51,6 +58,12 @@ class CreatePostViewModel @Inject constructor(
 
     private val _content = MutableStateFlow("")
     val content: StateFlow<String> = _content.asStateFlow()
+
+    private val _audioUrl = MutableStateFlow("")
+    val audioUrl: StateFlow<String> = _audioUrl.asStateFlow()
+
+    private val _isUploadingAudio = MutableStateFlow(false)
+    val isUploadingAudio: StateFlow<Boolean> = _isUploadingAudio.asStateFlow()
 
     private val _editPostId = MutableStateFlow<String?>(null)
     val editPostId: StateFlow<String?> = _editPostId.asStateFlow()
@@ -115,12 +128,14 @@ class CreatePostViewModel @Inject constructor(
             if (local != null) {
                 _title.value = local.title
                 _content.value = local.content
+                _audioUrl.value = local.audioUrl
                 restoreDoneForKey = draftKey
             } else if (post != null) {
                 _title.value = post.title
                 _content.value = extractPlainText(post.content).ifBlank {
                     post.excerpt.orEmpty()
                 }
+                _audioUrl.value = post.audioUrl.orEmpty()
                 restoreDoneForKey = draftKey
             } else {
                 _error.value = errorMessageResolver.string(R.string.error_load_post)
@@ -144,6 +159,28 @@ class CreatePostViewModel @Inject constructor(
         clearFieldError(PostField.Content)
         refreshHashtagSuggestions(value, value.length)
         scheduleDraftSave()
+    }
+
+    fun clearAudio() {
+        _audioUrl.value = ""
+        scheduleDraftSave()
+    }
+
+    fun uploadAudio(uri: Uri) {
+        viewModelScope.launch {
+            _isUploadingAudio.value = true
+            _error.value = null
+            try {
+                val part = uriToAudioMultipart(uri)
+                    ?: throw IllegalStateException("audio")
+                val url = apiService.uploadMedia(part).url
+                _audioUrl.value = url
+                scheduleDraftSave()
+            } catch (e: Exception) {
+                _error.value = errorMessageResolver.fromThrowable(e, R.string.error_audio_upload)
+            }
+            _isUploadingAudio.value = false
+        }
     }
 
     fun refreshHashtagSuggestions(text: String, cursor: Int) {
@@ -184,13 +221,13 @@ class CreatePostViewModel @Inject constructor(
     fun submit() {
         val editingId = _editPostId.value
         if (editingId != null) {
-            updatePost(editingId, _title.value, _content.value)
+            updatePost(editingId, _title.value, _content.value, _audioUrl.value)
         } else {
-            createPost(_title.value, _content.value)
+            createPost(_title.value, _content.value, _audioUrl.value)
         }
     }
 
-    fun createPost(title: String, content: String) {
+    fun createPost(title: String, content: String, audioUrl: String = _audioUrl.value) {
         if (!canCreatePost(authRepository.getRole())) {
             _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
             return
@@ -207,7 +244,7 @@ class CreatePostViewModel @Inject constructor(
             _error.value = null
             _fieldErrors.value = emptyMap()
 
-            postRepository.createPost(title, content)
+            postRepository.createPost(title, content, audioUrl.takeIf { it.isNotBlank() })
                 .onSuccess {
                     clearLocalDraft()
                     _success.value = true
@@ -225,7 +262,12 @@ class CreatePostViewModel @Inject constructor(
         }
     }
 
-    private fun updatePost(postId: String, title: String, content: String) {
+    private fun updatePost(
+        postId: String,
+        title: String,
+        content: String,
+        audioUrl: String = _audioUrl.value,
+    ) {
         if (!canCreatePost(authRepository.getRole())) {
             _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
             return
@@ -242,7 +284,7 @@ class CreatePostViewModel @Inject constructor(
             _error.value = null
             _fieldErrors.value = emptyMap()
 
-            postRepository.updatePost(postId, title, content)
+            postRepository.updatePost(postId, title, content, audioUrl)
                 .onSuccess {
                     clearLocalDraft()
                     _success.value = true
@@ -292,6 +334,7 @@ class CreatePostViewModel @Inject constructor(
         val draft = composeDraftStore.load(draftKey)
         _title.value = draft?.title.orEmpty()
         _content.value = draft?.content.orEmpty()
+        _audioUrl.value = draft?.audioUrl.orEmpty()
         restoreDoneForKey = draftKey
     }
 
@@ -302,6 +345,7 @@ class CreatePostViewModel @Inject constructor(
             composeDraftStore.save(
                 title = _title.value,
                 content = _content.value,
+                audioUrl = _audioUrl.value,
                 key = draftKey,
             )
         }
@@ -312,6 +356,7 @@ class CreatePostViewModel @Inject constructor(
         composeDraftStore.save(
             title = _title.value,
             content = _content.value,
+            audioUrl = _audioUrl.value,
             key = draftKey,
         )
     }
@@ -322,6 +367,24 @@ class CreatePostViewModel @Inject constructor(
         restoreDoneForKey = null
         _title.value = ""
         _content.value = ""
+        _audioUrl.value = ""
+    }
+
+    private fun uriToAudioMultipart(uri: Uri): MultipartBody.Part? {
+        val resolver = context.contentResolver
+        val mime = resolver.getType(uri) ?: "audio/mpeg"
+        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
+        val filename = when {
+            mime.contains("mpeg") || mime.contains("mp3") -> "post.mp3"
+            mime.contains("mp4") || mime.contains("m4a") -> "post.m4a"
+            mime.contains("aac") -> "post.aac"
+            mime.contains("ogg") -> "post.ogg"
+            mime.contains("wav") -> "post.wav"
+            mime.contains("webm") -> "post.webm"
+            else -> "post.mp3"
+        }
+        return MultipartBody.Part.createFormData("file", filename, body)
     }
 
     private companion object {

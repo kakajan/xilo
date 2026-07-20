@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Music2 } from "lucide-react";
 import { useEditorStore } from "@/stores/editor-store";
 import { Button } from "@/components/ui/button";
 import { apiUpload } from "@/lib/api-client";
@@ -13,6 +13,7 @@ export function MetadataSidebar() {
     slug,
     excerpt,
     coverImageUrl,
+    audioUrl,
     category,
     tags,
     status,
@@ -21,6 +22,7 @@ export function MetadataSidebar() {
     setSlug,
     setExcerpt,
     setCoverImageUrl,
+    setAudioUrl,
     setCategory,
     addTag,
     removeTag,
@@ -30,6 +32,7 @@ export function MetadataSidebar() {
 
   const [tagInput, setTagInput] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
 
   const handleTitleChange = (value: string) => {
     setTitle(value);
@@ -55,6 +58,20 @@ export function MetadataSidebar() {
       setCoverImageUrl(res.url);
     } catch {}
     setUploading(false);
+  };
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAudio(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await apiUpload<{ url: string }>("/api/media/upload", formData);
+      setAudioUrl(res.url);
+    } catch {}
+    setUploadingAudio(false);
+    e.target.value = "";
   };
 
   const handleAddTag = () => {
@@ -167,6 +184,39 @@ export function MetadataSidebar() {
           <label className="flex h-20 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed text-sm text-muted-foreground hover:bg-accent/50">
             {uploading ? "در حال آپلود..." : "برای آپلود کلیک کنید"}
             <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+          </label>
+        )}
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">فایل صوتی پست</label>
+        {audioUrl ? (
+          <div className="flex items-center gap-2 rounded-lg border bg-secondary/40 px-3 py-2">
+            <Music2 className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-xs" dir="ltr" title={audioUrl}>
+              {audioUrl.split("/").pop() || "صوت پیوست‌شده"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAudioUrl("")}
+              className="shrink-0 rounded-full p-1 hover:bg-background/80"
+              aria-label="حذف فایل صوتی"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <label className="flex h-14 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed text-sm text-muted-foreground hover:bg-accent/50">
+            <Music2 className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="min-w-0">
+              {uploadingAudio ? "در حال آپلود صوت..." : "آپلود فایل صوتی (اختیاری)"}
+            </span>
+            <input
+              type="file"
+              accept="audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/wav,audio/webm,.mp3,.m4a,.aac,.ogg,.wav,.webm"
+              className="hidden"
+              onChange={handleAudioUpload}
+            />
           </label>
         )}
       </div>

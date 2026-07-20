@@ -57,6 +57,7 @@ data class PostEntity(
     val content: String, // Stored as raw text/markdown
     val excerpt: String?,
     val coverImageUrl: String?,
+    val audioUrl: String? = null,
     val likeCount: Int = 0,
     val commentCount: Int = 0,
     val repostCount: Int = 0,

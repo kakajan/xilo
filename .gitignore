@@ -45,8 +45,17 @@ build/
 *.log
 coverage/
 
+# Local Gradle / agent cache (not the Android project .gradle/)
+.gradle-orch/
+
+# Python bytecode from local scripts
+**/__pycache__/
+*.py[cod]
+
 infra/docker-compose.override.yml
 infra/deploy/.env.deploy
+infra/deploy/.transfer-cache/
+infra/deploy/.deploy.lock
 infra/deploy/node_modules/
 infra/proxy/clients/
 infra/proxy/secrets/

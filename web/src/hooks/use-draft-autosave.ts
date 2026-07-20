@@ -7,11 +7,17 @@ const DEFAULT_DELAY_MS = 800;
 
 /** True once zustand persist has rehydrated from localStorage. */
 export function useEditorDraftHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(() => useEditorStore.persist.hasHydrated());
+  // Never touch `.persist` during SSR/prerender — it is undefined on the server.
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setHydrated(useEditorStore.persist.hasHydrated());
-    return useEditorStore.persist.onFinishHydration(() => setHydrated(true));
+    const api = useEditorStore.persist;
+    if (!api) {
+      setHydrated(true);
+      return;
+    }
+    setHydrated(api.hasHydrated());
+    return api.onFinishHydration(() => setHydrated(true));
   }, []);
 
   return hydrated;

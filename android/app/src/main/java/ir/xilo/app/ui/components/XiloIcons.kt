@@ -114,6 +114,9 @@ object XiloIcons {
     val Calendar = IconSax.Outline.Calendar
     val Grid = IconSax.Outline.Element4
     val Eye = IconSax.Outline.Eye
+    val Music = IconSax.Outline.Music
+    val Play = IconSax.Bold.Play
+    val Pause = IconSax.Bold.Pause
 }
 
 @Composable

@@ -57,6 +57,14 @@
     <string name="post_owner_delete_message">Delete this post permanently? This cannot be undone.</string>
     <string name="post_create_title">Create new post</string>
     <string name="post_create_publish">Publish</string>
+    <string name="post_audio_attach">Add audio file</string>
+    <string name="post_audio_uploading">Uploading audio…</string>
+    <string name="post_audio_attached">Audio attached</string>
+    <string name="post_audio_remove">Remove audio</string>
+    <string name="post_audio_title">Post audio</string>
+    <string name="post_audio_play">Play</string>
+    <string name="post_audio_pause">Pause</string>
+    <string name="error_audio_upload">Audio upload failed</string>
     <string name="tag_feed_label">Posts with this tag</string>
     <string name="tag_feed_empty">No posts with this hashtag yet</string>
     <string name="post_edit_title">Edit post</string>

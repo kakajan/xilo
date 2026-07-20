@@ -35,6 +35,47 @@ func TestProcessAvatar_JPEG(t *testing.T) {
 	}
 }
 
+func TestNormalizeMimeType_AudioExtensions(t *testing.T) {
+	cases := map[string]string{
+		"track.mp3":  "audio/mpeg",
+		"clip.m4a":   "audio/mp4",
+		"voice.aac":  "audio/aac",
+		"sound.ogg":  "audio/ogg",
+		"wave.wav":   "audio/wav",
+		"note.webm":  "audio/webm",
+	}
+	for name, want := range cases {
+		got := normalizeMimeType("application/octet-stream", name)
+		if got != want {
+			t.Fatalf("%s: got %q want %q", name, got, want)
+		}
+	}
+}
+
+func TestIsAllowedUploadMime_AudioAndImage(t *testing.T) {
+	if !isAllowedUploadMime("audio/mpeg") {
+		t.Fatal("expected audio/mpeg allowed")
+	}
+	if !isAllowedUploadMime("image/png") {
+		t.Fatal("expected image/png allowed")
+	}
+	if isAllowedUploadMime("video/mp4") {
+		t.Fatal("expected video/mp4 rejected")
+	}
+	if isAllowedUploadMime("application/pdf") {
+		t.Fatal("expected application/pdf rejected")
+	}
+}
+
+func TestMaxUploadSize_ByKind(t *testing.T) {
+	if maxUploadSize("audio/mpeg") != maxAudioFileSize {
+		t.Fatalf("audio max = %d, want %d", maxUploadSize("audio/mpeg"), maxAudioFileSize)
+	}
+	if maxUploadSize("image/jpeg") != maxImageFileSize {
+		t.Fatalf("image max = %d, want %d", maxUploadSize("image/jpeg"), maxImageFileSize)
+	}
+}
+
 func TestProcessAvatar_PNG(t *testing.T) {
 	src := image.NewRGBA(image.Rect(0, 0, 100, 300))
 	var buf bytes.Buffer

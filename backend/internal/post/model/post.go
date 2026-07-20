@@ -17,6 +17,7 @@ type Post struct {
 	Content      string     `json:"content" db:"content"`
 	ContentMD    string     `json:"content_md" db:"content_md"`
 	CoverImageURL *string   `json:"cover_image_url,omitempty" db:"cover_image_url"`
+	AudioURL     *string    `json:"audio_url,omitempty" db:"audio_url"`
 	Category     *string    `json:"category,omitempty" db:"category"`
 	Tags         pq.StringArray `json:"tags" db:"tags"`
 	Status       string     `json:"status" db:"status"`
@@ -70,6 +71,7 @@ type CreatePostRequest struct {
 	Content      string   `json:"content"`
 	ContentMD    string   `json:"content_md"`
 	CoverImageURL string  `json:"cover_image_url"`
+	AudioURL     string   `json:"audio_url"`
 	Category     string   `json:"category"`
 	Tags         []string `json:"tags"`
 	Status       string   `json:"status"`
@@ -85,6 +87,7 @@ type UpdatePostRequest struct {
 	Content      *string   `json:"content"`
 	ContentMD    *string   `json:"content_md"`
 	CoverImageURL *string  `json:"cover_image_url"`
+	AudioURL     *string   `json:"audio_url"`
 	Category     *string   `json:"category"`
 	Tags         *[]string `json:"tags"`
 	Status       *string   `json:"status"`

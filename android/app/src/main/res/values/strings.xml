@@ -57,6 +57,14 @@
     <string name="post_owner_delete_message">این پست برای همیشه حذف شود؟ این کار قابل بازگشت نیست.</string>
     <string name="post_create_title">ایجاد پست جدید</string>
     <string name="post_create_publish">انتشار</string>
+    <string name="post_audio_attach">افزودن فایل صوتی</string>
+    <string name="post_audio_uploading">در حال آپلود صوت…</string>
+    <string name="post_audio_attached">صوت پیوست‌شده</string>
+    <string name="post_audio_remove">حذف صوت</string>
+    <string name="post_audio_title">صوت این پست</string>
+    <string name="post_audio_play">پخش</string>
+    <string name="post_audio_pause">توقف</string>
+    <string name="error_audio_upload">آپلود فایل صوتی ناموفق بود</string>
     <string name="tag_feed_label">پست‌های این برچسب</string>
     <string name="tag_feed_empty">هنوز پستی با این هشتگ نیست</string>
     <string name="post_edit_title">ویرایش پست</string>

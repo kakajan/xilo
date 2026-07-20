@@ -28,6 +28,10 @@ func (m *mockPostRepo) Create(ctx context.Context, req *model.CreatePostRequest,
 		Content:   req.Content,
 		Tags:      pq.StringArray(req.Tags),
 	}
+	if req.AudioURL != "" {
+		u := req.AudioURL
+		post.AudioURL = &u
+	}
 	m.posts[post.ID] = post
 	return post, nil
 }
@@ -65,6 +69,14 @@ func (m *mockPostRepo) Update(ctx context.Context, id string, req *model.UpdateP
 	}
 	if req.Tags != nil {
 		p.Tags = *req.Tags
+	}
+	if req.AudioURL != nil {
+		if *req.AudioURL == "" {
+			p.AudioURL = nil
+		} else {
+			u := *req.AudioURL
+			p.AudioURL = &u
+		}
 	}
 	return p, nil
 }
@@ -165,6 +177,23 @@ func TestCreatePost_EmptyTitle(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for empty title")
+	}
+}
+
+func TestCreatePost_WithAudioURL(t *testing.T) {
+	repo := newMockPostRepo()
+	svc := NewPostService(repo, nil)
+
+	post, err := svc.Create(context.Background(), "author-1", &model.CreatePostRequest{
+		Title:    "Audio Post",
+		Status:   "draft",
+		AudioURL: "https://cdn.example/post.mp3",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if post.AudioURL == nil || *post.AudioURL != "https://cdn.example/post.mp3" {
+		t.Fatalf("expected audio_url, got %v", post.AudioURL)
 	}
 }
 

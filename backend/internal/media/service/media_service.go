@@ -31,27 +31,55 @@ func NewMediaService(repo *repository.MediaRepo, storageDriver storage.Driver) *
 	return &MediaService{repo: repo, storage: storageDriver}
 }
 
-var allowedMimeTypes = map[string]bool{
+var allowedImageMimeTypes = map[string]bool{
 	"image/jpeg": true,
 	"image/png":  true,
 	"image/webp": true,
 	"image/gif":  true,
 }
 
-var maxFileSize int64 = 10 * 1024 * 1024
+var allowedAudioMimeTypes = map[string]bool{
+	"audio/mpeg": true,
+	"audio/mp4":  true,
+	"audio/aac":  true,
+	"audio/ogg":  true,
+	"audio/wav":  true,
+	"audio/webm": true,
+	"audio/x-wav": true,
+	"audio/wave":  true,
+}
+
+var maxImageFileSize int64 = 10 * 1024 * 1024
+var maxAudioFileSize int64 = 50 * 1024 * 1024
 var maxImageDimension = 5000
+
+func isAllowedUploadMime(mimeType string) bool {
+	return allowedImageMimeTypes[mimeType] || allowedAudioMimeTypes[mimeType]
+}
+
+func maxUploadSize(mimeType string) int64 {
+	if allowedAudioMimeTypes[mimeType] {
+		return maxAudioFileSize
+	}
+	return maxImageFileSize
+}
 
 func (s *MediaService) Upload(ctx context.Context, userID string, filename string, reader io.Reader, size int64, mimeType string) (*model.UploadResponse, error) {
 	mimeType = normalizeMimeType(mimeType, filename)
-	if !allowedMimeTypes[mimeType] {
+	if !isAllowedUploadMime(mimeType) {
 		return nil, fmt.Errorf("unsupported mime type: %s", mimeType)
 	}
-	if size > maxFileSize {
-		return nil, fmt.Errorf("file too large: %d bytes (max %d)", size, maxFileSize)
+	maxSize := maxUploadSize(mimeType)
+	if size > maxSize {
+		return nil, fmt.Errorf("file too large: %d bytes (max %d)", size, maxSize)
 	}
 
 	ext := strings.ToLower(filepath.Ext(filename))
-	if ext == ".jpeg" || ext == "" {
+	if allowedAudioMimeTypes[mimeType] {
+		if ext == "" {
+			ext = audioExtForMime(mimeType)
+		}
+	} else if ext == ".jpeg" || ext == "" {
 		ext = ".jpg"
 	}
 
@@ -90,11 +118,11 @@ func (s *MediaService) Upload(ctx context.Context, userID string, filename strin
 
 func (s *MediaService) UploadAvatar(ctx context.Context, userID string, filename string, reader io.Reader, size int64, mimeType string) (*model.UploadResponse, error) {
 	mimeType = normalizeMimeType(mimeType, filename)
-	if !allowedMimeTypes[mimeType] {
+	if !allowedImageMimeTypes[mimeType] {
 		return nil, fmt.Errorf("unsupported mime type: %s", mimeType)
 	}
-	if size > maxFileSize {
-		return nil, fmt.Errorf("file too large: %d bytes (max %d)", size, maxFileSize)
+	if size > maxImageFileSize {
+		return nil, fmt.Errorf("file too large: %d bytes (max %d)", size, maxImageFileSize)
 	}
 
 	rawData, err := io.ReadAll(reader)
@@ -161,11 +189,42 @@ func normalizeMimeType(mimeType, filename string) string {
 		return "image/webp"
 	case ".gif":
 		return "image/gif"
+	case ".mp3":
+		return "audio/mpeg"
+	case ".m4a", ".mp4":
+		return "audio/mp4"
+	case ".aac":
+		return "audio/aac"
+	case ".ogg", ".oga":
+		return "audio/ogg"
+	case ".wav":
+		return "audio/wav"
+	case ".webm":
+		return "audio/webm"
 	default:
 		if mimeType == "" {
 			return "application/octet-stream"
 		}
 		return mimeType
+	}
+}
+
+func audioExtForMime(mimeType string) string {
+	switch mimeType {
+	case "audio/mpeg":
+		return ".mp3"
+	case "audio/mp4":
+		return ".m4a"
+	case "audio/aac":
+		return ".aac"
+	case "audio/ogg":
+		return ".ogg"
+	case "audio/wav", "audio/x-wav", "audio/wave":
+		return ".wav"
+	case "audio/webm":
+		return ".webm"
+	default:
+		return ".bin"
 	}
 }
 

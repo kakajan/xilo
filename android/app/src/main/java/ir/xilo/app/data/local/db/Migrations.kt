@@ -215,6 +215,12 @@ object XiloMigrations {
         }
     }
 
+    val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE posts ADD COLUMN audioUrl TEXT")
+        }
+    }
+
     val ALL = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
@@ -226,6 +232,7 @@ object XiloMigrations {
         MIGRATION_8_9,
         MIGRATION_9_10,
         MIGRATION_10_11,
-        MIGRATION_11_12
+        MIGRATION_11_12,
+        MIGRATION_12_13,
     )
 }

@@ -6,6 +6,7 @@ interface EditorState {
   slug: string;
   excerpt: string;
   coverImageUrl: string;
+  audioUrl: string;
   category: string;
   tags: string[];
   status: "draft" | "published";
@@ -21,6 +22,7 @@ interface EditorState {
   setSlug: (slug: string) => void;
   setExcerpt: (excerpt: string) => void;
   setCoverImageUrl: (url: string) => void;
+  setAudioUrl: (url: string) => void;
   setCategory: (category: string) => void;
   setTags: (tags: string[]) => void;
   addTag: (tag: string) => void;
@@ -39,6 +41,7 @@ const initial = {
   slug: "",
   excerpt: "",
   coverImageUrl: "",
+  audioUrl: "",
   category: "",
   tags: [] as string[],
   status: "draft" as const,
@@ -58,6 +61,7 @@ export const useEditorStore = create<EditorState>()(
       setSlug: (slug) => set({ slug, hasUnsaved: true }),
       setExcerpt: (excerpt) => set({ excerpt, hasUnsaved: true }),
       setCoverImageUrl: (coverImageUrl) => set({ coverImageUrl, hasUnsaved: true }),
+      setAudioUrl: (audioUrl) => set({ audioUrl, hasUnsaved: true }),
       setCategory: (category) => set({ category, hasUnsaved: true }),
       setTags: (tags) => set({ tags, hasUnsaved: true }),
       addTag: (tag) =>

@@ -189,6 +189,15 @@ fun PostDetailScreen(
                 }
             )
         },
+        bottomBar = {
+            val audio = post?.audioUrl
+            if (!audio.isNullOrBlank()) {
+                PostAudioPlayer(
+                    audioUrl = audio,
+                    title = post?.title.orEmpty(),
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
     ) { innerPadding ->

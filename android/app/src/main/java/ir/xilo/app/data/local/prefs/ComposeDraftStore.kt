@@ -18,27 +18,40 @@ class ComposeDraftStore @Inject constructor(
     data class Draft(
         val title: String,
         val content: String,
+        val audioUrl: String = "",
         val updatedAtMs: Long,
     ) {
-        val isEmpty: Boolean get() = title.isBlank() && content.isBlank()
+        val isEmpty: Boolean get() = title.isBlank() && content.isBlank() && audioUrl.isBlank()
     }
 
     fun load(key: String = KEY_NEW): Draft? {
         val title = prefs.getString(titleKey(key), null) ?: return null
         val content = prefs.getString(contentKey(key), null) ?: return null
+        val audioUrl = prefs.getString(audioKey(key), "") ?: ""
         val updatedAt = prefs.getLong(updatedKey(key), 0L)
-        val draft = Draft(title = title, content = content, updatedAtMs = updatedAt)
+        val draft = Draft(
+            title = title,
+            content = content,
+            audioUrl = audioUrl,
+            updatedAtMs = updatedAt,
+        )
         return draft.takeUnless { it.isEmpty }
     }
 
-    fun save(title: String, content: String, key: String = KEY_NEW) {
-        if (title.isBlank() && content.isBlank()) {
+    fun save(
+        title: String,
+        content: String,
+        audioUrl: String = "",
+        key: String = KEY_NEW,
+    ) {
+        if (title.isBlank() && content.isBlank() && audioUrl.isBlank()) {
             clear(key)
             return
         }
         prefs.edit()
             .putString(titleKey(key), title)
             .putString(contentKey(key), content)
+            .putString(audioKey(key), audioUrl)
             .putLong(updatedKey(key), System.currentTimeMillis())
             .apply()
     }
@@ -47,6 +60,7 @@ class ComposeDraftStore @Inject constructor(
         prefs.edit()
             .remove(titleKey(key))
             .remove(contentKey(key))
+            .remove(audioKey(key))
             .remove(updatedKey(key))
             .apply()
     }
@@ -56,6 +70,7 @@ class ComposeDraftStore @Inject constructor(
 
     private fun titleKey(key: String) = "title_$key"
     private fun contentKey(key: String) = "content_$key"
+    private fun audioKey(key: String) = "audio_$key"
     private fun updatedKey(key: String) = "updated_$key"
 
     companion object {

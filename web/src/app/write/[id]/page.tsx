@@ -56,6 +56,7 @@ export default function EditPage() {
         store.setSlug(post.slug);
         store.setExcerpt(post.excerpt || "");
         store.setCoverImageUrl(post.cover_image_url || "");
+        store.setAudioUrl(post.audio_url || "");
         store.setCategory(post.category || "");
         store.setTags(post.tags || []);
         store.setStatus(post.status as "draft" | "published");
@@ -121,6 +122,7 @@ export default function EditPage() {
           content: payloadJson,
           content_md: contentMd,
           cover_image_url: store.coverImageUrl || undefined,
+          audio_url: store.audioUrl,
           category: store.category || undefined,
           tags: mergedTags,
           status: store.status,

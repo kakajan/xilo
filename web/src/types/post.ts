@@ -7,6 +7,7 @@ export interface Post {
   content: string;
   content_md: string;
   cover_image_url: string;
+  audio_url?: string | null;
   category: string;
   tags: string[];
   status: "draft" | "scheduled" | "published" | "archived" | "deleted";
@@ -50,6 +51,7 @@ export interface CreatePostRequest {
   content: string;
   content_md?: string;
   cover_image_url?: string;
+  audio_url?: string;
   category?: string;
   tags?: string[];
   status?: string;

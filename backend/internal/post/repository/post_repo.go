@@ -36,17 +36,20 @@ func (r *PostRepo) Create(ctx context.Context, req *model.CreatePostRequest, aut
 	}
 
 	var post model.Post
+	audioURL := nullIfEmpty(req.AudioURL)
+	coverImageURL := nullIfEmpty(req.CoverImageURL)
+
 	err := r.db.GetContext(ctx, &post, `
 		INSERT INTO posts (author_id, title, slug, excerpt, content, content_md,
-		                   cover_image_url, category, tags, status, is_premium,
+		                   cover_image_url, audio_url, category, tags, status, is_premium,
 		                   word_count, reading_time, language, scheduled_at, published_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
-		          cover_image_url, category, tags, status, is_premium,
+		          cover_image_url, audio_url, category, tags, status, is_premium,
 		          word_count, reading_time, language, view_count, scheduled_at, published_at,
 		          created_at, updated_at
 	`, authorID, req.Title, slug, req.Excerpt, ensureJSON(req.Content), req.ContentMD,
-		req.CoverImageURL, req.Category, pq.Array(req.Tags), req.Status, req.IsPremium,
+		coverImageURL, audioURL, req.Category, pq.Array(req.Tags), req.Status, req.IsPremium,
 		wordCount, readingTime, req.Language, req.ScheduledAt, nil)
 	if err != nil {
 		return nil, fmt.Errorf("insert post: %w", err)
@@ -59,7 +62,7 @@ func (r *PostRepo) GetBySlug(ctx context.Context, slug string) (*model.Post, err
 	var post model.Post
 	err := r.db.GetContext(ctx, &post, `
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.content::text, p.content_md,
-		       p.cover_image_url, p.category, p.tags, p.status, p.is_premium,
+		       p.cover_image_url, p.audio_url, p.category, p.tags, p.status, p.is_premium,
 		       p.word_count, p.reading_time, p.language, p.view_count, p.scheduled_at, p.published_at,
 		       p.created_at, p.updated_at
 		FROM posts p
@@ -94,7 +97,7 @@ func (r *PostRepo) GetByID(ctx context.Context, id string) (*model.Post, error) 
 	var post model.Post
 	err := r.db.GetContext(ctx, &post, `
 		SELECT id, author_id, title, slug, excerpt, content::text, content_md,
-		       cover_image_url, category, tags, status, is_premium,
+		       cover_image_url, audio_url, category, tags, status, is_premium,
 		       word_count, reading_time, language, view_count, scheduled_at, published_at,
 		       created_at, updated_at
 		FROM posts
@@ -123,7 +126,8 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 	slug := coalesceStr(req.Slug, existing.Slug)
 	excerpt := coalesceStr(req.Excerpt, existing.Excerpt)
 	contentMD := coalesceStr(req.ContentMD, existing.ContentMD)
-	coverImageURL := coalescePtr(req.CoverImageURL, existing.CoverImageURL)
+	coverImageURL := coalesceOptionalURL(req.CoverImageURL, existing.CoverImageURL)
+	audioURL := coalesceOptionalURL(req.AudioURL, existing.AudioURL)
 	category := coalescePtr(req.Category, existing.Category)
 	language := coalesceStr(req.Language, existing.Language)
 
@@ -163,15 +167,15 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 	err = r.db.GetContext(ctx, &post, `
 		UPDATE posts
 		SET title = $2, slug = $3, excerpt = $4, content = $5, content_md = $6,
-		    cover_image_url = $7, category = $8, tags = $9, status = $10, is_premium = $11,
-		    word_count = $12, reading_time = $13, language = $14, scheduled_at = $15,
-		    published_at = COALESCE($16, published_at), updated_at = NOW()
+		    cover_image_url = $7, audio_url = $8, category = $9, tags = $10, status = $11, is_premium = $12,
+		    word_count = $13, reading_time = $14, language = $15, scheduled_at = $16,
+		    published_at = COALESCE($17, published_at), updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
-		          cover_image_url, category, tags, status, is_premium,
+		          cover_image_url, audio_url, category, tags, status, is_premium,
 		          word_count, reading_time, language, view_count, scheduled_at, published_at,
 		          created_at, updated_at
-	`, id, title, slug, excerpt, content, contentMD, coverImageURL, category, tags, status, isPremium,
+	`, id, title, slug, excerpt, content, contentMD, coverImageURL, audioURL, category, tags, status, isPremium,
 		wordCount, readingTime, language, req.ScheduledAt, publishedAt)
 	if err != nil {
 		return nil, fmt.Errorf("update post: %w", err)
@@ -203,7 +207,7 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 	}
 
 	query := `
-		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.cover_image_url,
+		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.cover_image_url, p.audio_url,
 		       p.category, p.tags, p.status, p.is_premium,
 		       p.word_count, p.reading_time, p.language, p.view_count, p.published_at,
 		       p.created_at, p.updated_at
@@ -428,6 +432,26 @@ func coalescePtr(newVal *string, existing *string) *string {
 		return newVal
 	}
 	return existing
+}
+
+func nullIfEmpty(s string) *string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// coalesceOptionalURL updates optional URL fields; empty string clears to NULL.
+func coalesceOptionalURL(newVal *string, existing *string) *string {
+	if newVal == nil {
+		return existing
+	}
+	trimmed := strings.TrimSpace(*newVal)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 func ensureJSON(content string) string {

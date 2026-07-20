@@ -253,6 +253,7 @@ class ProfileViewModel @Inject constructor(
         content = content,
         excerpt = excerpt,
         coverImageUrl = coverImageUrl,
+        audioUrl = audioUrl,
         likeCount = resolvedLikeCount(),
         commentCount = commentCount,
         repostCount = repostCount,

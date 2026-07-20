@@ -239,6 +239,7 @@ data class CreatePostRequest(
     val content: String, // Expected to be Tiptap JSON or text
     val contentMd: String? = null,
     val coverImageUrl: String? = null,
+    val audioUrl: String? = null,
     val category: String? = null,
     val tags: List<String>? = null,
     val status: String = "published",
@@ -251,6 +252,7 @@ data class UpdatePostRequest(
     val content: String? = null,
     val contentMd: String? = null,
     val excerpt: String? = null,
+    val audioUrl: String? = null,
     val tags: List<String>? = null,
     val status: String? = null,
 )
@@ -277,6 +279,7 @@ data class PostResponse(
     val contentMd: String = "",
     val excerpt: String? = null,
     val coverImageUrl: String? = null,
+    val audioUrl: String? = null,
     val category: String? = null,
     val tags: List<String> = emptyList(),
     val likeCount: Int = 0,

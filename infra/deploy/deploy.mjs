@@ -3,32 +3,45 @@
  * Xilo production deploy CLI — traffic-minimized by default.
  *
  * Default BUILD_MODE=transfer:
- *   build app images on your machine → docker save | ssh docker load → compose up --no-build
+ *   build app images locally → gzip tarball → resumable rsync → docker load → compose up --no-build
  * Never pulls/rebuilds postgres/redis/nats/meili/minio on sync.
+ *
+ * Resume: re-run the same sync command after a drop; rsync --partial continues the .tar.gz.
+ * Skip: if Iran already has the same image digest for the deploy tag, upload is skipped.
+ * Lock: only one deploy.mjs at a time (stale lock auto-cleared if PID is dead).
  *
  * Usage:
  *   node deploy.mjs <doctor|up|sync|sync-api|sync-web|sync-binary|logs|prune|rollback|proxy-install>
- *   [--dry-run] [--only=api,web] [--remote-build]
+ *   [--dry-run] [--only=api,web] [--remote-build] [--force-transfer]
  */
 import { spawn, execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
   readFileSync,
+  writeFileSync,
+  unlinkSync,
+  renameSync,
   chmodSync,
   copyFileSync,
   statSync,
   readdirSync,
+  createWriteStream,
 } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
+import { createGzip } from "node:zlib";
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "../..");
 const INFRA = join(REPO_ROOT, "infra");
 const ENV_PATH = join(__dirname, ".env.deploy");
+const TRANSFER_CACHE = join(__dirname, ".transfer-cache");
+const DEPLOY_LOCK = join(__dirname, ".deploy.lock");
 
 const require = createRequire(import.meta.url);
 try {
@@ -49,6 +62,7 @@ try {
 
 const dryRun = process.argv.includes("--dry-run");
 const forceRemoteBuild = process.argv.includes("--remote-build");
+const forceTransfer = process.argv.includes("--force-transfer");
 const cmd = process.argv.slice(2).find((a) => !a.startsWith("-"));
 
 const APP_SERVICES = ["api", "web"];
@@ -152,7 +166,7 @@ function scp(local, remotePath, target = "iran") {
   return run("scp", args, { inherit: true });
 }
 
-function rsyncToRemote(localDir, remoteDir, target = "iran") {
+function sshTransport(target = "iran") {
   const host = target === "de" ? requireEnv("DE_SSH_HOST") : requireEnv("SSH_HOST");
   const port = target === "de" ? process.env.DE_SSH_PORT || "2385" : process.env.SSH_PORT || "2212";
   const user = target === "de" ? process.env.DE_SSH_USER || "root" : process.env.SSH_USER || "root";
@@ -160,6 +174,68 @@ function rsyncToRemote(localDir, remoteDir, target = "iran") {
   const sshCmd = key
     ? `ssh -p ${port} -i ${key} -o IdentitiesOnly=yes -o BatchMode=yes`
     : `ssh -p ${port} -o BatchMode=yes`;
+  return { host, port, user, key, sshCmd };
+}
+
+function processAlive(pid) {
+  if (!pid || !Number.isFinite(pid)) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function acquireDeployLock() {
+  mkdirSync(__dirname, { recursive: true });
+  if (existsSync(DEPLOY_LOCK)) {
+    let prev = {};
+    try {
+      prev = JSON.parse(readFileSync(DEPLOY_LOCK, "utf8"));
+    } catch {
+      prev = {};
+    }
+    if (processAlive(prev.pid)) {
+      throw new Error(
+        `Another deploy is running (pid ${prev.pid}, cmd=${prev.cmd || "?"}, since=${prev.started || "?"}). ` +
+          `Stop it or delete ${DEPLOY_LOCK} if stale.`
+      );
+    }
+    console.warn(`→ clearing stale deploy lock (dead pid ${prev.pid || "?"})`);
+    try {
+      unlinkSync(DEPLOY_LOCK);
+    } catch {
+      /* ignore */
+    }
+  }
+  writeFileSync(
+    DEPLOY_LOCK,
+    JSON.stringify({ pid: process.pid, cmd: cmd || "unknown", started: new Date().toISOString() }, null, 2)
+  );
+  const release = () => {
+    try {
+      if (existsSync(DEPLOY_LOCK)) {
+        const cur = JSON.parse(readFileSync(DEPLOY_LOCK, "utf8"));
+        if (cur.pid === process.pid) unlinkSync(DEPLOY_LOCK);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+  process.on("exit", release);
+  process.on("SIGINT", () => {
+    release();
+    process.exit(130);
+  });
+  process.on("SIGTERM", () => {
+    release();
+    process.exit(143);
+  });
+}
+
+function rsyncToRemote(localDir, remoteDir, target = "iran") {
+  const { host, user, sshCmd } = sshTransport(target);
   const args = [
     "-az",
     "--delete",
@@ -169,6 +245,8 @@ function rsyncToRemote(localDir, remoteDir, target = "iran") {
     "--exclude", "android",
     "--exclude", "mobile",
     "--exclude", "infra/deploy/.env.deploy",
+    "--exclude", "infra/deploy/.transfer-cache",
+    "--exclude", "infra/deploy/.deploy.lock",
     "--exclude", "infra/proxy/clients",
     "--exclude", "infra/proxy/secrets",
     "--exclude", "**/api-gateway.linux",
@@ -199,6 +277,8 @@ function rsyncToRemote(localDir, remoteDir, target = "iran") {
         "--exclude=android",
         "--exclude=mobile",
         "--exclude=infra/deploy/.env.deploy",
+        "--exclude=infra/deploy/.transfer-cache",
+        "--exclude=infra/deploy/.deploy.lock",
         "--exclude=infra/proxy/clients",
         "--exclude=infra/proxy/secrets",
         "--exclude=**/build",
@@ -215,6 +295,187 @@ function rsyncToRemote(localDir, remoteDir, target = "iran") {
       remote.on("error", reject);
     });
   }
+}
+
+function formatBytes(n) {
+  if (!Number.isFinite(n) || n < 0) return "?";
+  if (n < 1024) return `${Math.round(n)} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatEta(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0 || seconds === Infinity) return "--:--";
+  const s = Math.round(seconds);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    return `${h}h${String(m % 60).padStart(2, "0")}m`;
+  }
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+function renderProgressLine({ label, done, total, startedAt, baseline = 0 }) {
+  const pct = total > 0 ? Math.min(100, (done / total) * 100) : 0;
+  const remaining = Math.max(0, total - done);
+  const elapsed = Math.max(0.001, (Date.now() - startedAt) / 1000);
+  const speed = Math.max(0, done - baseline) / elapsed;
+  const eta = speed > 0 ? remaining / speed : NaN;
+  const barW = 22;
+  const filled = Math.round((pct / 100) * barW);
+  const bar = `${"█".repeat(filled)}${"░".repeat(barW - filled)}`;
+  return (
+    `${label} [${bar}] ${pct.toFixed(1)}%  ` +
+    `${formatBytes(done)} / ${formatBytes(total)}  ` +
+    `left ${formatBytes(remaining)}  ` +
+    `${formatBytes(speed)}/s  ETA ${formatEta(eta)}`
+  );
+}
+
+function remoteFileSizeBytes(remoteFile, target = "iran") {
+  const r = tryRun("ssh", [
+    ...sshArgs(target),
+    `stat -c%s -- '${remoteFile}' 2>/dev/null || stat -f%z -- '${remoteFile}' 2>/dev/null || echo 0`,
+  ]);
+  const n = parseInt(String(r.out || "0").trim().split(/\s+/).pop() || "0", 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Resumable single-file upload with live total / remaining progress. */
+async function rsyncFileToRemote(localFile, remoteFile, target = "iran") {
+  const { host, user, sshCmd } = sshTransport(target);
+  const remoteDir = remoteFile.replace(/\/[^/]+$/, "");
+  ssh(`mkdir -p ${remoteDir}`, target);
+
+  const total = statSync(localFile).size;
+  const already = Math.min(total, remoteFileSizeBytes(remoteFile, target));
+  const remaining = Math.max(0, total - already);
+  console.log(`→ upload ${basename(localFile)} → ${remoteFile}`);
+  console.log(
+    `   total ${formatBytes(total)} | on server ${formatBytes(already)} | remaining ${formatBytes(remaining)}`
+  );
+
+  if (dryRun) {
+    console.log(`[dry-run] rsync --partial ${localFile}`);
+    return;
+  }
+  if (remaining === 0 && already === total && total > 0) {
+    console.log(`   already complete (${formatBytes(total)})`);
+    return;
+  }
+
+  const args = [
+    "-a",
+    "--partial",
+    "--append-verify",
+    "--info=progress2",
+    "-e",
+    sshCmd,
+    localFile,
+    `${user}@${host}:${remoteFile}`,
+  ];
+
+  const startedAt = Date.now();
+  const baseline = already;
+
+  await new Promise((resolveP, reject) => {
+    const child = spawn("rsync", args, {
+      cwd: REPO_ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let lastPrint = 0;
+    const print = (done) => {
+      const now = Date.now();
+      if (now - lastPrint < 200 && done < total) return;
+      lastPrint = now;
+      process.stdout.write(
+        `\r   ${renderProgressLine({ label: "↑", done, total, startedAt, baseline })}   `
+      );
+    };
+    print(already);
+
+    // Prefer parsing rsync progress2; also poll remote size as fallback.
+    const onChunk = (buf) => {
+      const text = buf.toString("utf8");
+      // progress2: " 12,345,678  56%  1.23MB/s    0:01:23" (bytes transferred this run may be absolute file bytes)
+      const m = text.match(/(\d[\d,]*)\s+(\d+)%/);
+      if (m) {
+        const bytes = parseInt(m[1].replace(/,/g, ""), 10);
+        if (Number.isFinite(bytes)) print(Math.min(total, Math.max(already, bytes)));
+      }
+    };
+    child.stdout.on("data", onChunk);
+    child.stderr.on("data", onChunk);
+
+    const ticker = setInterval(() => {
+      try {
+        print(Math.min(total, Math.max(already, remoteFileSizeBytes(remoteFile, target))));
+      } catch {
+        /* ignore poll errors mid-transfer */
+      }
+    }, 1500);
+
+    child.on("error", (err) => {
+      clearInterval(ticker);
+      reject(err);
+    });
+    child.on("close", (code) => {
+      clearInterval(ticker);
+      if (code === 0) {
+        print(total);
+        process.stdout.write("\n");
+        const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+        console.log(`   upload done ${formatBytes(total)} in ${secs}s`);
+        resolveP();
+      } else {
+        process.stdout.write("\n");
+        reject(new Error(`rsync exited ${code}`));
+      }
+    });
+  }).catch(async (e) => {
+    console.warn("WARN: rsync failed; falling back to scp (not resumable):", e.message || e);
+    await scpWithProgress(localFile, remoteFile, target, total);
+  });
+}
+
+async function scpWithProgress(localFile, remoteFile, target, total) {
+  const { host, port, user, key } = sshTransport(target);
+  const startedAt = Date.now();
+  console.log(`→ scp ${basename(localFile)} (${formatBytes(total)} total, not resumable)`);
+
+  await new Promise((resolveP, reject) => {
+    const args = ["-P", String(port), "-o", "BatchMode=yes"];
+    if (key) args.push("-i", key, "-o", "IdentitiesOnly=yes");
+    args.push(localFile, `${user}@${host}:${remoteFile}`);
+
+    const child = spawn("scp", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let lastPrint = 0;
+    const ticker = setInterval(() => {
+      const done = Math.min(total, remoteFileSizeBytes(remoteFile, target));
+      const now = Date.now();
+      if (now - lastPrint < 200) return;
+      lastPrint = now;
+      process.stdout.write(
+        `\r   ${renderProgressLine({ label: "↑", done, total, startedAt, baseline: 0 })}   `
+      );
+    }, 1000);
+
+    child.on("error", (err) => {
+      clearInterval(ticker);
+      reject(err);
+    });
+    child.on("close", (code) => {
+      clearInterval(ticker);
+      process.stdout.write("\n");
+      if (code === 0) {
+        console.log(`   scp done ${formatBytes(total)}`);
+        resolveP();
+      } else reject(new Error(`scp exited ${code}`));
+    });
+  });
 }
 
 function diskWarn(dfOut) {
@@ -266,9 +527,7 @@ function contentTag(services) {
     }
     if (s === "web") {
       hashDirFingerprint(hash, join(REPO_ROOT, "web"), [
-        "app",
-        "components",
-        "lib",
+        "src",
         "public",
         "package.json",
         "package-lock.json",
@@ -277,6 +536,7 @@ function contentTag(services) {
         "next.config.js",
         "tsconfig.json",
       ]);
+      hashDirFingerprint(hash, join(REPO_ROOT, "infra/docker"), ["Dockerfile.web"]);
       hash.update(process.env.NEXT_PUBLIC_API_URL || "https://brain.aile.ir");
       hash.update(process.env.NEXT_PUBLIC_WS_URL || "wss://brain.aile.ir");
       hash.update(process.env.NEXT_PUBLIC_URL || "https://aile.ir");
@@ -511,43 +771,190 @@ function buildLocal(services, tag) {
   if (services.includes("web")) buildWebLocal(tag);
 }
 
-function transferImages(services, tag) {
-  const refs = [];
-  if (services.includes("api")) refs.push(imageRef("api-gateway", tag), imageRef("api-gateway", "latest"));
-  if (services.includes("web")) refs.push(imageRef("web", tag), imageRef("web", "latest"));
-  // Unique refs for save (latest may point at same id as tag — docker save accepts duplicates)
-  const unique = [...new Set(refs)];
-  console.log(`→ transfer images → Iran: ${unique.join(", ")}`);
+function dockerImageId(ref) {
+  const out = run("docker", ["image", "inspect", "-f", "{{.Id}}", ref]).trim();
+  if (!out) throw new Error(`docker image inspect failed for ${ref}`);
+  return out;
+}
+
+function remoteDockerImageId(ref) {
+  const r = tryRun("ssh", [
+    ...sshArgs("iran"),
+    `docker image inspect -f '{{.Id}}' ${ref} 2>/dev/null || true`,
+  ]);
+  return (r.out || "").trim();
+}
+
+function imageShortId(id) {
+  return id.replace(/^sha256:/, "").slice(0, 12);
+}
+
+async function dockerSaveGzip(refs, outFile) {
+  mkdirSync(dirname(outFile), { recursive: true });
+  const partial = `${outFile}.partial`;
+  console.log(`→ pack ${basename(outFile)} ← ${refs.join(", ")}`);
   if (dryRun) {
-    console.log("[dry-run] docker save | ssh docker load");
-    return Promise.resolve();
+    console.log(`[dry-run] docker save ${refs.join(" ")} | gzip > ${outFile}`);
+    return;
+  }
+  if (existsSync(partial)) {
+    try {
+      unlinkSync(partial);
+    } catch {
+      /* ignore */
+    }
+  }
+  const save = spawn("docker", ["save", ...refs], {
+    cwd: REPO_ROOT,
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  const saveDone = new Promise((resolveP, reject) => {
+    save.on("error", reject);
+    save.on("close", (code) =>
+      code === 0 ? resolveP() : reject(new Error(`docker save exited ${code}`))
+    );
+  });
+
+  const startedAt = Date.now();
+  let written = 0;
+  let lastPrint = 0;
+  const counter = new Transform({
+    transform(chunk, _enc, cb) {
+      written += chunk.length;
+      const now = Date.now();
+      if (now - lastPrint >= 200) {
+        lastPrint = now;
+        const elapsed = Math.max(0.001, (now - startedAt) / 1000);
+        const speed = written / elapsed;
+        process.stdout.write(
+          `\r   ▣ packing  written ${formatBytes(written)}  ${formatBytes(speed)}/s   `
+        );
+      }
+      cb(null, chunk);
+    },
+  });
+
+  await Promise.all([
+    pipeline(save.stdout, createGzip({ level: 1 }), counter, createWriteStream(partial)),
+    saveDone,
+  ]);
+  process.stdout.write("\n");
+
+  // atomic replace
+  if (existsSync(outFile)) unlinkSync(outFile);
+  renameSync(partial, outFile);
+  const size = statSync(outFile).size;
+  const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+  console.log(`→ packed ${basename(outFile)} — total ${formatBytes(size)} in ${secs}s`);
+}
+
+function cachePaths(imageName, tag, imageId) {
+  const short = imageShortId(imageId);
+  const base = `${imageName.replace(/\//g, "_")}-${tag}-${short}`;
+  return {
+    archive: join(TRANSFER_CACHE, `${base}.tar.gz`),
+    meta: join(TRANSFER_CACHE, `${base}.id`),
+  };
+}
+
+async function ensurePackedImage(imageName, tag) {
+  const ref = imageRef(imageName, tag);
+  const id = dockerImageId(ref);
+  const { archive, meta } = cachePaths(imageName, tag, id);
+  mkdirSync(TRANSFER_CACHE, { recursive: true });
+  if (
+    existsSync(archive) &&
+    existsSync(meta) &&
+    readFileSync(meta, "utf8").trim() === id &&
+    statSync(archive).size > 1024
+  ) {
+    console.log(`→ reuse local cache ${basename(archive)} (${formatBytes(statSync(archive).size)})`);
+    return { ref, id, archive, imageName, tag };
+  }
+  // Drop stale packs for this imageName+tag (different digest)
+  for (const name of readdirSync(TRANSFER_CACHE)) {
+    if (name.startsWith(`${imageName.replace(/\//g, "_")}-${tag}-`) && name.endsWith(".tar.gz")) {
+      try {
+        unlinkSync(join(TRANSFER_CACHE, name));
+      } catch {
+        /* ignore */
+      }
+      const idFile = name.replace(/\.tar\.gz$/, ".id");
+      try {
+        unlinkSync(join(TRANSFER_CACHE, idFile));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  // Save tagged ref only (not :latest duplicate) — smaller metadata, same layers
+  await dockerSaveGzip([ref], archive);
+  writeFileSync(meta, id);
+  return { ref, id, archive, imageName, tag };
+}
+
+async function transferOneImage(imageName, tag, remoteDir) {
+  const ref = imageRef(imageName, tag);
+  const localId = dockerImageId(ref);
+  const remoteId = remoteDockerImageId(ref);
+
+  if (!forceTransfer && remoteId && remoteId === localId) {
+    console.log(`→ skip upload ${ref} (already on Iran @ ${imageShortId(localId)})`);
+    ssh(
+      `docker tag ${ref} xilo/${imageName}:latest 2>/dev/null || true; echo SKIP_OK`
+    );
+    return { skipped: true, ref, id: localId };
+  }
+  if (remoteId && remoteId !== localId) {
+    console.log(
+      `→ remote ${ref} differs (${imageShortId(remoteId)} → ${imageShortId(localId)}); uploading`
+    );
   }
 
-  return new Promise((resolveP, reject) => {
-    const save = spawn("docker", ["save", ...unique], {
-      cwd: REPO_ROOT,
-      stdio: ["ignore", "pipe", "inherit"],
-    });
-    const remote = spawn("ssh", [...sshArgs("iran"), "docker load"], {
-      stdio: [save.stdout, "inherit", "inherit"],
-    });
-    let rejected = false;
-    const fail = (err) => {
-      if (rejected) return;
-      rejected = true;
-      reject(err);
-    };
-    save.on("error", fail);
-    remote.on("error", fail);
-    remote.on("close", (code) => {
-      if (rejected) return;
-      if (code === 0) resolveP();
-      else reject(new Error(`docker load via ssh exited ${code}`));
-    });
-    save.on("close", (code) => {
-      if (code !== 0 && !rejected) fail(new Error(`docker save exited ${code}`));
-    });
-  });
+  const packed = await ensurePackedImage(imageName, tag);
+  const remoteImages = `${remoteDir}/images`;
+  const remoteFile = `${remoteImages}/${basename(packed.archive)}`;
+
+  await rsyncFileToRemote(packed.archive, remoteFile, "iran");
+
+  console.log(`→ docker load ${basename(packed.archive)} on Iran`);
+  ssh(`
+set -e
+test -f ${remoteFile}
+# size sanity: remote file must match local
+REMOTE_SIZE=$(stat -c%s ${remoteFile} 2>/dev/null || stat -f%z ${remoteFile})
+LOCAL_SIZE=${statSync(packed.archive).size}
+if [ "$REMOTE_SIZE" != "$LOCAL_SIZE" ]; then
+  echo "ERROR: remote size $REMOTE_SIZE != local $LOCAL_SIZE — re-run sync to resume"
+  exit 1
+fi
+gunzip -c ${remoteFile} | docker load
+docker tag ${ref} xilo/${imageName}:latest
+# free VPS disk after successful load (local cache kept for resume/rebuild)
+rm -f ${remoteFile}
+echo LOADED ${ref}
+`);
+  return { skipped: false, ref, id: localId, archive: packed.archive };
+}
+
+/**
+ * Transfer app images to Iran:
+ *  - one gzipped tarball per service (api-gateway / web)
+ *  - resumable rsync (--partial --append-verify)
+ *  - skip when remote already has the same image digest
+ */
+async function transferImages(services, tag) {
+  const remoteDir = process.env.REMOTE_DIR || "/opt/xilo";
+  const names = [];
+  if (services.includes("api")) names.push("api-gateway");
+  if (services.includes("web")) names.push("web");
+
+  console.log(`→ transfer images (gzip+rsync, resumable) tag=${tag} services=${names.join(",")}`);
+  if (forceTransfer) console.log("→ --force-transfer: ignoring remote digests");
+
+  for (const name of names) {
+    await transferOneImage(name, tag, remoteDir);
+  }
 }
 
 function composeServiceNames(services) {
@@ -875,13 +1282,26 @@ const commands = {
   "docker-proxy": configureDockerProxy,
 };
 
+const LOCKED_COMMANDS = new Set([
+  "up",
+  "sync",
+  "sync-api",
+  "sync-web",
+  "sync-binary",
+]);
+
 async function main() {
   if (!cmd || !commands[cmd]) {
-    console.log(`Usage: node deploy.mjs <${Object.keys(commands).join("|")}> [--dry-run] [--only=api,web] [--remote-build]`);
-    console.log(`Default BUILD_MODE=transfer (local build → docker load). Avoids Iran npm/go downloads.`);
+    console.log(
+      `Usage: node deploy.mjs <${Object.keys(commands).join("|")}> [--dry-run] [--only=api,web] [--remote-build] [--force-transfer]`
+    );
+    console.log(
+      `Default BUILD_MODE=transfer: local build → gzip → resumable rsync → docker load. Re-run the same command to resume.`
+    );
     process.exit(cmd ? 1 : 0);
   }
   try {
+    if (LOCKED_COMMANDS.has(cmd)) acquireDeployLock();
     await commands[cmd]();
   } catch (e) {
     console.error("ERROR:", e.message || e);

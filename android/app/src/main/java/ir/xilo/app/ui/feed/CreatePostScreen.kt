@@ -1,13 +1,18 @@
 package ir.xilo.app.ui.feed
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -18,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -29,9 +35,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
@@ -55,6 +63,8 @@ fun CreatePostScreen(
 ) {
     val title by viewModel.title.collectAsState()
     val content by viewModel.content.collectAsState()
+    val audioUrl by viewModel.audioUrl.collectAsState()
+    val isUploadingAudio by viewModel.isUploadingAudio.collectAsState()
     val isSubmitting by viewModel.isSubmitting.collectAsState()
     val isLoadingEdit by viewModel.isLoadingEdit.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -64,6 +74,12 @@ fun CreatePostScreen(
     val tagSuggestions by viewModel.tagSuggestions.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val isEditing = !editPostId.isNullOrBlank()
+
+    val audioPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) viewModel.uploadAudio(uri)
+    }
 
     LaunchedEffect(editPostId) {
         viewModel.prepare(editPostId)
@@ -108,7 +124,7 @@ fun CreatePostScreen(
                 actions = {
                     Button(
                         onClick = { viewModel.submit() },
-                        enabled = !isSubmitting && !isLoadingEdit,
+                        enabled = !isSubmitting && !isLoadingEdit && !isUploadingAudio,
                         colors = ButtonDefaults.buttonColors(containerColor = XiloBlue),
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
@@ -137,7 +153,7 @@ fun CreatePostScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
-            if (isSubmitting || isLoadingEdit) {
+            if (isSubmitting || isLoadingEdit || isUploadingAudio) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = XiloBlue)
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -151,7 +167,63 @@ fun CreatePostScreen(
                 errorText = fieldErrors[PostField.Title],
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (audioUrl.isNotBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                ) {
+                    XiloIcon(
+                        icon = XiloIcons.Music,
+                        contentDescription = null,
+                        tint = XiloBlue,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = audioUrl.substringAfterLast('/').ifBlank {
+                            stringResource(R.string.post_audio_attached)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = viewModel::clearAudio) {
+                        XiloIcon(
+                            icon = XiloIcons.Close,
+                            contentDescription = stringResource(R.string.post_audio_remove),
+                        )
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { audioPicker.launch("audio/*") },
+                    enabled = !isUploadingAudio && !isSubmitting,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                ) {
+                    XiloIcon(
+                        icon = XiloIcons.Music,
+                        contentDescription = null,
+                        tint = XiloBlue,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(end = 0.dp),
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = stringResource(
+                            if (isUploadingAudio) R.string.post_audio_uploading else R.string.post_audio_attach
+                        ),
+                    )
+                }
+            }
 
             if (tagSuggestions.isNotEmpty()) {
                 LazyRow(
