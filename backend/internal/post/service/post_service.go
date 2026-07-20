@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -25,6 +26,7 @@ type PostRepository interface {
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context, params model.PostListParams) ([]*model.Post, string, error)
 	EnrichPosts(ctx context.Context, posts []*model.Post, viewerID string) error
+	RecordRepost(ctx context.Context, userID, postID string) error
 	RecordView(ctx context.Context, postID, userID, sessionID string) (*model.RecordViewResult, error)
 	SuggestTags(ctx context.Context, query string, limit int) ([]model.TagSuggestion, error)
 	TrendingTags(ctx context.Context, limit int) ([]model.TagSuggestion, error)
@@ -46,6 +48,33 @@ func (s *PostService) SetNotifier(n *notifsvc.NotificationService) {
 }
 
 func (s *PostService) Create(ctx context.Context, authorID string, req *model.CreatePostRequest) (*model.Post, error) {
+	quotedID := ""
+	if req.QuotedPostID != "" {
+		quotedID = req.QuotedPostID
+		quoted, err := s.repo.GetByID(ctx, quotedID)
+		if err != nil || quoted == nil {
+			return nil, fmt.Errorf("quoted post not found")
+		}
+		if quoted.Status != "published" || quoted.DeletedAt != nil {
+			return nil, fmt.Errorf("quoted post not found")
+		}
+		req.QuotedPostID = quoted.ID
+		if req.Status == "" {
+			req.Status = "published"
+		}
+		if req.Title == "" {
+			req.Title = quoteTitleFromContent(req.ContentMD)
+		}
+		if req.Excerpt == "" && req.ContentMD != "" {
+			runes := []rune(req.ContentMD)
+			if len(runes) > 200 {
+				req.Excerpt = string(runes[:200])
+			} else {
+				req.Excerpt = req.ContentMD
+			}
+		}
+	}
+
 	if verr := validator.ValidateTitle(req.Title); verr != nil {
 		return nil, fmt.Errorf("%s: %s", verr.Field, verr.Message)
 	}
@@ -68,10 +97,28 @@ func (s *PostService) Create(ctx context.Context, authorID string, req *model.Cr
 	if err != nil {
 		return nil, err
 	}
+	if quotedID != "" && post.Status == "published" {
+		if err := s.repo.RecordRepost(ctx, authorID, quotedID); err != nil {
+			slog.Warn("failed to record quote repost", "quoted_post_id", quotedID, "error", err)
+		}
+	}
 	if post.Status == "published" {
 		s.notifyFollowersPublished(post)
 	}
+	_ = s.repo.EnrichPosts(ctx, []*model.Post{post}, authorID)
 	return post, nil
+}
+
+func quoteTitleFromContent(contentMD string) string {
+	text := strings.TrimSpace(contentMD)
+	if text == "" {
+		return "نقل‌قول"
+	}
+	runes := []rune(text)
+	if len(runes) > 80 {
+		return string(runes[:80]) + "…"
+	}
+	return text
 }
 
 func (s *PostService) GetBySlug(ctx context.Context, slug string, viewerID string) (*model.Post, error) {

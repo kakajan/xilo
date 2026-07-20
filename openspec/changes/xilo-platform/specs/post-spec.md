@@ -81,16 +81,21 @@ A post can be in one of these states:
 
 ### REQ-POST-011: Post Reposts
 
-**Given** an authenticated user  
+**Given** an authenticated user with role Author+ (`author`, `editor`, `admin`, or `superadmin`)  
 **When** they repost a published post  
 **Then** the repost is persisted, `repost_count` increments, and `is_reposted` is true for that viewer.
 
-**Given** an authenticated user who already reposted a post  
+**Given** an authenticated Author+ user who already reposted a post  
 **When** they remove the repost  
 **Then** the repost row is deleted and `repost_count` decrements.
 
+**Given** an authenticated Reader (no create-post permission)  
+**When** they view a post or feed card  
+**Then** the repost control is hidden, and `POST/DELETE /api/posts/:id/repost` returns forbidden.
+
 **Notes:**
 - One repost per user per post (unique on `user_id`, `post_id`)
+- Repost is limited to the same roles that can publish posts (Author+)
 - Repost is distinct from external share (`share_clicked` analytics)
 
 ### REQ-POST-009: Reading Time
@@ -136,8 +141,8 @@ Posts display estimated reading time calculated as: `word_count / 200` words-per
 | POST | `/api/posts/:id/reactions` | Reader+ | Toggle reaction |
 | POST | `/api/posts/:id/bookmark` | Reader+ | Toggle bookmark |
 | DELETE | `/api/posts/:id/bookmark` | Reader+ | Remove bookmark |
-| POST | `/api/posts/:id/repost` | Reader+ | Repost a post |
-| DELETE | `/api/posts/:id/repost` | Reader+ | Remove repost |
+| POST | `/api/posts/:id/repost` | Author+ | Repost a post |
+| DELETE | `/api/posts/:id/repost` | Author+ | Remove repost |
 | GET | `/api/posts/feed` | Reader+ | Personalized feed |
 | GET | `/api/posts/my/drafts` | Author+ | List own drafts |
 | GET | `/api/tags/suggest?q=` | None | Hashtag autocomplete |

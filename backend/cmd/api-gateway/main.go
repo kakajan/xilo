@@ -297,8 +297,9 @@ func main() {
 	posts := app.Group("/api/posts")
 	posts.Get("/", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.List)
 	// Static subpaths before /:slug so "repost" is not captured as a slug.
-	posts.Post("/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
-	posts.Delete("/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
+	// Repost is limited to roles that can publish posts (author+).
+	posts.Post("/:id/repost", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin", "superadmin"), socialH.ToggleRepost)
+	posts.Delete("/:id/repost", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin", "superadmin"), socialH.ToggleRepost)
 	posts.Post("/:id/view", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.RecordView)
 	posts.Get("/:slug", applyPublicRateLimit, authmw.OptionalAuth(jwtMgr), postH.GetBySlug)
 	// Only authors and elevated roles may create posts; readers may comment and chat.
@@ -382,8 +383,8 @@ func main() {
 	social.Post("/posts/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleBookmark)
 	social.Delete("/posts/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleBookmark)
 	// Keep /api/posts/:id/repost aliases for clients that call the social group path.
-	social.Post("/posts/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
-	social.Delete("/posts/:id/repost", authmw.AuthRequired(jwtMgr), socialH.ToggleRepost)
+	social.Post("/posts/:id/repost", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin", "superadmin"), socialH.ToggleRepost)
+	social.Delete("/posts/:id/repost", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("author", "editor", "admin", "superadmin"), socialH.ToggleRepost)
 	social.Get("/bookmarks", authmw.AuthRequired(jwtMgr), socialH.ListBookmarks)
 	social.Get("/bookmarks/comments", authmw.AuthRequired(jwtMgr), socialH.ListCommentBookmarks)
 	social.Post("/comments/:id/bookmark", authmw.AuthRequired(jwtMgr), socialH.ToggleCommentBookmark)

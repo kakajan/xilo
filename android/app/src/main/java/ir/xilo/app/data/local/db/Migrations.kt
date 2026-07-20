@@ -215,6 +215,19 @@ object XiloMigrations {
         }
     }
 
+    val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedPostId TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedTitle TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedSlug TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedExcerpt TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedAuthorName TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedAuthorUsername TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedAuthorAvatar TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCoverImageUrl TEXT")
+        }
+    }
+
     val MIGRATION_12_13 = object : Migration(12, 13) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE posts ADD COLUMN audioUrl TEXT")
@@ -234,5 +247,6 @@ object XiloMigrations {
         MIGRATION_10_11,
         MIGRATION_11_12,
         MIGRATION_12_13,
+        MIGRATION_13_14,
     )
 }

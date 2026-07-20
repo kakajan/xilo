@@ -93,6 +93,12 @@ fun MainNavigation() {
             onEditPost = { postId ->
               backStack.add(CreatePostKey(editPostId = postId))
             },
+            onQuotePost = { postId ->
+              backStack.add(CreatePostKey(quotedPostId = postId))
+            },
+            onQuotedPostClick = { quotedSlug ->
+              if (quotedSlug.isNotBlank()) backStack.add(PostDetailKey(slug = quotedSlug))
+            },
             onHashtagClick = { tag ->
               if (tag.isNotBlank()) backStack.add(TagFeedKey(tag = tag))
             },
@@ -111,6 +117,9 @@ fun MainNavigation() {
             },
             onAuthorClick = { username ->
               if (username.isNotBlank()) backStack.add(ProfileKey(username))
+            },
+            onQuotePost = { postId ->
+              backStack.add(CreatePostKey(quotedPostId = postId))
             },
             modifier = Modifier.fillMaxSize(),
           )
@@ -198,6 +207,7 @@ fun MainNavigation() {
         entry<CreatePostKey> { key ->
           ir.xilo.app.ui.feed.CreatePostScreen(
             editPostId = key.editPostId,
+            quotedPostId = key.quotedPostId,
             onBackClick = { backStack.removeLastOrNull() },
             onPostCreated = { backStack.removeLastOrNull() },
             modifier = Modifier.fillMaxSize()

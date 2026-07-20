@@ -3,9 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Bookmark, Search } from "lucide-react";
-import { listChats, getSavedMessagesChat, listChatFolders } from "@/lib/api/chats";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bookmark, Search, Trash2 } from "lucide-react";
+import {
+  listChats,
+  getSavedMessagesChat,
+  listChatFolders,
+  leaveChat,
+} from "@/lib/api/chats";
 import { useAuthStore } from "@/stores/auth-store";
 import { useChatStore } from "@/stores/chat-store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,10 +22,12 @@ import type { Chat } from "@/types/chat";
 
 export default function ChatListPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isAuthenticated, isLoading: authLoading, authChecked, user } = useAuthStore();
   const setChatsCache = useChatStore((s) => s.setChatsCache);
   const [q, setQ] = useState("");
   const [folderId, setFolderId] = useState<string | "all">("all");
+  const [error, setError] = useState<string | null>(null);
   const formatDate = useFormatDate();
 
   useEffect(() => {
@@ -32,8 +39,9 @@ export default function ChatListPage() {
     enabled: isAuthenticated,
     queryFn: async () => {
       const res = await listChats();
-      setChatsCache(res.data ?? []);
-      return res.data ?? [];
+      const rows = (res.data ?? []).filter((c) => !c.is_archived && c.type !== "saved");
+      setChatsCache(rows);
+      return rows;
     },
   });
 
@@ -48,6 +56,26 @@ export default function ChatListPage() {
     enabled: isAuthenticated,
     queryFn: getSavedMessagesChat,
     retry: false,
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (chatId: string) => leaveChat(chatId),
+    onMutate: async (chatId) => {
+      setError(null);
+      await queryClient.cancelQueries({ queryKey: ["chats"] });
+      const previous = queryClient.getQueryData<Chat[]>(["chats"]);
+      queryClient.setQueryData<Chat[]>(["chats"], (prev) =>
+        (prev ?? []).filter((c) => c.id !== chatId)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(["chats"], ctx.previous);
+      setError("حذف گفتگو ناموفق بود");
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
   });
 
   const filtered = useMemo(() => {
@@ -80,6 +108,12 @@ export default function ChatListPage() {
           <span className="min-w-0">ذخیره‌ها</span>
         </Link>
       </div>
+
+      {error ? (
+        <p className="mb-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
 
       <div className="relative mb-3">
         <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -134,12 +168,12 @@ export default function ChatListPage() {
             const title = chatTitle(chat, user?.id);
             const avatar = chatAvatar(chat, user?.id);
             return (
-              <li key={chat.id}>
+              <li key={chat.id} className="flex items-center gap-1">
                 <Link
                   href={`/chat/${chat.id}`}
-                  className="flex min-h-16 items-center gap-3 px-1 py-3 hover:bg-muted/50"
+                  className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-1 py-3 hover:bg-muted/50"
                 >
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-12 w-12 shrink-0">
                     {avatar ? <AvatarImage src={avatar} alt="" /> : null}
                     <AvatarFallback>{getInitials(title)}</AvatarFallback>
                   </Avatar>
@@ -164,6 +198,19 @@ export default function ChatListPage() {
                     </div>
                   </div>
                 </Link>
+                <button
+                  type="button"
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
+                  aria-label="حذف گفتگو"
+                  title="حذف گفتگو"
+                  disabled={deleteMut.isPending}
+                  onClick={() => {
+                    if (!window.confirm(`گفتگوی «${title}» حذف شود؟`)) return;
+                    deleteMut.mutate(chat.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </li>
             );
           })}

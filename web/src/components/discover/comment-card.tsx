@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getInitials, cn } from "@/lib/utils";
+import { getInitials } from "@/lib/utils";
 import {
   AuthorHandleMeta,
   UsernameHandle,
 } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
+import { CommentActions } from "@/components/comment/comment-actions";
+import {
+  commentDislikeCount,
+  commentLikeCount,
+} from "@/lib/comment-reactions";
 import type { Comment } from "@/types/comment";
 
 export interface DiscoverComment extends Comment {
@@ -21,11 +25,27 @@ export interface DiscoverComment extends Comment {
 
 interface CommentCardProps {
   comment: DiscoverComment;
-  onLike?: () => void;
   liked?: boolean;
+  disliked?: boolean;
+  bookmarked?: boolean;
+  onReply?: () => void;
+  onLike?: () => void;
+  onDislike?: () => void;
+  onBookmark?: () => void;
+  onReport?: () => void;
 }
 
-export function CommentCard({ comment, onLike, liked }: CommentCardProps) {
+export function CommentCard({
+  comment,
+  liked,
+  disliked,
+  bookmarked,
+  onReply,
+  onLike,
+  onDislike,
+  onBookmark,
+  onReport,
+}: CommentCardProps) {
   const formatDate = useFormatDate();
   const name = comment.author?.display_name || comment.author?.username || "کاربر";
   const username = (comment.author?.username || comment.author_username || "").trim();
@@ -36,11 +56,10 @@ export function CommentCard({ comment, onLike, liked }: CommentCardProps) {
   const href =
     postSlug && postAuthor
       ? `/${postAuthor}/${postSlug}?reply=${encodeURIComponent(comment.id)}`
-      : postSlug
-        ? `#`
-        : "#";
+      : "#";
   const canOpenPost = Boolean(postSlug && postAuthor);
-  const likes = comment.reactions?.like ?? comment.reactions?.heart ?? comment.like_count ?? 0;
+  const likes = commentLikeCount(comment.reactions, comment.like_count ?? 0);
+  const dislikes = commentDislikeCount(comment.reactions);
   const replies = comment.reply_count ?? comment.replies?.length ?? 0;
   const text =
     comment.content.length > 280
@@ -49,9 +68,9 @@ export function CommentCard({ comment, onLike, liked }: CommentCardProps) {
 
   return (
     <article className="border-b border-border py-4">
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex items-start gap-3">
         {profileHref ? (
-          <Link href={profileHref}>
+          <Link href={profileHref} className="shrink-0">
             <Avatar className="h-10 w-10">
               {comment.author?.avatar_url ? (
                 <AvatarImage src={comment.author.avatar_url} alt="" />
@@ -60,75 +79,62 @@ export function CommentCard({ comment, onLike, liked }: CommentCardProps) {
             </Avatar>
           </Link>
         ) : (
-          <Avatar className="h-10 w-10">
+          <Avatar className="h-10 w-10 shrink-0">
             {comment.author?.avatar_url ? (
               <AvatarImage src={comment.author.avatar_url} alt="" />
             ) : null}
             <AvatarFallback>{getInitials(name)}</AvatarFallback>
           </Avatar>
         )}
-        <div className="min-w-0">
-          {profileHref ? (
-            <Link href={profileHref} className="font-semibold hover:underline">
-              {name}
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex min-w-0 flex-wrap items-center gap-1">
+            {profileHref ? (
+              <Link href={profileHref} className="min-w-0 font-semibold hover:underline">
+                {name}
+              </Link>
+            ) : (
+              <span className="min-w-0 font-semibold">{name}</span>
+            )}
+            <AuthorHandleMeta
+              username={username}
+              timeLabel={formatDate(comment.created_at)}
+            />
+          </div>
+
+          {canOpenPost ? (
+            <Link href={href} className="block">
+              <p className="mb-2 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
+              {comment.post_title ? (
+                <p className="mb-2 text-sm text-primary">
+                  روی پست: {comment.post_title}
+                  {postAuthor ? (
+                    <>
+                      {" از "}
+                      <UsernameHandle username={postAuthor} />
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
             </Link>
           ) : (
-            <span className="font-semibold">{name}</span>
+            <p className="mb-2 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
           )}
-          <AuthorHandleMeta
-            username={username}
-            timeLabel={formatDate(comment.created_at)}
+
+          <CommentActions
+            replyCount={replies}
+            likeCount={likes}
+            dislikeCount={dislikes}
+            liked={liked}
+            disliked={disliked}
+            bookmarked={bookmarked}
+            onReply={onReply}
+            onLike={onLike}
+            onDislike={onDislike}
+            onBookmark={onBookmark}
+            onReport={onReport}
           />
         </div>
-      </div>
-
-      {canOpenPost ? (
-        <Link href={href} className="block">
-          <p className="mb-2 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
-          {comment.post_title && (
-            <p className="mb-2 text-sm text-primary">
-              روی پست: {comment.post_title}
-              {postAuthor ? (
-                <>
-                  {" از "}
-                  <UsernameHandle username={postAuthor} />
-                </>
-              ) : null}
-            </p>
-          )}
-        </Link>
-      ) : (
-        <div className="block">
-          <p className="mb-2 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
-        </div>
-      )}
-
-      <div className="flex items-center gap-1 text-muted-foreground">
-        <button
-          type="button"
-          onClick={onLike}
-          className={cn(
-            "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 hover:bg-accent",
-            liked && "text-[#F91880]"
-          )}
-        >
-          <Heart className={cn("h-4 w-4", liked && "fill-current")} />
-          <span className="text-xs">{likes}</span>
-        </button>
-        {canOpenPost ? (
-          <Link
-            href={href}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 hover:bg-accent hover:text-primary"
-          >
-            <MessageCircle className="h-4 w-4" />
-            <span className="text-xs">{replies}</span>
-          </Link>
-        ) : (
-          <span className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2">
-            <MessageCircle className="h-4 w-4" />
-            <span className="text-xs">{replies}</span>
-          </span>
-        )}
       </div>
     </article>
   );

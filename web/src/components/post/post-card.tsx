@@ -6,6 +6,7 @@ import { Bookmark, Eye, Heart, MessageCircle, Share2 } from "lucide-react";
 import { cn, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RepostButton } from "@/components/post/repost-button";
+import { QuotedPostCard } from "@/components/post/quoted-post-card";
 import { PostOwnerMenu } from "@/components/post/post-owner-menu";
 import { HashtagText } from "@/components/post/hashtag-text";
 import { AuthorHandleMeta, TimeLabel } from "@/components/user/username-handle";
@@ -130,6 +131,7 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
           <HashtagText text={post.excerpt} />
         </p>
       )}
+      {post.quoted_post ? <QuotedPostCard quote={post.quoted_post} /> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1">
@@ -163,6 +165,7 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
           <div onClick={(e) => e.stopPropagation()}>
             <RepostButton
               postId={post.id}
+              postSlug={post.slug}
               repostCount={post.repost_count ?? 0}
               reposted={post.is_reposted ?? false}
             />

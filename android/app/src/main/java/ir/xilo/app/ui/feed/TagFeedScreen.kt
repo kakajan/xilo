@@ -42,12 +42,14 @@ fun TagFeedScreen(
     onPostClick: (String) -> Unit,
     onHashtagClick: (String) -> Unit,
     onAuthorClick: (String) -> Unit = {},
+    onQuotePost: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: TagFeedViewModel = hiltViewModel(),
 ) {
     val posts by viewModel.posts.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
+    val canRepost by viewModel.canRepost.collectAsState()
 
     LaunchedEffect(tag) {
         viewModel.load(tag)
@@ -138,6 +140,16 @@ fun TagFeedScreen(
                             onLikeClick = { viewModel.toggleLike(post) },
                             onBookmarkClick = { viewModel.toggleBookmark(post) },
                             onCommentClick = { onPostClick(post.slug) },
+                            onRepostClick = if (canRepost) {
+                                { viewModel.toggleRepost(post) }
+                            } else {
+                                null
+                            },
+                            onQuoteClick = if (canRepost) {
+                                { onQuotePost(post.id) }
+                            } else {
+                                null
+                            },
                             onAuthorClick = {
                                 if (post.authorUsername.isNotBlank()) {
                                     onAuthorClick(post.authorUsername)

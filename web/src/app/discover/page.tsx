@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
@@ -8,6 +9,15 @@ import { CommentCard, type DiscoverComment } from "@/components/discover/comment
 import { PostCard } from "@/components/post/post-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { bookmarkComment, unbookmarkComment } from "@/lib/api/bookmarks";
+import {
+  commentDislikeCount,
+  commentLikeCount,
+  hasViewerReaction,
+  nextVoteState,
+  toggleCommentVote,
+  type CommentVote,
+} from "@/lib/comment-reactions";
 import type { Comment, CommentListResponse } from "@/types/comment";
 import type { Post, PostListResponse } from "@/types/post";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -40,6 +50,8 @@ function toDiscoverComment(
   extras?: Partial<DiscoverComment>
 ): DiscoverComment {
   const api = c as DiscoverApiComment;
+  const likes = commentLikeCount(c.reactions, api.like_count ?? 0);
+  const dislikes = commentDislikeCount(c.reactions);
   return {
     ...c,
     post_slug: extras?.post_slug ?? api.post?.slug ?? extras?.post_slug,
@@ -47,17 +59,31 @@ function toDiscoverComment(
     post_author_username: extras?.post_author_username,
     author_username: c.author?.username,
     reply_count: api.reply_count ?? c.replies?.length ?? 0,
-    reactions: c.reactions ?? (api.like_count != null ? { like: api.like_count } : undefined),
+    reactions: {
+      ...(c.reactions ?? {}),
+      like: likes,
+      dislike: dislikes,
+    },
+    viewer_reactions: c.viewer_reactions,
+    is_bookmarked: c.is_bookmarked ?? false,
   };
 }
 
+function postHref(comment: DiscoverComment) {
+  const postSlug = comment.post_slug?.trim() || "";
+  const postAuthor = (comment.post_author_username || "").trim();
+  if (!postSlug || !postAuthor) return null;
+  return `/${postAuthor}/${postSlug}?reply=${encodeURIComponent(comment.id)}`;
+}
+
 export default function DiscoverPage() {
+  const router = useRouter();
   const [searchActive, setSearchActive] = useState(false);
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query, 300);
   const [comments, setComments] = useState<DiscoverComment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [liked, setLiked] = useState<Record<string, boolean>>({});
+  const [info, setInfo] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -116,6 +142,12 @@ export default function DiscoverPage() {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!info) return;
+    const t = setTimeout(() => setInfo(null), 2500);
+    return () => clearTimeout(t);
+  }, [info]);
+
   const { data: searchPosts, isFetching: searching } = useQuery({
     queryKey: ["discover-search", debounced],
     enabled: searchActive && debounced.trim().length > 0,
@@ -137,16 +169,48 @@ export default function DiscoverPage() {
     },
   });
 
-  const toggleLike = async (comment: DiscoverComment) => {
-    const prev = liked[comment.id] ?? false;
-    setLiked((m) => ({ ...m, [comment.id]: !prev }));
+  const patchComment = (id: string, patch: Partial<DiscoverComment>) => {
+    setComments((list) => list.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  };
+
+  const toggleVote = async (comment: DiscoverComment, reaction: CommentVote) => {
+    const liked = hasViewerReaction(comment.viewer_reactions, "like");
+    const disliked = hasViewerReaction(comment.viewer_reactions, "dislike");
+    const currentlyActive = reaction === "like" ? liked : disliked;
+    const oppositeActive = reaction === "like" ? disliked : liked;
+    const likeCount = commentLikeCount(comment.reactions, comment.like_count ?? 0);
+    const dislikeCount = commentDislikeCount(comment.reactions);
+    const next = nextVoteState(
+      reaction,
+      currentlyActive,
+      oppositeActive,
+      likeCount,
+      dislikeCount
+    );
+    const prev = comment;
+    patchComment(comment.id, {
+      reactions: { ...comment.reactions, like: next.likeCount, dislike: next.dislikeCount },
+      like_count: next.likeCount,
+      viewer_reactions: [
+        ...(next.liked ? (["like"] as const) : []),
+        ...(next.disliked ? (["dislike"] as const) : []),
+      ],
+    });
     try {
-      await apiFetch(`/api/comment/${comment.id}/reactions`, {
-        method: "POST",
-        body: JSON.stringify({ reaction: "like" }),
-      });
+      await toggleCommentVote(comment.id, reaction, currentlyActive, oppositeActive);
     } catch {
-      setLiked((m) => ({ ...m, [comment.id]: prev }));
+      patchComment(prev.id, prev);
+    }
+  };
+
+  const toggleBookmark = async (comment: DiscoverComment) => {
+    const prev = comment.is_bookmarked ?? false;
+    patchComment(comment.id, { is_bookmarked: !prev });
+    try {
+      if (prev) await unbookmarkComment(comment.id);
+      else await bookmarkComment(comment.id);
+    } catch {
+      patchComment(comment.id, { is_bookmarked: prev });
     }
   };
 
@@ -167,6 +231,10 @@ export default function DiscoverPage() {
           {searchActive ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
         </Button>
       </div>
+
+      {info ? (
+        <p className="mb-3 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">{info}</p>
+      ) : null}
 
       {searchActive && (
         <div className="relative mb-4">
@@ -201,14 +269,23 @@ export default function DiscoverPage() {
         <p className="py-16 text-center text-muted-foreground">هنوز نظری برای اکتشاف نیست</p>
       ) : (
         <div>
-          {comments.map((c) => (
-            <CommentCard
-              key={c.id}
-              comment={c}
-              liked={liked[c.id]}
-              onLike={() => void toggleLike(c)}
-            />
-          ))}
+          {comments.map((c) => {
+            const href = postHref(c);
+            return (
+              <CommentCard
+                key={c.id}
+                comment={c}
+                liked={hasViewerReaction(c.viewer_reactions, "like")}
+                disliked={hasViewerReaction(c.viewer_reactions, "dislike")}
+                bookmarked={c.is_bookmarked}
+                onReply={href ? () => router.push(href) : undefined}
+                onLike={() => void toggleVote(c, "like")}
+                onDislike={() => void toggleVote(c, "dislike")}
+                onBookmark={() => void toggleBookmark(c)}
+                onReport={() => setInfo("گزارش ثبت شد")}
+              />
+            );
+          })}
         </div>
       )}
     </div>

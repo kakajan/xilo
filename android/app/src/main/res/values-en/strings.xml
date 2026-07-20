@@ -273,6 +273,11 @@
     <string name="cd_post_image">Post image</string>
     <string name="cd_comments">Comments</string>
     <string name="cd_repost">Repost</string>
+    <string name="repost_action_repost">Repost</string>
+    <string name="repost_action_undo">Undo repost</string>
+    <string name="repost_action_quote">Quote</string>
+    <string name="quote_compose_title">Quote</string>
+    <string name="quote_compose_hint">Add a comment...</string>
     <string name="cd_like">Like</string>
     <string name="cd_bookmark">Bookmark</string>
     <string name="cd_views">Views</string>

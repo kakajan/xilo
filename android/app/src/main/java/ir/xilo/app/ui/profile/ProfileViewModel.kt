@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.core.util.canCreatePost
+import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.entity.UserEntity
 import ir.xilo.app.data.remote.api.XiloApiService
@@ -174,6 +175,7 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun toggleRepost(postId: String, currentState: Boolean) {
+        if (!canRepost(authRepository.getRole())) return
         viewModelScope.launch {
             _userPosts.update { posts ->
                 posts.map { post ->

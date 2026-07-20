@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import ir.xilo.app.R
 import ir.xilo.app.core.util.HashtagParser
 import ir.xilo.app.core.util.canCreatePost
+import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.prefs.ComposeDraftStore
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.TagSuggestion
@@ -74,6 +75,10 @@ class CreatePostViewModel @Inject constructor(
     private val _tagSuggestions = MutableStateFlow<List<TagSuggestion>>(emptyList())
     val tagSuggestions: StateFlow<List<TagSuggestion>> = _tagSuggestions.asStateFlow()
 
+    private val _quotedPost = MutableStateFlow<PostEntity?>(null)
+    val quotedPost: StateFlow<PostEntity?> = _quotedPost.asStateFlow()
+
+    private var quotedPostId: String? = null
     private var suggestJob: Job? = null
     private var draftSaveJob: Job? = null
     private var draftKey: String = ComposeDraftStore.KEY_NEW
@@ -93,19 +98,36 @@ class CreatePostViewModel @Inject constructor(
     }
 
     /** Resets compose/edit state whenever the screen is (re)opened. */
-    fun prepare(editPostId: String?) {
+    fun prepare(editPostId: String?, quotedPostId: String? = null) {
         _success.value = false
         _error.value = null
         _fieldErrors.value = emptyMap()
         _isSubmitting.value = false
         _isLoadingEdit.value = false
         draftSaveJob?.cancel()
-        draftKey = composeDraftStore.draftKey(editPostId)
+        this.quotedPostId = quotedPostId?.takeIf { it.isNotBlank() }
+        _quotedPost.value = null
+        draftKey = composeDraftStore.draftKey(
+            when {
+                !editPostId.isNullOrBlank() -> editPostId
+                !this.quotedPostId.isNullOrBlank() -> "quote-${this.quotedPostId}"
+                else -> null
+            }
+        )
         if (editPostId.isNullOrBlank()) {
             _editPostId.value = null
             restoreLocalDraft(force = restoreDoneForKey != draftKey)
+            this.quotedPostId?.let { loadQuotedPost(it) }
         } else {
             loadForEdit(editPostId, force = true)
+        }
+    }
+
+    private fun loadQuotedPost(postId: String) {
+        viewModelScope.launch {
+            val post = postRepository.getPostById(postId)
+                ?: postRepository.getPostBySlug(postId).getOrNull()
+            _quotedPost.value = post
         }
     }
 
@@ -232,7 +254,8 @@ class CreatePostViewModel @Inject constructor(
             _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
             return
         }
-        val errors = validate(title, content)
+        val quoting = !quotedPostId.isNullOrBlank()
+        val errors = validate(title, content, requireTitle = !quoting)
         if (errors.isNotEmpty()) {
             _fieldErrors.value = errors
             _error.value = null
@@ -244,7 +267,13 @@ class CreatePostViewModel @Inject constructor(
             _error.value = null
             _fieldErrors.value = emptyMap()
 
-            postRepository.createPost(title, content, audioUrl.takeIf { it.isNotBlank() })
+            val resolvedTitle = title.ifBlank { content.take(80).ifBlank { "نقل‌قول" } }
+            postRepository.createPost(
+                title = resolvedTitle,
+                content = content,
+                audioUrl = audioUrl.takeIf { it.isNotBlank() },
+                quotedPostId = quotedPostId,
+            )
                 .onSuccess {
                     clearLocalDraft()
                     _success.value = true
@@ -302,8 +331,12 @@ class CreatePostViewModel @Inject constructor(
         }
     }
 
-    private fun validate(title: String, content: String): Map<String, String> = buildMap {
-        if (title.isBlank()) {
+    private fun validate(
+        title: String,
+        content: String,
+        requireTitle: Boolean = true,
+    ): Map<String, String> = buildMap {
+        if (requireTitle && title.isBlank()) {
             put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))
         }
         if (content.isBlank()) {

@@ -138,12 +138,21 @@ export default function AuthorProfilePage() {
         {profile.bio && <p className="mt-3 max-w-md text-[15px] leading-relaxed">{profile.bio}</p>}
 
         <div className="mt-4 grid w-full max-w-sm grid-cols-3 gap-2">
-          <Stat label="پست‌ها" value={profile.post_count ?? postsQ.data?.length ?? 0} />
+          <Stat
+            label="پست‌ها"
+            value={profile.stats?.posts ?? profile.post_count ?? postsQ.data?.length ?? 0}
+          />
           <Link href={`/${username}/followers`} className="rounded-xl hover:bg-muted/60">
-            <Stat label="دنبال‌کننده" value={profile.follower_count ?? 0} />
+            <Stat
+              label="دنبال‌کننده"
+              value={profile.stats?.followers ?? profile.follower_count ?? 0}
+            />
           </Link>
           <Link href={`/${username}/following`} className="rounded-xl hover:bg-muted/60">
-            <Stat label="دنبال‌شونده" value={profile.following_count ?? 0} />
+            <Stat
+              label="دنبال‌شونده"
+              value={profile.stats?.following ?? profile.following_count ?? 0}
+            />
           </Link>
         </div>
 

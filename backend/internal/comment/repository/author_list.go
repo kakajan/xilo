@@ -56,9 +56,13 @@ func (r *CommentRepo) ListByAuthor(ctx context.Context, username, cursor string,
 
 	query := `
 		SELECT c.id, c.post_id, c.author_id, c.parent_id, c.root_id, c.depth,
-		       c.content, c.content_html, COALESCE(c.media_url, '') as media_url,
+		       c.content,
+		       COALESCE(c.content_html, '') AS content_html,
+		       COALESCE(c.media_url, '') AS media_url,
 		       c.is_pinned, c.is_spam, c.created_at, c.updated_at,
-		       u.username, u.display_name, u.avatar_url, u.role,
+		       u.username,
+		       COALESCE(u.display_name, '') AS display_name,
+		       u.avatar_url, COALESCE(u.role, '') AS role,
 		       p.title as post_title, p.slug as post_slug
 		FROM comments c
 		JOIN users u ON c.author_id = u.id

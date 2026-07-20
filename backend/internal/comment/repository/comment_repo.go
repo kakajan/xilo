@@ -73,9 +73,14 @@ func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, e
 
 	err := r.db.GetContext(ctx, &row, `
 		SELECT c.id, c.post_id, c.author_id, c.parent_id, c.root_id, c.depth,
-		       c.content, c.content_html, c.media_url, c.is_pinned, c.is_spam,
+		       c.content,
+		       COALESCE(c.content_html, '') AS content_html,
+		       COALESCE(c.media_url, '') AS media_url,
+		       c.is_pinned, c.is_spam,
 		       c.created_at, c.updated_at,
-		       u.id AS user_id, u.username, u.display_name, u.avatar_url
+		       u.id AS user_id, u.username,
+		       COALESCE(u.display_name, '') AS display_name,
+		       COALESCE(u.avatar_url, '') AS avatar_url
 		FROM comments c
 		JOIN users u ON c.author_id = u.id
 		WHERE c.id = $1 AND c.deleted_at IS NULL
@@ -201,9 +206,14 @@ func (r *CommentRepo) getAllComments(ctx context.Context, postID string) ([]*mod
 
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT c.id, c.post_id, c.author_id, c.parent_id, c.root_id, c.depth,
-		       c.content, c.content_html, c.media_url, c.is_pinned, c.is_spam,
+		       c.content,
+		       COALESCE(c.content_html, '') AS content_html,
+		       COALESCE(c.media_url, '') AS media_url,
+		       c.is_pinned, c.is_spam,
 		       c.created_at, c.updated_at,
-		       u.id AS user_id, u.username, u.display_name, u.avatar_url
+		       u.id AS user_id, u.username,
+		       COALESCE(u.display_name, '') AS display_name,
+		       COALESCE(u.avatar_url, '') AS avatar_url
 		FROM comments c
 		JOIN users u ON c.author_id = u.id
 		WHERE c.post_id = $1 AND c.deleted_at IS NULL

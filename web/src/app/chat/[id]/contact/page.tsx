@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
-import { getChat, listChats } from "@/lib/api/chats";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, Trash2 } from "lucide-react";
+import { getChat, leaveChat, listChats } from "@/lib/api/chats";
 import { useAuthStore } from "@/stores/auth-store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,22 @@ import { getInitials } from "@/lib/utils";
 export default function ContactDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, isAuthenticated, isLoading: authLoading, authChecked } = useAuthStore();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authChecked && !isAuthenticated) router.replace("/login");
   }, [authChecked, isAuthenticated, router]);
+
+  const deleteMut = useMutation({
+    mutationFn: () => leaveChat(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["chats"] });
+      router.replace("/chat");
+    },
+    onError: () => setError("حذف گفتگو ناموفق بود"),
+  });
 
   const {
     data: chats,
@@ -91,6 +102,22 @@ export default function ContactDetailPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             نقش: {other.role || chat.current_role}
           </p>
+          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+          {chat.type !== "saved" ? (
+            <Button
+              type="button"
+              variant="destructive"
+              className="mt-6 min-h-11 gap-2"
+              disabled={deleteMut.isPending}
+              onClick={() => {
+                if (!window.confirm("این گفتگو حذف شود؟")) return;
+                deleteMut.mutate();
+              }}
+            >
+              <Trash2 className="h-4 w-4 shrink-0" />
+              <span className="min-w-0">حذف گفتگو</span>
+            </Button>
+          ) : null}
         </div>
       )}
     </div>

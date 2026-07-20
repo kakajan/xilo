@@ -102,22 +102,27 @@ class PostRepository @Inject constructor(
         title: String,
         content: String,
         audioUrl: String? = null,
+        quotedPostId: String? = null,
     ): Result<PostEntity> {
         return try {
-            val slug = title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+            val slugBase = title.ifBlank { content }.lowercase()
+                .replace(Regex("[^a-z0-9\\u0600-\\u06FF]+"), "-")
+                .trim('-')
+                .ifBlank { "quote" }
             // Backend expects Tiptap JSON; wrap plain text with structured encoding (safe escaping).
             val tiptapJson = buildTiptapDoc(content)
             val tags = ir.xilo.app.core.util.HashtagParser.extract(content)
 
             val request = CreatePostRequest(
-                title = title,
-                slug = slug + "-" + System.currentTimeMillis().toString().takeLast(4),
+                title = title.ifBlank { content.take(80).ifBlank { "نقل‌قول" } },
+                slug = slugBase.take(40) + "-" + System.currentTimeMillis().toString().takeLast(4),
                 content = tiptapJson,
                 contentMd = content,
                 excerpt = content.take(100),
                 audioUrl = audioUrl?.takeIf { it.isNotBlank() },
                 tags = tags.takeIf { it.isNotEmpty() },
                 status = "published",
+                quotedPostId = quotedPostId?.takeIf { it.isNotBlank() },
             )
             val remote = apiService.createPost(request)
             val entity = remote.toEntity(feedRank = 0)
@@ -213,7 +218,15 @@ class PostRepository @Inject constructor(
         isReposted = isReposted,
         // Prefer publish time to match backend feed ordering.
         createdAt = parseDateToEpoch(publishedAt?.takeIf { it.isNotBlank() } ?: createdAt),
-        feedRank = feedRank
+        feedRank = feedRank,
+        quotedPostId = quotedPostId ?: quotedPost?.id,
+        quotedTitle = quotedPost?.title,
+        quotedSlug = quotedPost?.slug,
+        quotedExcerpt = quotedPost?.excerpt,
+        quotedAuthorName = quotedPost?.author?.displayName,
+        quotedAuthorUsername = quotedPost?.author?.username,
+        quotedAuthorAvatar = quotedPost?.author?.avatarUrl,
+        quotedCoverImageUrl = quotedPost?.coverImageUrl,
     )
 
     suspend fun recordView(postId: String): Result<Long> {

@@ -27,7 +27,10 @@ data class ChatConversationKey(
 @Serializable data object NewChatKey : NavKey
 @Serializable data object ContactsKey : NavKey
 @Serializable
-data class CreatePostKey(val editPostId: String? = null) : NavKey
+data class CreatePostKey(
+    val editPostId: String? = null,
+    val quotedPostId: String? = null,
+) : NavKey
 @Serializable
 data class TagFeedKey(val tag: String) : NavKey
 @Serializable data object SettingsKey : NavKey

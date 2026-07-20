@@ -3,9 +3,12 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/lib/pq"
+	authmodel "github.com/xilo-platform/xilo/internal/auth/model"
 	"github.com/xilo-platform/xilo/internal/post/model"
+	userutil "github.com/xilo-platform/xilo/internal/user/util"
 )
 
 func (r *PostRepo) EnrichPosts(ctx context.Context, posts []*model.Post, viewerID string) error {
@@ -124,5 +127,94 @@ func (r *PostRepo) EnrichPosts(ctx context.Context, posts []*model.Post, viewerI
 		}
 	}
 
+	if err := r.EnrichQuotedPosts(ctx, posts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// EnrichQuotedPosts attaches one-level quoted_post summaries (no nested quotes).
+func (r *PostRepo) EnrichQuotedPosts(ctx context.Context, posts []*model.Post) error {
+	if len(posts) == 0 {
+		return nil
+	}
+	ids := make([]string, 0)
+	seen := make(map[string]struct{})
+	for _, p := range posts {
+		if p.QuotedPostID == nil || *p.QuotedPostID == "" {
+			continue
+		}
+		id := *p.QuotedPostID
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	type quoteRow struct {
+		ID            string     `db:"id"`
+		Title         string     `db:"title"`
+		Slug          string     `db:"slug"`
+		Excerpt       string     `db:"excerpt"`
+		CoverImageURL *string    `db:"cover_image_url"`
+		PublishedAt   *time.Time `db:"published_at"`
+		AuthorID      string     `db:"author_id"`
+		Username      string     `db:"username"`
+		DisplayName   string     `db:"display_name"`
+		AvatarURL     string     `db:"avatar_url"`
+		Role          string     `db:"role"`
+	}
+
+	var rows []quoteRow
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT p.id, p.title, p.slug, COALESCE(p.excerpt, '') AS excerpt,
+		       p.cover_image_url, p.published_at, p.author_id,
+		       u.username,
+		       COALESCE(u.display_name, '') AS display_name,
+		       COALESCE(u.avatar_url, '') AS avatar_url,
+		       COALESCE(u.role, '') AS role
+		FROM posts p
+		JOIN users u ON u.id = p.author_id
+		WHERE p.id = ANY($1) AND p.deleted_at IS NULL
+	`, pq.Array(ids))
+	if err != nil {
+		return fmt.Errorf("quoted posts: %w", err)
+	}
+
+	byID := make(map[string]*model.QuotedPostSummary, len(rows))
+	for i := range rows {
+		row := rows[i]
+		author := &authmodel.User{
+			ID:          row.AuthorID,
+			Username:    row.Username,
+			DisplayName: row.DisplayName,
+			AvatarURL:   row.AvatarURL,
+			Role:        row.Role,
+		}
+		author.IsVerified = userutil.IsVerifiedWriter(row.Role)
+		byID[row.ID] = &model.QuotedPostSummary{
+			ID:            row.ID,
+			Title:         row.Title,
+			Slug:          row.Slug,
+			Excerpt:       row.Excerpt,
+			CoverImageURL: row.CoverImageURL,
+			Author:        author,
+			PublishedAt:   row.PublishedAt,
+		}
+	}
+
+	for _, p := range posts {
+		if p.QuotedPostID == nil {
+			continue
+		}
+		if q, ok := byID[*p.QuotedPostID]; ok {
+			p.QuotedPost = q
+		}
+	}
 	return nil
 }

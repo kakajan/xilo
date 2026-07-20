@@ -9,6 +9,7 @@ import { CommentSection } from "@/components/comment/comment-section";
 import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
 import { StickyAudioPlayer } from "@/components/post/sticky-audio-player";
 import { PostBody } from "@/components/post/post-body";
+import { QuotedPostCard } from "@/components/post/quoted-post-card";
 import { RecordPostView } from "@/components/post/record-post-view";
 import {
   AuthorHandleMeta,
@@ -113,11 +114,21 @@ export default async function PostPage({
         excerpt={post.excerpt}
       />
 
+      {post.quoted_post ? (
+        <div className="mt-6">
+          <QuotedPostCard quote={post.quoted_post} />
+        </div>
+      ) : null}
+
       {post.audio_url ? (
         <StickyAudioPlayer src={post.audio_url} title={post.title} />
       ) : null}
 
-      <StickyReactionBar postId={post.id} reactions={post.reactions} />
+      <StickyReactionBar
+        postId={post.id}
+        reactions={post.reactions}
+        viewerReactions={post.viewer_reactions}
+      />
 
       <div className="border-t pt-8">
         <Suspense fallback={<Skeleton className="h-40 w-full" />}>

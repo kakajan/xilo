@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.core.util.HashtagParser
+import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.PostResponse
+import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.PostRepository
 import ir.xilo.app.util.ErrorMessageResolver
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +24,7 @@ import javax.inject.Inject
 class TagFeedViewModel @Inject constructor(
     private val apiService: XiloApiService,
     private val postRepository: PostRepository,
+    private val authRepository: AuthRepository,
     private val errorMessageResolver: ErrorMessageResolver,
     private val json: Json,
 ) : ViewModel() {
@@ -34,6 +37,9 @@ class TagFeedViewModel @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _canRepost = MutableStateFlow(canRepost(authRepository.getRole()))
+    val canRepost: StateFlow<Boolean> = _canRepost.asStateFlow()
 
     fun load(rawTag: String) {
         val tag = HashtagParser.normalize(rawTag).ifBlank { rawTag.trim().removePrefix("#") }
@@ -106,6 +112,29 @@ class TagFeedViewModel @Inject constructor(
                 .onSuccess { bookmarked ->
                     _posts.value = _posts.value.map {
                         if (it.id == post.id) it.copy(isBookmarked = bookmarked) else it
+                    }
+                }
+        }
+    }
+
+    fun toggleRepost(post: PostEntity) {
+        if (!_canRepost.value) return
+        viewModelScope.launch {
+            val previous = post.isReposted
+            postRepository.toggleRepost(post.id, post.isReposted)
+                .onSuccess { reposted ->
+                    _posts.value = _posts.value.map {
+                        if (it.id != post.id) it else {
+                            val delta = when {
+                                reposted && !previous -> 1
+                                !reposted && previous -> -1
+                                else -> 0
+                            }
+                            it.copy(
+                                isReposted = reposted,
+                                repostCount = (it.repostCount + delta).coerceAtLeast(0),
+                            )
+                        }
                     }
                 }
         }

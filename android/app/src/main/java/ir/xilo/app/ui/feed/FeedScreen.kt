@@ -76,6 +76,7 @@ fun FeedScreen(
     onPostClick: (String) -> Unit,
     onReplyToPost: (String) -> Unit = onPostClick,
     onEditPost: (String) -> Unit = {},
+    onQuotePost: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     unreadNotificationCount: Int = 0,
@@ -94,6 +95,7 @@ fun FeedScreen(
     val currentUserAvatarUrl by viewModel.currentUserAvatarUrl.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
     val currentUsername by viewModel.currentUsername.collectAsState()
+    val canRepost by viewModel.canRepost.collectAsState()
     val chromeState = LocalChromeVisibility.current
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -197,7 +199,16 @@ fun FeedScreen(
                                 onCommentClick = { onReplyToPost(post.slug) },
                                 onLikeClick = { viewModel.toggleLike(post.id, post.isLiked) },
                                 onBookmarkClick = { viewModel.toggleBookmark(post.id, post.isBookmarked) },
-                                onRepostClick = { viewModel.toggleRepost(post.id, post.isReposted) },
+                                onRepostClick = if (canRepost) {
+                                    { viewModel.toggleRepost(post.id, post.isReposted) }
+                                } else {
+                                    null
+                                },
+                                onQuoteClick = if (canRepost) {
+                                    { onQuotePost(post.id) }
+                                } else {
+                                    null
+                                },
                                 onAuthorClick = { onAuthorClick(post.authorUsername) },
                                 onHashtagClick = onHashtagClick,
                                 isOwner = owner,

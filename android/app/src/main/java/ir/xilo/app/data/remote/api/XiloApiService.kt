@@ -213,6 +213,15 @@ interface XiloApiService {
     @GET("api/chats/{id}")
     suspend fun getChat(@Path("id") id: String): ChatResponse
 
+    @PATCH("api/chats/{id}")
+    suspend fun updateChat(
+        @Path("id") id: String,
+        @Body request: UpdateChatRequest
+    ): ChatResponse
+
+    @DELETE("api/chats/{id}")
+    suspend fun leaveChat(@Path("id") id: String): Map<String, String>
+
     @GET("api/chats/{id}/messages")
     suspend fun listMessages(
         @Path("id") id: String,

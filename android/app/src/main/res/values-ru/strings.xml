@@ -264,6 +264,11 @@
     <string name="cd_post_image">Изображение поста</string>
     <string name="cd_comments">Комментарии</string>
     <string name="cd_repost">Репост</string>
+    <string name="repost_action_repost">Репост</string>
+    <string name="repost_action_undo">Отменить репост</string>
+    <string name="repost_action_quote">Цитировать</string>
+    <string name="quote_compose_title">Цитата</string>
+    <string name="quote_compose_hint">Добавьте комментарий...</string>
     <string name="cd_like">Нравится</string>
     <string name="cd_bookmark">Закладка</string>
     <string name="cd_views">Просмотры</string>

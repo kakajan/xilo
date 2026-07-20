@@ -32,13 +32,27 @@ type Post struct {
 	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
 	DeletedAt    *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 
+	QuotedPostID     *string           `json:"quoted_post_id,omitempty" db:"quoted_post_id"`
+
 	Author           *authmodel.User   `json:"author,omitempty" db:"-"`
+	QuotedPost       *QuotedPostSummary `json:"quoted_post,omitempty" db:"-"`
 	CommentCount     int               `json:"comment_count" db:"-"`
 	RepostCount      int               `json:"repost_count" db:"-"`
 	Reactions        map[string]int    `json:"reactions,omitempty" db:"-"`
 	ViewerReactions  []string          `json:"viewer_reactions,omitempty" db:"-"`
 	IsBookmarked     bool              `json:"is_bookmarked" db:"-"`
 	IsReposted       bool              `json:"is_reposted" db:"-"`
+}
+
+// QuotedPostSummary is a one-level embed of the original post being quoted.
+type QuotedPostSummary struct {
+	ID            string          `json:"id"`
+	Title         string          `json:"title"`
+	Slug          string          `json:"slug"`
+	Excerpt       string          `json:"excerpt"`
+	CoverImageURL *string         `json:"cover_image_url,omitempty"`
+	Author        *authmodel.User `json:"author,omitempty"`
+	PublishedAt   *time.Time      `json:"published_at,omitempty"`
 }
 
 var ErrInvalidViewSession = errors.New("session_id is required for anonymous views")
@@ -65,19 +79,20 @@ type PostVersion struct {
 }
 
 type CreatePostRequest struct {
-	Title        string   `json:"title"`
-	Slug         string   `json:"slug"`
-	Excerpt      string   `json:"excerpt"`
-	Content      string   `json:"content"`
-	ContentMD    string   `json:"content_md"`
-	CoverImageURL string  `json:"cover_image_url"`
-	AudioURL     string   `json:"audio_url"`
-	Category     string   `json:"category"`
-	Tags         []string `json:"tags"`
-	Status       string   `json:"status"`
-	IsPremium    bool     `json:"is_premium"`
-	Language     string   `json:"language"`
-	ScheduledAt  *time.Time `json:"scheduled_at"`
+	Title         string     `json:"title"`
+	Slug          string     `json:"slug"`
+	Excerpt       string     `json:"excerpt"`
+	Content       string     `json:"content"`
+	ContentMD     string     `json:"content_md"`
+	CoverImageURL string     `json:"cover_image_url"`
+	AudioURL      string     `json:"audio_url"`
+	Category      string     `json:"category"`
+	Tags          []string   `json:"tags"`
+	Status        string     `json:"status"`
+	IsPremium     bool       `json:"is_premium"`
+	Language      string     `json:"language"`
+	ScheduledAt   *time.Time `json:"scheduled_at"`
+	QuotedPostID  string     `json:"quoted_post_id,omitempty"`
 }
 
 type UpdatePostRequest struct {

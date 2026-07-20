@@ -264,6 +264,11 @@
     <string name="cd_post_image">Gönderi görseli</string>
     <string name="cd_comments">Yorumlar</string>
     <string name="cd_repost">Yeniden paylaş</string>
+    <string name="repost_action_repost">Yeniden paylaş</string>
+    <string name="repost_action_undo">Paylaşımı geri al</string>
+    <string name="repost_action_quote">Alıntıla</string>
+    <string name="quote_compose_title">Alıntı</string>
+    <string name="quote_compose_hint">Yorum ekle...</string>
     <string name="cd_like">Beğen</string>
     <string name="cd_bookmark">Kaydet</string>
     <string name="cd_views">Görüntülenme</string>

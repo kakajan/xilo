@@ -17,6 +17,7 @@ import ir.xilo.app.data.remote.dto.CursorPage
 import ir.xilo.app.data.remote.dto.MessageResponse
 import ir.xilo.app.data.remote.dto.MessageType
 import ir.xilo.app.data.remote.dto.SendMessageRequest
+import ir.xilo.app.data.remote.dto.UpdateChatRequest
 import ir.xilo.app.data.remote.idempotency.OperationKeyGenerator
 import ir.xilo.app.data.remote.websocket.ChatRealtimeReconciler
 import ir.xilo.app.data.remote.websocket.WebSocketManager
@@ -499,16 +500,53 @@ class ChatRepository @Inject constructor(
 
     fun getArchivedChats(): Flow<List<ChatEntity>> = chatDao.getArchivedChatsFlow()
 
-    suspend fun archiveChat(chatId: String) {
+    suspend fun archiveChat(chatId: String): Result<Unit> {
+        val previous = chatDao.getChatById(chatId)
         chatDao.updateArchivedStatus(chatId, true)
+        return try {
+            apiService.updateChat(
+                id = chatId,
+                request = UpdateChatRequest(isArchived = true)
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (previous != null) {
+                chatDao.updateArchivedStatus(chatId, previous.isArchived)
+            }
+            Result.failure(e)
+        }
     }
 
-    suspend fun unarchiveChat(chatId: String) {
+    suspend fun unarchiveChat(chatId: String): Result<Unit> {
+        val previous = chatDao.getChatById(chatId)
         chatDao.updateArchivedStatus(chatId, false)
+        return try {
+            apiService.updateChat(
+                id = chatId,
+                request = UpdateChatRequest(isArchived = false)
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (previous != null) {
+                chatDao.updateArchivedStatus(chatId, previous.isArchived)
+            }
+            Result.failure(e)
+        }
     }
 
-    suspend fun deleteChat(chatId: String) {
+    /** Leave/delete chat for the current user via DELETE /api/chats/:id, then drop local row. */
+    suspend fun deleteChat(chatId: String): Result<Unit> {
+        val snapshot = chatDao.getChatById(chatId)
         chatDao.deleteChatById(chatId)
+        return try {
+            apiService.leaveChat(chatId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (snapshot != null) {
+                chatDao.insertChat(snapshot)
+            }
+            Result.failure(e)
+        }
     }
 }
 

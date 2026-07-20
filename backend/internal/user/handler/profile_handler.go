@@ -2,7 +2,9 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"time"
 
@@ -74,15 +76,20 @@ func (h *ProfileHandler) GetPublicProfile(c *fiber.Ctx) error {
 		CreatedAt   time.Time `db:"created_at"`
 	}
 	err := h.db.Get(&user, `
-		SELECT id, username, display_name,
-		       COALESCE(avatar_url, '') as avatar_url,
-		       COALESCE(bio, '') as bio,
-		       role, created_at
+		SELECT id, username,
+		       COALESCE(display_name, '') AS display_name,
+		       COALESCE(avatar_url, '') AS avatar_url,
+		       COALESCE(bio, '') AS bio,
+		       COALESCE(role, '') AS role,
+		       created_at
 		FROM users
 		WHERE username = $1 AND deleted_at IS NULL
 	`, username)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load profile"})
 	}
 
 	var stats profileStats
@@ -357,9 +364,10 @@ func (h *ProfileHandler) listFollowGraph(c *fiber.Ctx, kind followGraphKind) err
 	}
 
 	query := `
-		SELECT u.id, u.username, u.display_name,
+		SELECT u.id, u.username,
+		       COALESCE(u.display_name, '') AS display_name,
 		       COALESCE(u.avatar_url, '') AS avatar_url,
-		       u.role, f.created_at
+		       COALESCE(u.role, '') AS role, f.created_at
 		FROM follows f
 		JOIN users u ON ` + joinOn + `
 		WHERE ` + whereCol + ` = $1 AND u.deleted_at IS NULL

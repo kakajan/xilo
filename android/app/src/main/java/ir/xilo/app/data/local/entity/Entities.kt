@@ -67,7 +67,15 @@ data class PostEntity(
     val isReposted: Boolean = false,
     val createdAt: Long, // Timestamp in ms
     /** Stable feed position from last refresh; engagement must not change this. */
-    val feedRank: Int = Int.MAX_VALUE
+    val feedRank: Int = Int.MAX_VALUE,
+    val quotedPostId: String? = null,
+    val quotedTitle: String? = null,
+    val quotedSlug: String? = null,
+    val quotedExcerpt: String? = null,
+    val quotedAuthorName: String? = null,
+    val quotedAuthorUsername: String? = null,
+    val quotedAuthorAvatar: String? = null,
+    val quotedCoverImageUrl: String? = null,
 )
 
 @Entity(tableName = "comments")

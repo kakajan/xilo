@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.util.Log
 import ir.xilo.app.R
+import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.NetworkMonitor
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.repository.AuthRepository
@@ -42,6 +43,9 @@ class FeedViewModel @Inject constructor(
 
     private val _currentUsername = MutableStateFlow(authRepository.getUsername())
     val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
+
+    private val _canRepost = MutableStateFlow(canRepost(authRepository.getRole()))
+    val canRepost: StateFlow<Boolean> = _canRepost.asStateFlow()
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
@@ -108,6 +112,7 @@ class FeedViewModel @Inject constructor(
     }
 
     fun toggleRepost(postId: String, currentState: Boolean) {
+        if (!_canRepost.value) return
         viewModelScope.launch {
             postRepository.toggleRepost(postId, currentState)
                 .onFailure { e ->

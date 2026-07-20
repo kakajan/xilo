@@ -100,6 +100,13 @@ export interface PublicProfile {
   bio?: string;
   banner_url?: string;
   is_verified?: boolean;
+  /** Nested stats from GET /api/users/:username */
+  stats?: {
+    posts?: number;
+    followers?: number;
+    following?: number;
+  };
+  /** Legacy flat counts (prefer stats.*) */
   post_count?: number;
   follower_count?: number;
   following_count?: number;

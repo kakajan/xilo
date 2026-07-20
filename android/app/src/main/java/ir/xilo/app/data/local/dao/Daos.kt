@@ -128,6 +128,15 @@ interface CommentDao {
     @Query("DELETE FROM comments WHERE postId = :postId")
     suspend fun clearCommentsForPost(postId: String)
 
+    /** Clear + insert in one transaction so Flow observers never see an empty intermediate list. */
+    @Transaction
+    suspend fun replaceCommentsForPost(postId: String, comments: List<CommentEntity>) {
+        clearCommentsForPost(postId)
+        if (comments.isNotEmpty()) {
+            insertComments(comments)
+        }
+    }
+
     @Query("SELECT * FROM comments ORDER BY createdAt DESC LIMIT :limit")
     fun getRecentCommentsFlow(limit: Int): Flow<List<CommentEntity>>
 }

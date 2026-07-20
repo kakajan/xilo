@@ -20,6 +20,8 @@ export interface Comment {
   };
   replies?: Comment[];
   reactions?: Record<string, number>;
+  viewer_reactions?: string[];
+  is_bookmarked?: boolean;
   /** Present on discover / denormalized payloads. */
   like_count?: number;
   reply_count?: number;

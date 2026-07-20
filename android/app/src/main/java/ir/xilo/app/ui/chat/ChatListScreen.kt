@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.ChatEntity
 import ir.xilo.app.theme.XiloBlue
@@ -62,8 +63,15 @@ fun ChatListScreen(
     var showArchived by remember { mutableStateOf(false) }
     val chromeState = LocalChromeVisibility.current
     val chatListState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
     val allChatsLabel = stringResource(R.string.saved_hub_all_chats)
     val savedChipLabel = stringResource(R.string.saved_hub_chip)
+
+    LaunchedEffect(Unit) {
+        viewModel.composerError.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     val filterChips = remember(folders, allChatsLabel, savedChipLabel) {
         buildList {
@@ -78,6 +86,13 @@ fun ChatListScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+                .zIndex(2f),
+        )
         Column(modifier = Modifier.fillMaxSize()) {
             AnimatedVisibility(
                 visible = chromeState?.isVisible != false,
@@ -294,7 +309,11 @@ private fun ChatListBody(
                     onArchiveToggle = {
                         if (chat.isArchived) viewModel.unarchiveChat(chat.id) else viewModel.archiveChat(chat.id)
                     },
-                    onDelete = { viewModel.deleteChat(chat.id) }
+                    onDelete = if (chat.type == "saved") {
+                        null
+                    } else {
+                        { viewModel.deleteChat(chat.id) }
+                    },
                 )
             }
         }
@@ -307,7 +326,7 @@ fun ChatListItem(
     chat: ChatEntity,
     onClick: () -> Unit,
     onArchiveToggle: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: (() -> Unit)? = null,
 ) {
     var isActionsVisible by remember { mutableStateOf(false) }
     val chatTitle = chat.name ?: stringResource(R.string.chat_default_title)
@@ -451,20 +470,22 @@ fun ChatListItem(
                     Text(stringResource(if (chat.isArchived) R.string.chat_list_unarchive else R.string.chat_list_archive), color = XiloBlue, fontSize = 12.sp)
                 }
 
-                TextButton(
-                    onClick = {
-                        onDelete()
-                        isActionsVisible = false
+                if (onDelete != null) {
+                    TextButton(
+                        onClick = {
+                            onDelete()
+                            isActionsVisible = false
+                        }
+                    ) {
+                        XiloIcon(
+                            icon = XiloIcons.Close,
+                            contentDescription = stringResource(R.string.common_delete),
+                            tint = Color.Red,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(R.string.chat_list_delete), color = Color.Red, fontSize = 12.sp)
                     }
-                ) {
-                    XiloIcon(
-                        icon = XiloIcons.Close,
-                        contentDescription = stringResource(R.string.common_delete),
-                        tint = Color.Red,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.chat_list_delete), color = Color.Red, fontSize = 12.sp)
                 }
             }
         }

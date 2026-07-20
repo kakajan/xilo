@@ -134,8 +134,8 @@ func (h *ChatHandler) UpdateChat(c *fiber.Ctx) error {
 	return c.JSON(chat)
 }
 
-// @Summary      Leave or archive chat
-// @Description  Leave a group chat, or archive a direct chat for the current user
+// @Summary      Leave or delete chat
+// @Description  Leave a group chat, or hide/delete a direct chat for the current user
 // @Tags         chats
 // @Produce      json
 // @Security     BearerAuth

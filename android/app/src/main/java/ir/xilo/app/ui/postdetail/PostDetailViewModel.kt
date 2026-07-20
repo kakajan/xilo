@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.R
+import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
@@ -34,8 +35,13 @@ class PostDetailViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private var loadedSlug: String? = null
 
     private val _infoMessage = MutableStateFlow<Int?>(null)
     val infoMessage: StateFlow<Int?> = _infoMessage.asStateFlow()
@@ -48,6 +54,9 @@ class PostDetailViewModel @Inject constructor(
 
     private val _currentUsername = MutableStateFlow(authRepository.getUsername())
     val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
+
+    private val _canRepost = MutableStateFlow(canRepost(authRepository.getRole()))
+    val canRepost: StateFlow<Boolean> = _canRepost.asStateFlow()
 
     private val _postRemoved = MutableStateFlow(false)
     val postRemoved: StateFlow<Boolean> = _postRemoved.asStateFlow()
@@ -62,22 +71,37 @@ class PostDetailViewModel @Inject constructor(
     }
 
     fun loadPost(slug: String) {
+        loadedSlug = slug
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            postRepository.getPostBySlug(slug)
-                .onSuccess { postEntity ->
-                    _post.value = postEntity
-                    currentPostId = postEntity.id
+            bindPost(slug, recordViewOnSuccess = true)
+            _isLoading.value = false
+        }
+    }
 
-                    webSocketManager.subscribeToPost(postEntity.id)
-                    commentRepository.refreshComments(postEntity.id)
-                        .onFailure { e ->
-                            _errorMessage.value =
-                                errorMessageResolver.fromThrowable(e, R.string.error_load_post)
-                        }
-                    recordView(postEntity.id)
+    /** Soft reload for pull-to-refresh — keeps current UI while fetching. */
+    fun refresh() {
+        val slug = loadedSlug ?: return
+        if (_isRefreshing.value || _isLoading.value) return
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            _errorMessage.value = null
+            bindPost(slug, recordViewOnSuccess = false)
+            _isRefreshing.value = false
+        }
+    }
 
+    private suspend fun bindPost(slug: String, recordViewOnSuccess: Boolean) {
+        postRepository.getPostBySlug(slug)
+            .onSuccess { postEntity ->
+                _post.value = postEntity
+                val postChanged = currentPostId != postEntity.id
+                currentPostId = postEntity.id
+
+                webSocketManager.subscribeToPost(postEntity.id)
+                // Ensure Room Flow is collecting before replace so UI updates atomically.
+                if (postChanged || commentsJob == null) {
                     commentsJob?.cancel()
                     commentsJob = viewModelScope.launch {
                         commentRepository.getComments(postEntity.id).collect { commentList ->
@@ -85,11 +109,18 @@ class PostDetailViewModel @Inject constructor(
                         }
                     }
                 }
-                .onFailure { e ->
-                    _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_load_post)
+                commentRepository.refreshComments(postEntity.id)
+                    .onFailure { e ->
+                        _errorMessage.value =
+                            errorMessageResolver.fromThrowable(e, R.string.error_load_post)
+                    }
+                if (recordViewOnSuccess) {
+                    recordView(postEntity.id)
                 }
-            _isLoading.value = false
-        }
+            }
+            .onFailure { e ->
+                _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_load_post)
+            }
     }
 
     private fun recordView(postId: String) {
@@ -154,6 +185,7 @@ class PostDetailViewModel @Inject constructor(
     }
 
     fun toggleRepost(postId: String, currentState: Boolean) {
+        if (!_canRepost.value) return
         viewModelScope.launch {
             val snapshot = _post.value
             if (snapshot != null && snapshot.id == postId) {

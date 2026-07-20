@@ -275,6 +275,9 @@ fun MainScreen(
                                 onEditPost = { postId ->
                                     onItemClick(CreatePostKey(editPostId = postId))
                                 },
+                                onQuotePost = { postId ->
+                                    onItemClick(CreatePostKey(quotedPostId = postId))
+                                },
                                 onSettingsClick = { onItemClick(SettingsKey) },
                                 onNotificationsClick = { onItemClick(NotificationsKey) },
                                 unreadNotificationCount = unreadNotificationCount,
@@ -310,6 +313,9 @@ fun MainScreen(
                                 },
                                 onEditPost = { postId ->
                                     onItemClick(CreatePostKey(editPostId = postId))
+                                },
+                                onQuotePost = { postId ->
+                                    onItemClick(CreatePostKey(quotedPostId = postId))
                                 },
                                 modifier = Modifier.fillMaxSize()
                             )

@@ -273,6 +273,11 @@
     <string name="cd_post_image">تصویر پست</string>
     <string name="cd_comments">نظرات</string>
     <string name="cd_repost">بازنشر</string>
+    <string name="repost_action_repost">بازنشر</string>
+    <string name="repost_action_undo">لغو بازنشر</string>
+    <string name="repost_action_quote">نقل‌قول</string>
+    <string name="quote_compose_title">نقل‌قول</string>
+    <string name="quote_compose_hint">نظرتان را اضافه کنید...</string>
     <string name="cd_like">پسندیدن</string>
     <string name="cd_bookmark">ذخیره</string>
     <string name="cd_views">بازدید</string>

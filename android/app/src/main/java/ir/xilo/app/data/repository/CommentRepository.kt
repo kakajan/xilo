@@ -47,9 +47,7 @@ class CommentRepository @Inject constructor(
             val commentsList = json.decodeFromJsonElement<List<CommentResponse>>(dataElement)
 
             val entities = flattenComments(commentsList).map { it.toEntity() }
-
-            commentDao.clearCommentsForPost(postId)
-            commentDao.insertComments(entities)
+            commentDao.replaceCommentsForPost(postId, entities)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

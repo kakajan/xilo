@@ -32,8 +32,16 @@ func (m *mockPostRepo) Create(ctx context.Context, req *model.CreatePostRequest,
 		u := req.AudioURL
 		post.AudioURL = &u
 	}
+	if req.QuotedPostID != "" {
+		id := req.QuotedPostID
+		post.QuotedPostID = &id
+	}
 	m.posts[post.ID] = post
 	return post, nil
+}
+
+func (m *mockPostRepo) RecordRepost(ctx context.Context, userID, postID string) error {
+	return nil
 }
 
 func (m *mockPostRepo) GetBySlug(ctx context.Context, slug string) (*model.Post, error) {
@@ -215,5 +223,30 @@ func TestCreatePost_ExtractsHashtags(t *testing.T) {
 	}
 	if post.Tags[0] != "خبر" || post.Tags[1] != "xilo_app" || post.Tags[2] != "manual" {
 		t.Fatalf("unexpected tag order/values: %v", post.Tags)
+	}
+}
+
+func TestCreatePost_QuoteAutoTitle(t *testing.T) {
+	repo := newMockPostRepo()
+	repo.posts["orig-1"] = &model.Post{
+		ID: "orig-1", AuthorID: "author-2", Title: "Original", Status: "published",
+	}
+	svc := NewPostService(repo, nil)
+
+	post, err := svc.Create(context.Background(), "author-1", &model.CreatePostRequest{
+		ContentMD:    "نظر من درباره این پست",
+		QuotedPostID: "orig-1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if post.Title != "نظر من درباره این پست" {
+		t.Fatalf("unexpected title: %q", post.Title)
+	}
+	if post.Status != "published" {
+		t.Fatalf("expected published quote, got %s", post.Status)
+	}
+	if post.QuotedPostID == nil || *post.QuotedPostID != "orig-1" {
+		t.Fatalf("expected quoted_post_id, got %v", post.QuotedPostID)
 	}
 }

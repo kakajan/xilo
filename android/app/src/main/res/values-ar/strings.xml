@@ -264,6 +264,11 @@
     <string name="cd_post_image">صورة المنشور</string>
     <string name="cd_comments">التعليقات</string>
     <string name="cd_repost">إعادة النشر</string>
+    <string name="repost_action_repost">إعادة النشر</string>
+    <string name="repost_action_undo">التراجع عن إعادة النشر</string>
+    <string name="repost_action_quote">اقتباس</string>
+    <string name="quote_compose_title">اقتباس</string>
+    <string name="quote_compose_hint">أضف تعليقك...</string>
     <string name="cd_like">إعجاب</string>
     <string name="cd_bookmark">حفظ</string>
     <string name="cd_views">المشاهدات</string>

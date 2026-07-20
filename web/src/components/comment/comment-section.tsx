@@ -11,6 +11,16 @@ import { getInitials, cn } from "@/lib/utils";
 import { TimeLabel, UsernameHandle } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import { useAuthStore } from "@/stores/auth-store";
+import { CommentActions } from "@/components/comment/comment-actions";
+import { bookmarkComment, unbookmarkComment } from "@/lib/api/bookmarks";
+import {
+  commentDislikeCount,
+  commentLikeCount,
+  hasViewerReaction,
+  nextVoteState,
+  toggleCommentVote,
+  type CommentVote,
+} from "@/lib/comment-reactions";
 import type { Comment, CommentListResponse } from "@/types/comment";
 
 type SortKey = "newest" | "oldest" | "most_reacted" | "most_replied";
@@ -21,6 +31,20 @@ const SORT_LABELS: { key: SortKey; label: string }[] = [
   { key: "most_reacted", label: "بیشترین واکنش" },
   { key: "most_replied", label: "بیشترین پاسخ" },
 ];
+
+function patchCommentTree(
+  comments: Comment[],
+  id: string,
+  patch: Partial<Comment>
+): Comment[] {
+  return comments.map((c) => {
+    if (c.id === id) return { ...c, ...patch };
+    if (c.replies?.length) {
+      return { ...c, replies: patchCommentTree(c.replies, id, patch) };
+    }
+    return c;
+  });
+}
 
 export function CommentSection({
   postId,
@@ -36,9 +60,12 @@ export function CommentSection({
   const [replyDraft, setReplyDraft] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
   const [focusStack, setFocusStack] = useState<string[]>([]);
+  const [info, setInfo] = useState<string | null>(null);
+
+  const queryKey = ["comments", postId, sort] as const;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["comments", postId, sort],
+    queryKey,
     queryFn: async () => {
       const res = await apiFetch<CommentListResponse>(
         `/api/posts/${postId}/comments?limit=50&sort=${sort}`
@@ -67,6 +94,12 @@ export function CommentSection({
     }
   }, [initialReplyTo, data]);
 
+  useEffect(() => {
+    if (!info) return;
+    const t = setTimeout(() => setInfo(null), 2500);
+    return () => clearTimeout(t);
+  }, [info]);
+
   const focusCommentId = focusStack[focusStack.length - 1] ?? null;
   const visibleRoots = useMemo(() => {
     const tree = data ?? [];
@@ -88,6 +121,55 @@ export function CommentSection({
       setReplyToId(null);
     },
   });
+
+  const updateCachedComment = (id: string, patch: Partial<Comment>) => {
+    queryClient.setQueryData<Comment[]>(queryKey, (prev) =>
+      prev ? patchCommentTree(prev, id, patch) : prev
+    );
+  };
+
+  const onVote = async (comment: Comment, reaction: CommentVote) => {
+    const liked = hasViewerReaction(comment.viewer_reactions, "like");
+    const disliked = hasViewerReaction(comment.viewer_reactions, "dislike");
+    const currentlyActive = reaction === "like" ? liked : disliked;
+    const oppositeActive = reaction === "like" ? disliked : liked;
+    const likeCount = commentLikeCount(comment.reactions);
+    const dislikeCount = commentDislikeCount(comment.reactions);
+    const next = nextVoteState(
+      reaction,
+      currentlyActive,
+      oppositeActive,
+      likeCount,
+      dislikeCount
+    );
+    const prev = {
+      reactions: comment.reactions,
+      viewer_reactions: comment.viewer_reactions,
+    };
+    updateCachedComment(comment.id, {
+      reactions: { ...comment.reactions, like: next.likeCount, dislike: next.dislikeCount },
+      viewer_reactions: [
+        ...(next.liked ? (["like"] as const) : []),
+        ...(next.disliked ? (["dislike"] as const) : []),
+      ],
+    });
+    try {
+      await toggleCommentVote(comment.id, reaction, currentlyActive, oppositeActive);
+    } catch {
+      updateCachedComment(comment.id, prev);
+    }
+  };
+
+  const onBookmark = async (comment: Comment) => {
+    const prev = comment.is_bookmarked ?? false;
+    updateCachedComment(comment.id, { is_bookmarked: !prev });
+    try {
+      if (prev) await unbookmarkComment(comment.id);
+      else await bookmarkComment(comment.id);
+    } catch {
+      updateCachedComment(comment.id, { is_bookmarked: prev });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -134,6 +216,10 @@ export function CommentSection({
           ))}
         </div>
       </div>
+
+      {info ? (
+        <p className="rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">{info}</p>
+      ) : null}
 
       {focusCommentId && (
         <Button variant="ghost" size="sm" onClick={() => setFocusStack((s) => s.slice(0, -1))}>
@@ -187,6 +273,10 @@ export function CommentSection({
                 createMutation.mutate({ content: replyDraft, parentId: replyToId });
               }}
               onDrill={(id) => setFocusStack((s) => [...s, id])}
+              onLike={(comment) => void onVote(comment, "like")}
+              onDislike={(comment) => void onVote(comment, "dislike")}
+              onBookmark={(comment) => void onBookmark(comment)}
+              onReport={() => setInfo("گزارش ثبت شد")}
               depth={0}
             />
           ))
@@ -249,6 +339,10 @@ function CommentBubble({
   onCancelReply,
   onSubmitReply,
   onDrill,
+  onLike,
+  onDislike,
+  onBookmark,
+  onReport,
   depth,
 }: {
   comment: Comment;
@@ -260,6 +354,10 @@ function CommentBubble({
   onCancelReply: () => void;
   onSubmitReply: () => void;
   onDrill: (id: string) => void;
+  onLike: (comment: Comment) => void;
+  onDislike: (comment: Comment) => void;
+  onBookmark: (comment: Comment) => void;
+  onReport: () => void;
   depth: number;
 }) {
   const formatDate = useFormatDate();
@@ -267,7 +365,7 @@ function CommentBubble({
   const name = comment.author?.display_name || comment.author?.username || "کاربر";
   const username = comment.author?.username?.trim() || "";
   const profileHref = username ? `/${username}` : null;
-  const reactionEntries = Object.entries(comment.reactions ?? {}).filter(([, n]) => n > 0);
+  const replyCount = comment.reply_count ?? comment.replies?.length ?? 0;
 
   return (
     <div className={cn("relative", depth > 0 && "ms-4")} id={`comment-${comment.id}`}>
@@ -317,34 +415,32 @@ function CommentBubble({
         )}
       >
         <p className="whitespace-pre-wrap">{comment.content}</p>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
-          <div className="flex flex-wrap gap-1">
-            {reactionEntries.map(([emoji, count]) => (
-              <span
-                key={emoji}
-                className="rounded-full bg-background/60 px-2 py-0.5 text-xs"
-              >
-                {emoji === "like" || emoji === "heart" ? "❤️" : emoji === "flame" ? "🔥" : "👍"}{" "}
-                {count}
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2 text-xs text-muted-foreground">
-            <button type="button" className="min-h-8 hover:text-primary" onClick={() => onReply(comment.id)}>
-              پاسخ
-            </button>
-            {(comment.replies?.length ?? 0) > 0 && (
-              <button
-                type="button"
-                className="min-h-8 hover:text-primary"
-                onClick={() => onDrill(comment.id)}
-              >
-                {comment.replies!.length} پاسخ
-              </button>
-            )}
-          </div>
-        </div>
       </div>
+
+      <CommentActions
+        className="mt-1"
+        replyCount={replyCount}
+        likeCount={commentLikeCount(comment.reactions)}
+        dislikeCount={commentDislikeCount(comment.reactions)}
+        liked={hasViewerReaction(comment.viewer_reactions, "like")}
+        disliked={hasViewerReaction(comment.viewer_reactions, "dislike")}
+        bookmarked={comment.is_bookmarked}
+        onReply={() => onReply(comment.id)}
+        onLike={() => onLike(comment)}
+        onDislike={() => onDislike(comment)}
+        onBookmark={() => onBookmark(comment)}
+        onReport={onReport}
+      />
+
+      {(comment.replies?.length ?? 0) > 0 && depth === 0 ? (
+        <button
+          type="button"
+          className="mt-1 min-h-8 text-xs text-muted-foreground hover:text-primary"
+          onClick={() => onDrill(comment.id)}
+        >
+          {comment.replies!.length} پاسخ — مشاهده رشته
+        </button>
+      ) : null}
 
       {replyToId === comment.id && (
         <form
@@ -382,6 +478,10 @@ function CommentBubble({
             onCancelReply={onCancelReply}
             onSubmitReply={onSubmitReply}
             onDrill={onDrill}
+            onLike={onLike}
+            onDislike={onDislike}
+            onBookmark={onBookmark}
+            onReport={onReport}
             depth={depth + 1}
           />
         </div>

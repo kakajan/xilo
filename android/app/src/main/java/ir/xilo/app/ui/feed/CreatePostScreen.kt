@@ -3,6 +3,7 @@ package ir.xilo.app.ui.feed
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,18 +39,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
+import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.PostField
+import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.XiloTextArea
 import ir.xilo.app.ui.components.XiloTextField
+import ir.xilo.app.ui.components.usernameHandle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,9 +62,10 @@ fun CreatePostScreen(
     onBackClick: () -> Unit,
     onPostCreated: () -> Unit,
     editPostId: String? = null,
+    quotedPostId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: CreatePostViewModel = hiltViewModel(
-        key = "create-post-${editPostId.orEmpty()}",
+        key = "create-post-${editPostId.orEmpty()}-${quotedPostId.orEmpty()}",
     ),
 ) {
     val title by viewModel.title.collectAsState()
@@ -72,8 +79,10 @@ fun CreatePostScreen(
     val success by viewModel.success.collectAsState()
     val allowed by viewModel.allowed.collectAsState()
     val tagSuggestions by viewModel.tagSuggestions.collectAsState()
+    val quotedPost by viewModel.quotedPost.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val isEditing = !editPostId.isNullOrBlank()
+    val isQuote = !quotedPostId.isNullOrBlank()
 
     val audioPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -81,8 +90,8 @@ fun CreatePostScreen(
         if (uri != null) viewModel.uploadAudio(uri)
     }
 
-    LaunchedEffect(editPostId) {
-        viewModel.prepare(editPostId)
+    LaunchedEffect(editPostId, quotedPostId) {
+        viewModel.prepare(editPostId, quotedPostId)
     }
 
     LaunchedEffect(allowed) {
@@ -111,7 +120,11 @@ fun CreatePostScreen(
                 title = {
                     Text(
                         text = stringResource(
-                            if (isEditing) R.string.post_edit_title else R.string.post_create_title
+                            when {
+                                isEditing -> R.string.post_edit_title
+                                isQuote -> R.string.quote_compose_title
+                                else -> R.string.post_create_title
+                            }
                         ),
                         fontWeight = FontWeight.Bold,
                     )
@@ -158,18 +171,19 @@ fun CreatePostScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            XiloTextField(
-                value = title,
-                onValueChange = viewModel::updateTitle,
-                placeholder = stringResource(R.string.post_title_placeholder),
-                modifier = Modifier.fillMaxWidth(),
-                isError = fieldErrors.containsKey(PostField.Title),
-                errorText = fieldErrors[PostField.Title],
-            )
+            if (!isQuote) {
+                XiloTextField(
+                    value = title,
+                    onValueChange = viewModel::updateTitle,
+                    placeholder = stringResource(R.string.post_title_placeholder),
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = fieldErrors.containsKey(PostField.Title),
+                    errorText = fieldErrors[PostField.Title],
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (audioUrl.isNotBlank()) {
+            if (!isQuote && audioUrl.isNotBlank()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -199,7 +213,7 @@ fun CreatePostScreen(
                         )
                     }
                 }
-            } else {
+            } else if (!isQuote) {
                 OutlinedButton(
                     onClick = { audioPicker.launch("audio/*") },
                     enabled = !isUploadingAudio && !isSubmitting,
@@ -249,14 +263,78 @@ fun CreatePostScreen(
             XiloTextArea(
                 value = content,
                 onValueChange = viewModel::updateContent,
-                placeholder = stringResource(R.string.post_body_placeholder),
+                placeholder = stringResource(
+                    if (isQuote) R.string.quote_compose_hint else R.string.post_body_placeholder
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                minLines = 6,
+                minLines = if (isQuote) 4 else 6,
                 isError = fieldErrors.containsKey(PostField.Content),
                 errorText = fieldErrors[PostField.Content],
                 transparentBorder = fieldErrors[PostField.Content] == null,
+            )
+
+            if (isQuote) {
+                Spacer(modifier = Modifier.height(12.dp))
+                QuotedPostPreview(post = quotedPost)
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuotedPostPreview(post: PostEntity?) {
+    if (post == null) return
+    val name = post.authorName?.takeIf { it.isNotBlank() } ?: post.authorUsername
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                RoundedCornerShape(16.dp),
+            )
+            .padding(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            XiloAvatar(imageUrl = post.authorAvatar, size = 20.dp)
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(
+                text = name,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (post.authorUsername.isNotBlank()) {
+                Spacer(modifier = Modifier.size(4.dp))
+                Text(
+                    text = usernameHandle(post.authorUsername),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = post.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val preview = post.excerpt?.takeIf { it.isNotBlank() } ?: post.content
+        if (preview.isNotBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = preview,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

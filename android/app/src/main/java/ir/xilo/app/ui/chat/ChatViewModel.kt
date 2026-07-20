@@ -439,18 +439,33 @@ class ChatViewModel @Inject constructor(
     fun archiveChat(chatId: String) {
         viewModelScope.launch {
             chatRepository.archiveChat(chatId)
+                .onFailure { e ->
+                    _composerError.tryEmit(
+                        errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                    )
+                }
         }
     }
 
     fun unarchiveChat(chatId: String) {
         viewModelScope.launch {
             chatRepository.unarchiveChat(chatId)
+                .onFailure { e ->
+                    _composerError.tryEmit(
+                        errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                    )
+                }
         }
     }
 
     fun deleteChat(chatId: String) {
         viewModelScope.launch {
             chatRepository.deleteChat(chatId)
+                .onFailure { e ->
+                    _composerError.tryEmit(
+                        errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                    )
+                }
         }
     }
 

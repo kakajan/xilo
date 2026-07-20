@@ -39,18 +39,29 @@ func (r *PostRepo) Create(ctx context.Context, req *model.CreatePostRequest, aut
 	audioURL := nullIfEmpty(req.AudioURL)
 	coverImageURL := nullIfEmpty(req.CoverImageURL)
 
+	var quotedPostID *string
+	if id := strings.TrimSpace(req.QuotedPostID); id != "" {
+		quotedPostID = &id
+	}
+	var publishedAt *time.Time
+	if req.Status == "published" {
+		now := time.Now().UTC()
+		publishedAt = &now
+	}
+
 	err := r.db.GetContext(ctx, &post, `
 		INSERT INTO posts (author_id, title, slug, excerpt, content, content_md,
 		                   cover_image_url, audio_url, category, tags, status, is_premium,
-		                   word_count, reading_time, language, scheduled_at, published_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+		                   word_count, reading_time, language, scheduled_at, published_at,
+		                   quoted_post_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
 		          cover_image_url, audio_url, category, tags, status, is_premium,
 		          word_count, reading_time, language, view_count, scheduled_at, published_at,
-		          created_at, updated_at
+		          quoted_post_id, created_at, updated_at
 	`, authorID, req.Title, slug, req.Excerpt, ensureJSON(req.Content), req.ContentMD,
 		coverImageURL, audioURL, req.Category, pq.Array(req.Tags), req.Status, req.IsPremium,
-		wordCount, readingTime, req.Language, req.ScheduledAt, nil)
+		wordCount, readingTime, req.Language, req.ScheduledAt, publishedAt, quotedPostID)
 	if err != nil {
 		return nil, fmt.Errorf("insert post: %w", err)
 	}
@@ -64,7 +75,7 @@ func (r *PostRepo) GetBySlug(ctx context.Context, slug string) (*model.Post, err
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.content::text, p.content_md,
 		       p.cover_image_url, p.audio_url, p.category, p.tags, p.status, p.is_premium,
 		       p.word_count, p.reading_time, p.language, p.view_count, p.scheduled_at, p.published_at,
-		       p.created_at, p.updated_at
+		       p.quoted_post_id, p.created_at, p.updated_at
 		FROM posts p
 		WHERE p.slug = $1 AND p.deleted_at IS NULL AND p.status = 'published'
 	`, slug)
@@ -99,7 +110,7 @@ func (r *PostRepo) GetByID(ctx context.Context, id string) (*model.Post, error) 
 		SELECT id, author_id, title, slug, excerpt, content::text, content_md,
 		       cover_image_url, audio_url, category, tags, status, is_premium,
 		       word_count, reading_time, language, view_count, scheduled_at, published_at,
-		       created_at, updated_at
+		       quoted_post_id, created_at, updated_at
 		FROM posts
 		WHERE id = $1 AND deleted_at IS NULL
 	`, id)
@@ -174,7 +185,7 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
 		          cover_image_url, audio_url, category, tags, status, is_premium,
 		          word_count, reading_time, language, view_count, scheduled_at, published_at,
-		          created_at, updated_at
+		          quoted_post_id, created_at, updated_at
 	`, id, title, slug, excerpt, content, contentMD, coverImageURL, audioURL, category, tags, status, isPremium,
 		wordCount, readingTime, language, req.ScheduledAt, publishedAt)
 	if err != nil {
@@ -189,6 +200,17 @@ func (r *PostRepo) Delete(ctx context.Context, id string) error {
 		UPDATE posts SET deleted_at = NOW(), status = 'deleted' WHERE id = $1
 	`, id)
 	return err
+}
+
+func (r *PostRepo) RecordRepost(ctx context.Context, userID, postID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO reposts (user_id, post_id) VALUES ($1, $2)
+		ON CONFLICT (user_id, post_id) DO NOTHING
+	`, userID, postID)
+	if err != nil {
+		return fmt.Errorf("record repost: %w", err)
+	}
+	return nil
 }
 
 func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*model.Post, string, error) {
@@ -210,7 +232,7 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.cover_image_url, p.audio_url,
 		       p.category, p.tags, p.status, p.is_premium,
 		       p.word_count, p.reading_time, p.language, p.view_count, p.published_at,
-		       p.created_at, p.updated_at
+		       p.quoted_post_id, p.created_at, p.updated_at
 		FROM posts p
 		WHERE p.status = $1 AND p.deleted_at IS NULL
 	`

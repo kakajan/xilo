@@ -125,12 +125,13 @@ func (r *ChatRepo) CreateChat(
 	}
 
 	if req.Type == model.ChatTypeDirect {
+		// Reopen a previously left/deleted direct chat for the actor.
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE chat_members
-			SET is_archived = FALSE, updated_at = NOW()
-			WHERE chat_id = $1 AND user_id = $2 AND left_at IS NULL
+			SET is_archived = FALSE, left_at = NULL, updated_at = NOW()
+			WHERE chat_id = $1 AND user_id = $2
 		`, chatID, actorID); err != nil {
-			return nil, fmt.Errorf("unarchive direct chat: %w", err)
+			return nil, fmt.Errorf("reopen direct chat membership: %w", err)
 		}
 	}
 
@@ -531,7 +532,20 @@ func (r *ChatRepo) LeaveChat(ctx context.Context, chatID string, userID string) 
 		return fmt.Errorf("get chat before leave: %w", err)
 	}
 	if chatType == model.ChatTypeDirect {
-		return r.UpdateChat(ctx, chatID, userID, nil, nil, nil, boolPointer(true))
+		// Hide the direct chat for this user (same as leave). Reopen via CreateChat
+		// clears left_at for the actor.
+		result, execErr := r.db.ExecContext(ctx, `
+			UPDATE chat_members
+			SET left_at = NOW(), is_archived = TRUE, updated_at = NOW()
+			WHERE chat_id = $1 AND user_id = $2 AND left_at IS NULL
+		`, chatID, userID)
+		if execErr != nil {
+			return fmt.Errorf("leave direct chat: %w", execErr)
+		}
+		if affected, _ := result.RowsAffected(); affected == 0 {
+			return ErrChatNotFound
+		}
+		return nil
 	}
 	return r.RemoveMember(ctx, chatID, userID, userID)
 }

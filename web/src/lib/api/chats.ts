@@ -27,6 +27,23 @@ export function createChat(memberIds: string[], type: "direct" | "group" = "dire
   });
 }
 
+/** Leave a group or delete/hide a direct chat for the current user. */
+export function leaveChat(id: string) {
+  return apiFetch<{ message?: string; code?: string }>(`/api/chats/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function updateChat(
+  id: string,
+  patch: { is_archived?: boolean; is_muted?: boolean; name?: string }
+) {
+  return apiFetch<Chat>(`/api/chats/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
 export function listMessages(chatId: string, cursor?: string, limit = 50) {
   const q = new URLSearchParams({ limit: String(limit) });
   if (cursor) q.set("cursor", cursor);

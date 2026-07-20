@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +45,7 @@ fun DiscoverScreen(
     onReplyToComment: (slug: String, commentId: String, authorUsername: String) -> Unit,
     onAuthorClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
+    onQuotePost: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel()
 ) {
@@ -57,6 +60,7 @@ fun DiscoverScreen(
     val infoMessage by viewModel.infoMessage.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
     val currentUsername by viewModel.currentUsername.collectAsState()
+    val canRepost by viewModel.canRepost.collectAsState()
     val languageCode = AppLocale.languageCode(LocalContext.current)
 
     var isSearchActive by remember { mutableStateOf(false) }
@@ -157,7 +161,7 @@ fun DiscoverScreen(
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
-            if (isSearching || isRefreshing) {
+            if (isSearching) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = XiloBlue)
             }
 
@@ -199,7 +203,16 @@ fun DiscoverScreen(
                                     onCommentClick = { onReplyToPost(post.slug) },
                                     onLikeClick = { viewModel.toggleLike(post.id, post.isLiked) },
                                     onBookmarkClick = { viewModel.toggleBookmark(post.id, post.isBookmarked) },
-                                    onRepostClick = { viewModel.toggleRepost(post.id, post.isReposted) },
+                                    onRepostClick = if (canRepost) {
+                                        { viewModel.toggleRepost(post.id, post.isReposted) }
+                                    } else {
+                                        null
+                                    },
+                                    onQuoteClick = if (canRepost) {
+                                        { onQuotePost(post.id) }
+                                    } else {
+                                        null
+                                    },
                                     onAuthorClick = { onAuthorClick(post.authorUsername) },
                                     isOwner = owner,
                                     onEditClick = if (owner) ({ onEditPost(post.id) }) else null,
@@ -241,20 +254,14 @@ fun DiscoverScreen(
                                 }
                             }
 
-                            if (discoverComments.isEmpty()) {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            stringResource(R.string.discover_prompt_search),
-                                            color = MaterialTheme.colorScheme.secondary
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        TextButton(onClick = { viewModel.refreshDiscoverComments() }) {
-                                            Text(stringResource(R.string.common_refresh))
-                                        }
-                                    }
-                                }
-                            } else {
+                            val discoverPullState = rememberPullToRefreshState()
+                            PullToRefreshBox(
+                                isRefreshing = isRefreshing,
+                                onRefresh = { viewModel.refreshDiscoverComments() },
+                                modifier = Modifier.fillMaxSize(),
+                                state = discoverPullState,
+                            ) {
+                                // Always use LazyColumn so PTR nested-scroll works in the empty state too.
                                 LazyColumn(
                                     state = discoverListState,
                                     modifier = Modifier
@@ -268,26 +275,47 @@ fun DiscoverScreen(
                                         ),
                                     contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                                 ) {
-                                    items(discoverComments, key = { it.id }) { comment ->
-                                        CommentCard(
-                                            comment = comment,
-                                            onClick = {
-                                                viewModel.openCommentPost(comment.postId, onCommentClick)
-                                            },
-                                            onReplyClick = {
-                                                viewModel.openCommentReply(
-                                                    postId = comment.postId,
-                                                    commentId = comment.id,
-                                                    authorUsername = comment.authorUsername,
-                                                    onNavigate = onReplyToComment,
-                                                )
-                                            },
-                                            onLikeClick = { viewModel.toggleCommentLike(comment) },
-                                            onDislikeClick = { viewModel.toggleCommentDislike(comment) },
-                                            onReportClick = { reportTargetId = comment.id },
-                                            onBookmarkClick = { viewModel.toggleCommentBookmark(comment) },
-                                            onAuthorClick = { onAuthorClick(comment.authorUsername) },
-                                        )
+                                    if (discoverComments.isEmpty()) {
+                                        item(key = "discover_empty") {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillParentMaxSize(),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text(
+                                                        stringResource(R.string.discover_prompt_search),
+                                                        color = MaterialTheme.colorScheme.secondary
+                                                    )
+                                                    Spacer(modifier = Modifier.height(12.dp))
+                                                    TextButton(onClick = { viewModel.refreshDiscoverComments() }) {
+                                                        Text(stringResource(R.string.common_refresh))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        items(discoverComments, key = { it.id }) { comment ->
+                                            CommentCard(
+                                                comment = comment,
+                                                onClick = {
+                                                    viewModel.openCommentPost(comment.postId, onCommentClick)
+                                                },
+                                                onReplyClick = {
+                                                    viewModel.openCommentReply(
+                                                        postId = comment.postId,
+                                                        commentId = comment.id,
+                                                        authorUsername = comment.authorUsername,
+                                                        onNavigate = onReplyToComment,
+                                                    )
+                                                },
+                                                onLikeClick = { viewModel.toggleCommentLike(comment) },
+                                                onDislikeClick = { viewModel.toggleCommentDislike(comment) },
+                                                onReportClick = { reportTargetId = comment.id },
+                                                onBookmarkClick = { viewModel.toggleCommentBookmark(comment) },
+                                                onAuthorClick = { onAuthorClick(comment.authorUsername) },
+                                            )
+                                        }
                                     }
                                 }
                             }

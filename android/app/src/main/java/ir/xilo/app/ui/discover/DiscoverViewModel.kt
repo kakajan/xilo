@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
+import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.NetworkMonitor
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
@@ -85,6 +86,9 @@ class DiscoverViewModel @Inject constructor(
     private val _currentUsername = MutableStateFlow(authRepository.getUsername())
     val currentUsername: StateFlow<String?> = _currentUsername.asStateFlow()
 
+    private val _canRepost = MutableStateFlow(canRepost(authRepository.getRole()))
+    val canRepost: StateFlow<Boolean> = _canRepost.asStateFlow()
+
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
@@ -101,6 +105,7 @@ class DiscoverViewModel @Inject constructor(
     }
 
     fun refreshDiscoverComments() {
+        if (_isRefreshing.value) return
         viewModelScope.launch {
             _isRefreshing.value = true
             try {
@@ -252,6 +257,7 @@ class DiscoverViewModel @Inject constructor(
     }
 
     fun toggleRepost(postId: String, currentState: Boolean) {
+        if (!_canRepost.value) return
         viewModelScope.launch {
             _searchResults.update { posts ->
                 posts.map { post ->

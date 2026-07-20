@@ -6,3 +6,6 @@ fun canCreatePost(role: String?): Boolean {
     if (role.isNullOrBlank()) return false
     return role.lowercase() in CREATE_POST_ROLES
 }
+
+/** Repost is limited to the same roles that can publish posts. */
+fun canRepost(role: String?): Boolean = canCreatePost(role)

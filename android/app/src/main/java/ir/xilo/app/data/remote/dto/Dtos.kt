@@ -244,6 +244,18 @@ data class CreatePostRequest(
     val tags: List<String>? = null,
     val status: String = "published",
     val isPremium: Boolean = false,
+    val quotedPostId: String? = null,
+)
+
+@Serializable
+data class QuotedPostSummary(
+    val id: String,
+    val title: String = "",
+    val slug: String = "",
+    val excerpt: String = "",
+    val coverImageUrl: String? = null,
+    val author: UserResponse? = null,
+    val publishedAt: String? = null,
 )
 
 @Serializable
@@ -294,7 +306,9 @@ data class PostResponse(
     val readingTime: Int = 1,
     val isPremium: Boolean = false,
     val createdAt: String = "",
-    val publishedAt: String? = null
+    val publishedAt: String? = null,
+    val quotedPostId: String? = null,
+    val quotedPost: QuotedPostSummary? = null,
 ) {
     fun resolvedLikeCount(): Int =
         reactions["like"]
@@ -444,6 +458,17 @@ data class CreateChatRequest(
     val avatarUrl: String? = null,
     @SerialName("member_ids")
     val memberIds: List<String>
+)
+
+@Serializable
+data class UpdateChatRequest(
+    val name: String? = null,
+    @SerialName("avatar_url")
+    val avatarUrl: String? = null,
+    @SerialName("is_muted")
+    val isMuted: Boolean? = null,
+    @SerialName("is_archived")
+    val isArchived: Boolean? = null,
 )
 
 @Serializable

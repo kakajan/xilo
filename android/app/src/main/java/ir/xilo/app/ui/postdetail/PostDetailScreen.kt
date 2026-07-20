@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,9 @@ import ir.xilo.app.ui.components.forRelativeTime
 import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.usernameHandle
 import ir.xilo.app.ui.feed.PostOwnerMenu
+import ir.xilo.app.ui.feed.QuotedPostEmbed
+import ir.xilo.app.ui.feed.RepostMenuButton
+import ir.xilo.app.ui.feed.hasQuotedPost
 import ir.xilo.app.ui.feed.isPostOwner
 
 fun extractPlainText(json: String): String {
@@ -79,6 +84,8 @@ fun PostDetailScreen(
     onBackClick: () -> Unit,
     onAuthorClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
+    onQuotePost: (String) -> Unit = {},
+    onQuotedPostClick: (String) -> Unit = {},
     onHashtagClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     replyToCommentId: String? = null,
@@ -89,9 +96,11 @@ fun PostDetailScreen(
     val post by viewModel.post.collectAsState()
     val comments by viewModel.comments.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
     val currentUsername by viewModel.currentUsername.collectAsState()
+    val canRepost by viewModel.canRepost.collectAsState()
     val postRemoved by viewModel.postRemoved.collectAsState()
 
     var replyDraftText by remember { mutableStateOf("") }
@@ -227,6 +236,7 @@ fun PostDetailScreen(
                     val threadDisplays = remember(comments, focusCommentId) {
                         buildVisibleCommentThread(comments, focusCommentId)
                     }
+                    val pullRefreshState = rememberPullToRefreshState()
 
                     LaunchedEffect(threadDisplays, replyToCommentId, focusCommentId) {
                         val targetId = replyToCommentId ?: return@LaunchedEffect
@@ -239,6 +249,12 @@ fun PostDetailScreen(
                         didScrollToReplyTarget = true
                     }
 
+                    PullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        onRefresh = { viewModel.refresh() },
+                        modifier = Modifier.fillMaxSize(),
+                        state = pullRefreshState,
+                    ) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize()
@@ -259,9 +275,18 @@ fun PostDetailScreen(
                                     replyingToAuthor = null
                                     isReplyingToPost = true
                                 },
-                                onRepostClick = {
-                                    viewModel.toggleRepost(detailPost.id, detailPost.isReposted)
+                                onRepostClick = if (canRepost) {
+                                    { viewModel.toggleRepost(detailPost.id, detailPost.isReposted) }
+                                } else {
+                                    null
                                 },
+                                onQuoteClick = if (canRepost) {
+                                    { onQuotePost(detailPost.id) }
+                                } else {
+                                    null
+                                },
+                                onQuotedPostClick = detailPost.quotedSlug?.takeIf { it.isNotBlank() }
+                                    ?.let { quotedSlug -> { onQuotedPostClick(quotedSlug) } },
                                 onAuthorClick = {
                                     onAuthorClick(detailPost.authorUsername)
                                 },
@@ -365,6 +390,7 @@ fun PostDetailScreen(
                             }
                         }
                     }
+                    }
                 }
             }
         }
@@ -400,7 +426,10 @@ fun PostDetailScreen(
 fun PostDetailHeader(
     post: PostEntity,
     onReplyClick: () -> Unit = {},
-    onRepostClick: () -> Unit = {},
+    /** Null hides the repost control (readers / non-authors). */
+    onRepostClick: (() -> Unit)? = null,
+    onQuoteClick: (() -> Unit)? = null,
+    onQuotedPostClick: (() -> Unit)? = null,
     onAuthorClick: (() -> Unit)? = null,
     onHashtagClick: (String) -> Unit = {},
     isOwner: Boolean = false,
@@ -510,6 +539,14 @@ fun PostDetailHeader(
             )
         }
 
+        if (post.hasQuotedPost()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            QuotedPostEmbed(
+                post = post,
+                onClick = onQuotedPostClick,
+            )
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
@@ -522,13 +559,23 @@ fun PostDetailHeader(
                 description = stringResource(R.string.cd_comments),
                 onClick = onReplyClick,
             )
-            DetailAction(
-                icon = XiloIcons.Repeat,
-                count = post.repostCount.toString(),
-                description = stringResource(R.string.cd_repost),
-                tint = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
-                onClick = onRepostClick,
-            )
+            if (onRepostClick != null && onQuoteClick != null) {
+                RepostMenuButton(
+                    repostCount = post.repostCount,
+                    isReposted = post.isReposted,
+                    onRepostClick = onRepostClick,
+                    onQuoteClick = onQuoteClick,
+                    compact = false,
+                )
+            } else if (onRepostClick != null) {
+                DetailAction(
+                    icon = XiloIcons.Repeat,
+                    count = post.repostCount.toString(),
+                    description = stringResource(R.string.cd_repost),
+                    tint = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
+                    onClick = onRepostClick,
+                )
+            }
             DetailAction(
                 icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
                 count = post.likeCount.toString(),

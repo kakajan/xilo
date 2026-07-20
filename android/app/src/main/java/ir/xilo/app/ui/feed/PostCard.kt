@@ -46,7 +46,9 @@ fun PostCard(
     onLikeClick: () -> Unit,
     onBookmarkClick: () -> Unit,
     onCommentClick: () -> Unit = { onPostClick(post.slug) },
-    onRepostClick: () -> Unit = {},
+    /** Null hides the repost control (readers / non-authors). */
+    onRepostClick: (() -> Unit)? = null,
+    onQuoteClick: (() -> Unit)? = null,
     onShareClick: (() -> Unit)? = null,
     onAuthorClick: (() -> Unit)? = null,
     onHashtagClick: ((String) -> Unit)? = null,
@@ -187,6 +189,14 @@ fun PostCard(
                             .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
                     )
                 }
+
+                if (post.hasQuotedPost()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    QuotedPostEmbed(
+                        post = post,
+                        onClick = post.quotedSlug?.let { slug -> { onPostClick(slug) } },
+                    )
+                }
             }
 
             if (isOwner && onEditClick != null && onArchiveClick != null && onDeleteClick != null) {
@@ -216,14 +226,23 @@ fun PostCard(
                 contentDescription = stringResource(R.string.cd_comments),
                 onClick = onCommentClick
             )
-            PostAction(
-                icon = XiloIcons.Repeat,
-                count = post.repostCount.toString(),
-                contentDescription = stringResource(R.string.cd_repost),
-                tint = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
-                countColor = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
-                onClick = onRepostClick
-            )
+            if (onRepostClick != null && onQuoteClick != null) {
+                RepostMenuButton(
+                    repostCount = post.repostCount,
+                    isReposted = post.isReposted,
+                    onRepostClick = onRepostClick,
+                    onQuoteClick = onQuoteClick,
+                )
+            } else if (onRepostClick != null) {
+                PostAction(
+                    icon = XiloIcons.Repeat,
+                    count = post.repostCount.toString(),
+                    contentDescription = stringResource(R.string.cd_repost),
+                    tint = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
+                    countColor = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
+                    onClick = onRepostClick
+                )
+            }
 
             val likeScale by animateFloatAsState(
                 targetValue = if (post.isLiked) 1.15f else 1f,
