@@ -12,6 +12,9 @@
     "postPublished": "Yeni yazı",
     "newMessage": "Yeni mesaj"
   },
+  "bodies": {
+    "newFollower": "Biri sizi takip etmeye başladı"
+  },
   "prefs": {
     "commentReply": "Yorum yanıtları",
     "newFollower": "Yeni takipçiler",

@@ -330,6 +330,12 @@
     <string name="notifications_empty">اعلانی وجود ندارد</string>
     <string name="notifications_mark_all_read">خواندن همه</string>
     <string name="notifications_unread_badge">جدید</string>
+    <string name="notif_title_post_comment">نظر جدید روی پست شما</string>
+    <string name="notif_title_comment_reply">پاسخ جدید به نظر شما</string>
+    <string name="notif_title_new_follower">دنبال‌کننده جدید</string>
+    <string name="notif_title_post_published">پست جدید</string>
+    <string name="notif_title_new_message">پیام جدید</string>
+    <string name="notif_body_new_follower">کسی شما را دنبال کرد</string>
     <string name="notifications_prefs_title">تنظیمات اعلان</string>
     <string name="notifications_prefs_empty">تنظیمات در دسترس نیست</string>
     <string name="notif_pref_group_comments">نظرات</string>

@@ -44,6 +44,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.core.util.DateFormatter
+import ir.xilo.app.core.util.NotificationCopy
 import ir.xilo.app.data.repository.NotificationDeepLink
 import ir.xilo.app.data.repository.NotificationItem
 import ir.xilo.app.data.repository.NotificationRepository
@@ -304,6 +305,9 @@ private fun NotificationRow(
     timeLabel: String,
     onClick: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val title = NotificationCopy.title(context, item.type, item.title)
+    val body = NotificationCopy.body(context, item.type, item.body)
     val background = if (item.isRead) {
         MaterialTheme.colorScheme.background
     } else {
@@ -330,7 +334,7 @@ private fun NotificationRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = item.title,
+                    text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (item.isRead) FontWeight.Normal else FontWeight.SemiBold,
                     maxLines = 1,
@@ -344,10 +348,10 @@ private fun NotificationRow(
                     color = MaterialTheme.colorScheme.secondary,
                 )
             }
-            if (item.body.isNotBlank()) {
+            if (body.isNotBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = item.body,
+                    text = body,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 2,

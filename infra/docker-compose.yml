@@ -12,6 +12,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
+      meilisearch:
+        condition: service_started
+      nats:
+        condition: service_started
 
   postgres:
     image: postgres:16-alpine
@@ -51,7 +57,8 @@ services:
   meilisearch:
     image: getmeili/meilisearch:v1.9
     ports:
-      - "7700:7700"
+      # Host 7700 is often blocked on Windows Hyper-V; keep container port 7700 for in-network DNS.
+      - "17700:7700"
     environment:
       MEILI_MASTER_KEY: xilo-meili-key
       MEILI_NO_ANALYTICS: "true"

@@ -12,6 +12,9 @@
     "postPublished": "Новый пост",
     "newMessage": "Новое сообщение"
   },
+  "bodies": {
+    "newFollower": "Кто-то начал на вас подписаться"
+  },
   "prefs": {
     "commentReply": "Ответы на комментарии",
     "newFollower": "Новые подписчики",

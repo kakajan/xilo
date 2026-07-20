@@ -12,6 +12,9 @@
     "postPublished": "منشور جديد",
     "newMessage": "رسالة جديدة"
   },
+  "bodies": {
+    "newFollower": "بدأ شخص ما بمتابعتك"
+  },
   "prefs": {
     "commentReply": "الردود على التعليقات",
     "newFollower": "متابعون جدد",

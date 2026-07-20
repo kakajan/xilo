@@ -34,6 +34,19 @@ function titleForType(
   }
 }
 
+/** Template bodies only — user content (comments, messages, post titles) stays as API text. */
+function bodyForType(
+  n: Notification,
+  t: (key: "bodies.newFollower") => string
+): string {
+  switch (n.type) {
+    case "new_follower":
+      return t("bodies.newFollower");
+    default:
+      return n.body;
+  }
+}
+
 export function NotificationCenter() {
   const t = useTranslations("notification");
   const router = useRouter();
@@ -108,26 +121,29 @@ export function NotificationCenter() {
         <p className="py-8 text-center text-muted-foreground">{t("empty")}</p>
       ) : (
         <div className="space-y-1">
-          {notifications.map((n) => (
-            <button
-              key={n.id}
-              type="button"
-              onClick={() => {
-                markRead.mutate(n.id);
-                const href = hrefForNotification(n);
-                if (href) router.push(href);
-              }}
-              className={`w-full rounded-lg px-3 py-2 text-start transition-colors hover:bg-accent ${
-                !n.is_read ? "bg-accent/50" : ""
-              }`}
-            >
-              <p className="text-sm font-medium">{titleForType(n, t)}</p>
-              {n.body && <p className="mt-0.5 text-xs text-muted-foreground">{n.body}</p>}
-              <TimeLabel className="mt-1 text-xs text-muted-foreground">
-                {formatDate(n.created_at)}
-              </TimeLabel>
-            </button>
-          ))}
+          {notifications.map((n) => {
+            const body = bodyForType(n, t);
+            return (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => {
+                  markRead.mutate(n.id);
+                  const href = hrefForNotification(n);
+                  if (href) router.push(href);
+                }}
+                className={`w-full rounded-lg px-3 py-2 text-start transition-colors hover:bg-accent ${
+                  !n.is_read ? "bg-accent/50" : ""
+                }`}
+              >
+                <p className="text-sm font-medium">{titleForType(n, t)}</p>
+                {body && <p className="mt-0.5 text-xs text-muted-foreground">{body}</p>}
+                <TimeLabel className="mt-1 text-xs text-muted-foreground">
+                  {formatDate(n.created_at)}
+                </TimeLabel>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

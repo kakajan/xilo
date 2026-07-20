@@ -12,6 +12,9 @@
     "postPublished": "New post",
     "newMessage": "New message"
   },
+  "bodies": {
+    "newFollower": "Someone started following you"
+  },
   "prefs": {
     "commentReply": "Comment replies",
     "newFollower": "New followers",

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -185,7 +186,9 @@ func (r *CommentRepo) attachBookmarks(ctx context.Context, comments []*model.Com
 		WHERE user_id = $1 AND comment_id = ANY($2)
 	`, viewerID, pq.Array(ids))
 	if err != nil {
-		return fmt.Errorf("attach comment bookmarks: %w", err)
+		// Bookmarks are non-critical; missing table/migration must not 500 the comment list.
+		slog.Warn("attach comment bookmarks failed", "error", err)
+		return nil
 	}
 
 	bookmarkSet := make(map[string]bool, len(bookmarked))

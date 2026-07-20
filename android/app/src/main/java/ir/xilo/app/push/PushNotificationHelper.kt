@@ -11,6 +11,8 @@ import androidx.core.app.NotificationManagerCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import ir.xilo.app.MainActivity
 import ir.xilo.app.R
+import ir.xilo.app.core.util.AppLocale
+import ir.xilo.app.core.util.NotificationCopy
 import ir.xilo.app.data.repository.NotificationRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,10 +27,10 @@ class PushNotificationHelper @Inject constructor(
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            context.getString(R.string.push_notification_channel_name),
+            AppLocale.string(context, R.string.push_notification_channel_name),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = context.getString(R.string.push_notification_channel_description)
+            description = AppLocale.string(context, R.string.push_notification_channel_description)
         }
         manager.createNotificationChannel(channel)
     }
@@ -39,8 +41,13 @@ class PushNotificationHelper @Inject constructor(
         data: Map<String, String>,
     ) {
         ensureChannelCreated()
-        val displayTitle = title.ifBlank { context.getString(R.string.app_name) }
-        val displayBody = body.ifBlank { context.getString(R.string.notifications_inbox_title) }
+        val type = data["type"].orEmpty()
+        val localizedTitle = NotificationCopy.title(context, type, title)
+        val localizedBody = NotificationCopy.body(context, type, body)
+        val displayTitle = localizedTitle.ifBlank { AppLocale.string(context, R.string.app_name) }
+        val displayBody = localizedBody.ifBlank {
+            AppLocale.string(context, R.string.notifications_inbox_title)
+        }
 
         val intent = buildDeepLinkIntent(data)
         val pendingIntent = PendingIntent.getActivity(

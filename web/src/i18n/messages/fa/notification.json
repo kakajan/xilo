@@ -12,6 +12,9 @@
     "postPublished": "پست جدید",
     "newMessage": "پیام جدید"
   },
+  "bodies": {
+    "newFollower": "کسی شما را دنبال کرد"
+  },
   "prefs": {
     "commentReply": "پاسخ به نظر",
     "newFollower": "دنبال‌کننده جدید",

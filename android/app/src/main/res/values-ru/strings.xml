@@ -315,6 +315,12 @@
     <string name="devices_revoke_other_message">Завершить эту сессию?</string>
     <string name="devices_revoke_action">Отозвать</string>
     <string name="devices_empty">Нет активных сессий</string>
+    <string name="notif_title_post_comment">Новый комментарий к вашему посту</string>
+    <string name="notif_title_comment_reply">Новый ответ на ваш комментарий</string>
+    <string name="notif_title_new_follower">Новый подписчик</string>
+    <string name="notif_title_post_published">Новый пост</string>
+    <string name="notif_title_new_message">Новое сообщение</string>
+    <string name="notif_body_new_follower">Кто-то начал на вас подписаться</string>
     <string name="devices_unknown">Неизвестное устройство</string>
     <string name="devices_this_device">Это устройство</string>
     <string name="devices_sign_out">Выйти</string>

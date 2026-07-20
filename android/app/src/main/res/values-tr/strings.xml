@@ -315,6 +315,12 @@
     <string name="devices_revoke_other_message">Bu oturum sonlandırılsın mı?</string>
     <string name="devices_revoke_action">Erişimi kaldır</string>
     <string name="devices_empty">Aktif oturum yok</string>
+    <string name="notif_title_post_comment">Yazınıza yeni yorum</string>
+    <string name="notif_title_comment_reply">Yorumunuza yeni yanıt</string>
+    <string name="notif_title_new_follower">Yeni takipçi</string>
+    <string name="notif_title_post_published">Yeni yazı</string>
+    <string name="notif_title_new_message">Yeni mesaj</string>
+    <string name="notif_body_new_follower">Biri sizi takip etmeye başladı</string>
     <string name="devices_unknown">Bilinmeyen cihaz</string>
     <string name="devices_this_device">Bu cihaz</string>
     <string name="devices_sign_out">Çıkış</string>
