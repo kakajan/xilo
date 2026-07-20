@@ -81,7 +81,10 @@
 -keep class ir.xilo.app.**_Factory { *; }
 -keep class ir.xilo.app.**_MembersInjector { *; }
 
-# --- Enums / Parcelable (future-proof) ---
+# --- Firebase / FCM ---
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);

@@ -4,15 +4,15 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/xilo-platform/xilo/internal/notification/repository"
+	"github.com/xilo-platform/xilo/internal/notification/service"
 )
 
 type NotificationHandler struct {
-	repo *repository.NotificationRepo
+	svc *service.NotificationService
 }
 
-func NewNotificationHandler(repo *repository.NotificationRepo) *NotificationHandler {
-	return &NotificationHandler{repo: repo}
+func NewNotificationHandler(svc *service.NotificationService) *NotificationHandler {
+	return &NotificationHandler{svc: svc}
 }
 
 // List godoc
@@ -27,12 +27,28 @@ func (h *NotificationHandler) List(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
-	items, err := h.repo.List(c.UserContext(), userID, limit)
+	items, err := h.svc.List(c.UserContext(), userID, limit)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list notifications"})
 	}
 
 	return c.JSON(fiber.Map{"data": items})
+}
+
+// UnreadCount godoc
+// @Summary      Get unread notification count
+// @Tags         notifications
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object} map[string]int
+// @Router       /notifications/unread-count [get]
+func (h *NotificationHandler) UnreadCount(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+	count, err := h.svc.UnreadCount(c.UserContext(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to get unread count"})
+	}
+	return c.JSON(fiber.Map{"unread": count})
 }
 
 // MarkRead godoc
@@ -46,7 +62,7 @@ func (h *NotificationHandler) List(c *fiber.Ctx) error {
 func (h *NotificationHandler) MarkRead(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	id := c.Params("id")
-	if err := h.repo.MarkRead(c.UserContext(), id, userID); err != nil {
+	if err := h.svc.MarkRead(c.UserContext(), id, userID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed"})
 	}
 	return c.JSON(fiber.Map{"message": "ok"})
@@ -61,7 +77,7 @@ func (h *NotificationHandler) MarkRead(c *fiber.Ctx) error {
 // @Router       /notifications/read-all [post]
 func (h *NotificationHandler) MarkAllRead(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
-	if err := h.repo.MarkAllRead(c.UserContext(), userID); err != nil {
+	if err := h.svc.MarkAllRead(c.UserContext(), userID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed"})
 	}
 	return c.JSON(fiber.Map{"message": "ok"})

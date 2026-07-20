@@ -77,6 +77,8 @@ fun FeedScreen(
     onReplyToPost: (String) -> Unit = onPostClick,
     onEditPost: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
+    unreadNotificationCount: Int = 0,
     onProfileClick: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
     onHashtagClick: (String) -> Unit = {},
@@ -235,6 +237,8 @@ fun FeedScreen(
                     FeedHeader(
                         avatarUrl = currentUserAvatarUrl,
                         onSettingsClick = onSettingsClick,
+                        onNotificationsClick = onNotificationsClick,
+                        unreadNotificationCount = unreadNotificationCount,
                         onProfileClick = onProfileClick
                     )
                     FeedCategoryTabs(
@@ -266,6 +270,8 @@ fun FeedScreen(
 private fun FeedHeader(
     avatarUrl: String?,
     onSettingsClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    unreadNotificationCount: Int,
     onProfileClick: () -> Unit
 ) {
     Row(
@@ -312,6 +318,39 @@ private fun FeedHeader(
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1
                 )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Box {
+            IconButton(
+                onClick = onNotificationsClick,
+                modifier = Modifier
+                    .size(40.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape)
+            ) {
+                XiloIcon(
+                    icon = XiloIcons.Notification,
+                    contentDescription = stringResource(R.string.notifications_inbox_title),
+                    modifier = Modifier.size(XiloSpacing.iconInline)
+                )
+            }
+            if (unreadNotificationCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 4.dp, end = 4.dp)
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = if (unreadNotificationCount > 99) "99+" else unreadNotificationCount.toString(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = Color.White,
+                        maxLines = 1,
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.width(8.dp))

@@ -13,9 +13,11 @@ import {
   Settings,
   Bookmark,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { canCreatePost } from "@/lib/auth/permissions";
 import { useAuthStore } from "@/stores/auth-store";
+import { apiFetch } from "@/lib/api-client";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,6 +34,14 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
   const { user, isAuthenticated, authChecked } = useAuthStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
+
+  const { data: unreadData } = useQuery({
+    queryKey: ["notifications", "unread-count"],
+    queryFn: () => apiFetch<{ unread: number }>("/api/notifications/unread-count"),
+    enabled: isAuthenticated,
+    refetchInterval: 60_000,
+  });
+  const unread = unreadData?.unread ?? 0;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,11 +114,16 @@ export function Navbar({ chromeVisible = true }: NavbarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="min-h-11 min-w-11"
+                className="relative min-h-11 min-w-11"
                 onClick={() => router.push("/notifications")}
                 aria-label={t("notifications")}
               >
                 <Bell className="h-5 w-5" />
+                {unread > 0 && (
+                  <span className="absolute end-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </Button>
               <Button
                 variant="ghost"

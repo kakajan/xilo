@@ -1,6 +1,7 @@
 package ir.xilo.app
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +18,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.data.repository.ThemeMode
 import ir.xilo.app.data.repository.ThemeRepository
+import ir.xilo.app.push.PushNavigationCoordinator
+import ir.xilo.app.push.extractPushNotificationData
 import ir.xilo.app.theme.XiloTheme
 import javax.inject.Inject
 
@@ -25,6 +28,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var themeRepository: ThemeRepository
+
+    @Inject
+    lateinit var pushNavigationCoordinator: PushNavigationCoordinator
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
@@ -38,6 +44,8 @@ class MainActivity : ComponentActivity() {
         // Keep the system navigation bar visible; bottom chrome uses navigationBarsPadding().
         WindowCompat.getInsetsController(window, window.decorView)
             .show(WindowInsetsCompat.Type.navigationBars())
+
+        handlePushIntent(intent)
 
         setContent {
             val platformTheme by themeRepository.theme.collectAsStateWithLifecycle()
@@ -54,5 +62,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handlePushIntent(intent)
+    }
+
+    private fun handlePushIntent(intent: Intent?) {
+        val data = intent?.extractPushNotificationData() ?: return
+        pushNavigationCoordinator.handlePushData(data)
     }
 }

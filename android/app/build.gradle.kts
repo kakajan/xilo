@@ -16,6 +16,11 @@ plugins {
   alias(libs.plugins.ksp)
 }
 
+// Real Firebase projects can replace app/google-services.json; debug builds use the checked-in placeholder.
+if (file("google-services.json").exists()) {
+  apply(plugin = "com.google.gms.google-services")
+}
+
 val signingDir = rootProject.file("signing")
 val keystorePropertiesFile = signingDir.resolve("keystore.properties")
 val keystoreProperties = Properties().apply {
@@ -254,6 +259,11 @@ dependencies {
   implementation(libs.paging.runtime)
   implementation(libs.paging.compose)
   implementation(libs.iconsax.android)
+
+  // Firebase Cloud Messaging (push notifications)
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.firebase.messaging)
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:${libs.versions.coroutines.get()}")
 }
 
 kotlin {

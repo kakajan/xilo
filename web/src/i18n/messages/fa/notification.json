@@ -4,5 +4,16 @@
   "markAllRead": "علامت‌گذاری همه به‌عنوان خوانده‌شده",
   "newComment": "نظر جدید",
   "newFollower": "دنبال‌کننده جدید",
-  "newLike": "پسند جدید"
+  "newLike": "پسند جدید",
+  "prefs": {
+    "commentReply": "پاسخ به نظر",
+    "newFollower": "دنبال‌کننده جدید",
+    "postPublished": "پست جدید از نویسندگان دنبال‌شده",
+    "newMessage": "پیام چت جدید",
+    "newMessagePush": "پوش پیام چت (موبایل)",
+    "postReaction": "واکنش به پست",
+    "mention": "منشن",
+    "commentReplyEmail": "پاسخ نظر (ایمیل)",
+    "postPublishedEmail": "پست جدید (خلاصه ایمیل)"
+  }
 }

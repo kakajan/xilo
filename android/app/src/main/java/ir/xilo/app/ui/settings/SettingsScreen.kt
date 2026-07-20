@@ -82,6 +82,7 @@ private enum class SettingsAction {
     SavedMessages,
     Devices,
     ChatFolder,
+    NotificationPreferences,
     Calendar,
     Logout,
 }
@@ -94,6 +95,7 @@ fun SettingsScreen(
     onSavedMessagesClick: () -> Unit,
     onDevicesClick: () -> Unit,
     onChatFoldersClick: () -> Unit,
+    onNotificationPreferencesClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -182,6 +184,7 @@ fun SettingsScreen(
                 SettingsNavEvent.SavedMessages -> onSavedMessagesClick()
                 SettingsNavEvent.Devices -> onDevicesClick()
                 SettingsNavEvent.ChatFolders -> onChatFoldersClick()
+                SettingsNavEvent.NotificationPreferences -> onNotificationPreferencesClick()
             }
         }
     }
@@ -509,6 +512,12 @@ fun SettingsScreen(
             action = SettingsAction.ChatFolder,
         ),
         SettingsMenuItem(
+            stringResource(R.string.settings_menu_notifications),
+            XiloIcons.Notification,
+            Color(0xFF7E57C2),
+            action = SettingsAction.NotificationPreferences,
+        ),
+        SettingsMenuItem(
             stringResource(R.string.settings_menu_logout),
             XiloIcons.Logout,
             MaterialTheme.colorScheme.error,
@@ -626,6 +635,7 @@ fun SettingsScreen(
                                 SettingsAction.SavedMessages -> viewModel.onSavedMessages()
                                 SettingsAction.Devices -> viewModel.onDevices()
                                 SettingsAction.ChatFolder -> viewModel.onChatFolders()
+                                SettingsAction.NotificationPreferences -> viewModel.onNotificationPreferences()
                                 SettingsAction.Logout -> showLogoutDialog = true
                             }
                         }

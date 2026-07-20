@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CreditCard, LayoutDashboard, Settings, Tags, Users } from "lucide-react";
+import {
+  BarChart3,
+  Bell,
+  CreditCard,
+  LayoutDashboard,
+  Settings,
+  Tags,
+  Users,
+} from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "نمای کلی", icon: LayoutDashboard },
   { href: "/dashboard/analytics", label: "آمار", icon: BarChart3 },
   { href: "/dashboard/users", label: "کاربران", icon: Users },
   { href: "/dashboard/interests", label: "علایق", icon: Tags },
+  { href: "/dashboard/notifications", label: "پوش ناتیف", icon: Bell },
   { href: "/dashboard/payments", label: "پرداخت‌ها", icon: CreditCard },
   { href: "/dashboard/settings", label: "تنظیمات", icon: Settings },
 ];

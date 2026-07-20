@@ -1,6 +1,7 @@
 package ir.xilo.app.data.remote.websocket
 
 import ir.xilo.app.data.remote.dto.MessageResponse
+import ir.xilo.app.data.remote.dto.NotificationResponse
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
@@ -21,6 +22,8 @@ object RealtimeEvents {
     const val USER_TYPING = "user.typing"
     const val USER_ONLINE = "user.online"
     const val USER_OFFLINE = "user.offline"
+    const val NOTIFICATION_NEW = "notification.new"
+    const val NOTIFICATION_COUNT = "notification.count"
 }
 
 /**
@@ -127,6 +130,11 @@ data class RealtimePresencePayload(
     val changedAt: String? = null,
 )
 
+@Serializable
+data class RealtimeNotificationCountPayload(
+    val unread: Int = 0,
+)
+
 /** Typed inbound events decoded from versioned envelopes. */
 sealed class RealtimeEvent {
     abstract val envelope: RealtimeEnvelope
@@ -177,6 +185,16 @@ sealed class RealtimeEvent {
     data class Error(
         override val envelope: RealtimeEnvelope,
         val error: RealtimeErrorPayload,
+    ) : RealtimeEvent()
+
+    data class NotificationNew(
+        override val envelope: RealtimeEnvelope,
+        val notification: NotificationResponse,
+    ) : RealtimeEvent()
+
+    data class NotificationCount(
+        override val envelope: RealtimeEnvelope,
+        val unread: Int,
     ) : RealtimeEvent()
 
     data class Unknown(

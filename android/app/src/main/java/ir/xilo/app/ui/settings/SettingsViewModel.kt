@@ -44,6 +44,7 @@ sealed interface SettingsNavEvent {
     data object SavedMessages : SettingsNavEvent
     data object Devices : SettingsNavEvent
     data object ChatFolders : SettingsNavEvent
+    data object NotificationPreferences : SettingsNavEvent
 }
 
 @HiltViewModel
@@ -319,6 +320,10 @@ class SettingsViewModel @Inject constructor(
 
     fun onChatFolders() {
         viewModelScope.launch { _navEvents.emit(SettingsNavEvent.ChatFolders) }
+    }
+
+    fun onNotificationPreferences() {
+        viewModelScope.launch { _navEvents.emit(SettingsNavEvent.NotificationPreferences) }
     }
 
     fun logout() {

@@ -37,7 +37,8 @@ class AuthRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: XiloApiService,
     private val userDao: UserDao,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val pushTokenRepository: PushTokenRepository,
 ) {
     val isAuthenticatedFlow: StateFlow<Boolean> = tokenManager.isAuthenticatedFlow
 
@@ -129,6 +130,7 @@ class AuthRepository @Inject constructor(
 
     suspend fun logout() {
         val refresh = tokenManager.getRefreshToken().orEmpty()
+        pushTokenRepository.unregisterPushToken()
         if (refresh.isNotBlank()) {
             runCatching { apiService.logout(LogoutRequest(refreshToken = refresh)) }
         }

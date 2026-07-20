@@ -4,5 +4,16 @@
   "markAllRead": "Tümünü okundu işaretle",
   "newComment": "Yeni yorum",
   "newFollower": "Yeni takipçi",
-  "newLike": "Yeni beğeni"
+  "newLike": "Yeni beğeni",
+  "prefs": {
+    "commentReply": "Yorum yanıtları",
+    "newFollower": "Yeni takipçiler",
+    "postPublished": "Takip edilen yazarlardan yeni yazılar",
+    "newMessage": "Yeni sohbet mesajları",
+    "newMessagePush": "Sohbet mesajı push (mobil)",
+    "postReaction": "Yazı tepkileri",
+    "mention": "Bahsetmeler",
+    "commentReplyEmail": "Yorum yanıtları (e-posta)",
+    "postPublishedEmail": "Yeni yazılar (e-posta özeti)"
+  }
 }

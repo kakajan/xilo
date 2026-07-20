@@ -1,8 +1,19 @@
 {
   "title": "الإشعارات",
   "empty": "لا توجد إشعارات",
-  "markAllRead": "تعليم الكل كمقروء",
+  "markAllRead": "تحديد الكل كمقروء",
   "newComment": "تعليق جديد",
   "newFollower": "متابع جديد",
-  "newLike": "إعجاب جديد"
+  "newLike": "إعجاب جديد",
+  "prefs": {
+    "commentReply": "الردود على التعليقات",
+    "newFollower": "متابعون جدد",
+    "postPublished": "منشورات جديدة من المؤلفين المتابَعين",
+    "newMessage": "رسائل الدردشة الجديدة",
+    "newMessagePush": "دفع رسائل الدردشة (الجوال)",
+    "postReaction": "تفاعلات المنشور",
+    "mention": "الإشارات",
+    "commentReplyEmail": "الردود على التعليقات (بريد)",
+    "postPublishedEmail": "منشورات جديدة (ملخص بريد)"
+  }
 }

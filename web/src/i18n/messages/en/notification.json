@@ -4,5 +4,16 @@
   "markAllRead": "Mark all as read",
   "newComment": "New comment",
   "newFollower": "New follower",
-  "newLike": "New like"
+  "newLike": "New like",
+  "prefs": {
+    "commentReply": "Comment replies",
+    "newFollower": "New followers",
+    "postPublished": "New posts from followed authors",
+    "newMessage": "New chat messages",
+    "newMessagePush": "Chat message push (mobile)",
+    "postReaction": "Post reactions",
+    "mention": "Mentions",
+    "commentReplyEmail": "Comment replies (email)",
+    "postPublishedEmail": "New posts (email digest)"
+  }
 }

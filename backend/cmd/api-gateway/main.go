@@ -62,7 +62,9 @@ import (
 	mediasvc "github.com/xilo-platform/xilo/internal/media/service"
 
 	notifhandler "github.com/xilo-platform/xilo/internal/notification/handler"
+	notifpush "github.com/xilo-platform/xilo/internal/notification/push"
 	notifrepo "github.com/xilo-platform/xilo/internal/notification/repository"
+	notifsvc "github.com/xilo-platform/xilo/internal/notification/service"
 
 	posthandler "github.com/xilo-platform/xilo/internal/post/handler"
 	postrepo "github.com/xilo-platform/xilo/internal/post/repository"
@@ -134,18 +136,31 @@ func main() {
 	contactH := contacthandler.NewContactHandler(db, contacthash.ResolvePepper())
 	discoverH := discoverpkg.NewDiscoverHandler(db)
 
+	realtimePublisher := pkgrealtime.NewRedisPublisher(rdb.Client)
+
+	notifRepo := notifrepo.NewNotificationRepo(db)
+	pushSender := notifpush.NewSenderFromEnv()
+	notificationSvc := notifsvc.NewNotificationService(notifRepo, db, rdb.Client, realtimePublisher, pushSender)
+	notifH := notifhandler.NewNotificationHandler(notificationSvc)
+	prefsH := notifhandler.NewNotificationPrefsHandler(db)
+	smsH := notifhandler.NewSMSNotificationHandler(db, smsDriver)
+	pushTokenH := notifhandler.NewPushTokenHandler(notificationSvc)
+	broadcastH := notifhandler.NewBroadcastHandler(notificationSvc)
+
 	postRepo := postrepo.NewPostRepo(db)
 	postSvc := postsvc.NewPostService(postRepo, rdb)
+	postSvc.SetNotifier(notificationSvc)
 	postH := posthandler.NewPostHandler(postSvc)
 
 	commentRepo := commentrepo.NewCommentRepo(db)
 	commentSvc := commentsvc.NewCommentService(commentRepo)
+	commentSvc.SetNotifier(notificationSvc)
 	commentH := commenthandler.NewCommentHandler(commentSvc)
 
-	realtimePublisher := pkgrealtime.NewRedisPublisher(rdb.Client)
 	chatRepo := chatrepo.NewChatRepoWithStorage(db, storageDriver)
 	folderRepo := chatrepo.NewFolderRepo(db)
 	chatSvc := chatsvc.NewChatServiceWithPublisher(chatRepo, realtimePublisher)
+	chatSvc.SetNotifier(notificationSvc)
 	folderSvc := chatsvc.NewFolderService(folderRepo)
 	chatH := chathandler.NewChatHandler(chatSvc)
 	folderH := chathandler.NewFolderHandler(folderSvc)
@@ -163,12 +178,8 @@ func main() {
 	searchSvc := searchsvc.NewSearchService(searchRepo)
 	searchH := searchhandler.NewSearchHandler(searchSvc)
 
-	notifRepo := notifrepo.NewNotificationRepo(db)
-	notifH := notifhandler.NewNotificationHandler(notifRepo)
-	prefsH := notifhandler.NewNotificationPrefsHandler(db)
-	smsH := notifhandler.NewSMSNotificationHandler(db, smsDriver)
-
 	socialH := userhandler.NewSocialHandler(db)
+	socialH.SetNotifier(notificationSvc)
 	profileH := userhandler.NewProfileHandler(db, rdb, postRepo, commentRepo)
 	authH.SetProfileCacheInvalidator(profileH.InvalidateProfileCache)
 	adminH := userhandler.NewAdminHandler(db)
@@ -347,12 +358,18 @@ func main() {
 
 	notif := app.Group("/api/notifications")
 	notif.Get("/", authmw.AuthRequired(jwtMgr), notifH.List)
+	notif.Get("/unread-count", authmw.AuthRequired(jwtMgr), notifH.UnreadCount)
 	notif.Post("/:id/read", authmw.AuthRequired(jwtMgr), notifH.MarkRead)
 	notif.Post("/read-all", authmw.AuthRequired(jwtMgr), notifH.MarkAllRead)
 	notif.Get("/preferences", authmw.AuthRequired(jwtMgr), prefsH.GetPreferences)
 	notif.Patch("/preferences", authmw.AuthRequired(jwtMgr), prefsH.UpdatePreferences)
 	notif.Post("/sms/send", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), smsH.SendSMS)
 	notif.Post("/sms/broadcast", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), smsH.BroadcastToAll)
+	notif.Post("/push/broadcast", authmw.AuthRequired(jwtMgr), authmw.RoleRequired("admin", "superadmin"), broadcastH.BroadcastPush)
+
+	devices := app.Group("/api/devices")
+	devices.Post("/push-tokens", authmw.AuthRequired(jwtMgr), pushTokenH.Register)
+	devices.Delete("/push-tokens", authmw.AuthRequired(jwtMgr), pushTokenH.Unregister)
 
 	app.Get("/api/interests", applyPublicRateLimit, interestH.ListActive)
 	app.Get("/api/users/me/interests", authmw.AuthRequired(jwtMgr), interestH.GetMyInterests)

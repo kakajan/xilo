@@ -33,7 +33,7 @@
 
 ## Phase 3 — Realtime, Offline, and Preferences
 
-- [ ] **ANP-3.1** Deliver notification inbox, push registration, notification preferences, deep links, and foreground/background handling.
+- [x] **ANP-3.1** Deliver notification inbox, push registration, notification preferences, deep links, and foreground/background handling.
   - Acceptance: `REQ-AND-006` and shared `notification-spec.md` scenarios pass with a test provider; Android 13+ permission denial, registration failure, and invalid/deep-link payloads are safely handled.
 - [ ] **ANP-3.2** Deliver direct and group chat, typing, presence, receipts, reactions, attachments, and reconnect reconciliation.
   - Acceptance: shared `chat-spec.md` scenarios pass across reconnect, duplicate event, and offline-send cases.

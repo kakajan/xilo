@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api-client";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface NotificationPrefs {
@@ -15,31 +15,40 @@ interface NotificationPrefs {
   new_follower_web: boolean;
   post_published_web: boolean;
   post_published_email: boolean;
+  new_message_web: boolean;
+  new_message_push: boolean;
 }
 
+const defaults: NotificationPrefs = {
+  comment_reply_web: true,
+  comment_reply_email: false,
+  comment_mention_web: true,
+  comment_mention_email: false,
+  post_reaction_web: true,
+  new_follower_web: true,
+  post_published_web: true,
+  post_published_email: false,
+  new_message_web: true,
+  new_message_push: true,
+};
+
 export function NotificationPreferences() {
+  const t = useTranslations("notification.prefs");
   const queryClient = useQueryClient();
-  const [prefs, setPrefs] = useState<NotificationPrefs>({
-    comment_reply_web: true,
-    comment_reply_email: false,
-    comment_mention_web: true,
-    comment_mention_email: false,
-    post_reaction_web: true,
-    new_follower_web: true,
-    post_published_web: false,
-    post_published_email: false,
-  });
+  const [prefs, setPrefs] = useState<NotificationPrefs>(defaults);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
         const res = await apiFetch<NotificationPrefs>("/api/notifications/preferences");
-        setPrefs(res);
-      } catch {}
+        setPrefs({ ...defaults, ...res });
+      } catch {
+        // keep defaults
+      }
       setLoading(false);
     }
-    load();
+    void load();
   }, []);
 
   const mutation = useMutation({
@@ -60,14 +69,15 @@ export function NotificationPreferences() {
   if (loading) return <Skeleton className="h-48 w-full" />;
 
   const items: { key: keyof NotificationPrefs; label: string }[] = [
-    { key: "comment_reply_web", label: "Comment replies (web)" },
-    { key: "comment_reply_email", label: "Comment replies (email)" },
-    { key: "comment_mention_web", label: "Mentions (web)" },
-    { key: "comment_mention_email", label: "Mentions (email)" },
-    { key: "post_reaction_web", label: "Post reactions" },
-    { key: "new_follower_web", label: "New followers" },
-    { key: "post_published_web", label: "New posts from authors" },
-    { key: "post_published_email", label: "New posts (email digest)" },
+    { key: "comment_reply_web", label: t("commentReply") },
+    { key: "new_follower_web", label: t("newFollower") },
+    { key: "post_published_web", label: t("postPublished") },
+    { key: "new_message_web", label: t("newMessage") },
+    { key: "new_message_push", label: t("newMessagePush") },
+    { key: "post_reaction_web", label: t("postReaction") },
+    { key: "comment_mention_web", label: t("mention") },
+    { key: "comment_reply_email", label: t("commentReplyEmail") },
+    { key: "post_published_email", label: t("postPublishedEmail") },
   ];
 
   return (
@@ -75,12 +85,13 @@ export function NotificationPreferences() {
       {items.map(({ key, label }) => (
         <button
           key={key}
+          type="button"
           onClick={() => toggle(key)}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-accent transition-colors"
+          className="flex w-full items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-accent"
         >
-          <span className="text-sm">{label}</span>
+          <span className="min-w-0 text-sm">{label}</span>
           <span
-            className={`relative w-9 h-5 rounded-full transition-colors ${
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
               prefs[key] ? "bg-primary" : "bg-muted"
             }`}
           >

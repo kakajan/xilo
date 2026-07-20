@@ -222,6 +222,7 @@
     <string name="settings_menu_saved_messages">پیام‌های ذخیره‌شده</string>
     <string name="settings_menu_devices">دستگاه‌ها</string>
     <string name="settings_menu_chat_folders">پوشه گفتگو</string>
+    <string name="settings_menu_notifications">اعلان‌ها</string>
     <string name="settings_menu_logout">خروج از حساب</string>
     <string name="settings_username_unset">نام کاربری انتخاب نشده</string>
     <string name="settings_username_dialog_title">نام کاربری</string>
@@ -317,6 +318,31 @@
     <string name="devices_revoke_other_message">آیا می‌خواهید این نشست را پایان دهید؟</string>
     <string name="devices_revoke_action">قطع دسترسی</string>
     <string name="devices_empty">نشست فعالی یافت نشد</string>
+
+    <!-- Notifications -->
+    <string name="notifications_inbox_title">اعلان‌ها</string>
+    <string name="notifications_empty">اعلانی وجود ندارد</string>
+    <string name="notifications_mark_all_read">خواندن همه</string>
+    <string name="notifications_unread_badge">جدید</string>
+    <string name="notifications_prefs_title">تنظیمات اعلان</string>
+    <string name="notifications_prefs_empty">تنظیمات در دسترس نیست</string>
+    <string name="notif_pref_group_comments">نظرات</string>
+    <string name="notif_pref_group_posts">پست‌ها</string>
+    <string name="notif_pref_group_social">اجتماعی</string>
+    <string name="notif_pref_group_messages">پیام‌ها</string>
+    <string name="notif_pref_comment_reply_inapp">پاسخ به نظر (درون‌برنامه)</string>
+    <string name="notif_pref_comment_reply_push">پاسخ به نظر (پوش)</string>
+    <string name="notif_pref_comment_mention_inapp">اشاره در نظر (درون‌برنامه)</string>
+    <string name="notif_pref_post_reaction_inapp">واکنش به پست (درون‌برنامه)</string>
+    <string name="notif_pref_post_published_inapp">پست جدید (درون‌برنامه)</string>
+    <string name="notif_pref_post_published_push">پست جدید (پوش)</string>
+    <string name="notif_pref_new_follower_inapp">دنبال‌کننده جدید (درون‌برنامه)</string>
+    <string name="notif_pref_new_follower_push">دنبال‌کننده جدید (پوش)</string>
+    <string name="notif_pref_new_message_inapp">پیام جدید (درون‌برنامه)</string>
+    <string name="notif_pref_new_message_push">پیام جدید (پوش)</string>
+    <string name="push_notification_channel_id">xilo_push_default</string>
+    <string name="push_notification_channel_name">اعلان‌های Xilo</string>
+    <string name="push_notification_channel_description">اعلان‌های پوش برای پیام‌ها، نظرات و فعالیت‌های اجتماعی</string>
     <string name="devices_unknown">دستگاه ناشناس</string>
     <string name="devices_this_device">همین دستگاه</string>
     <string name="devices_sign_out">خروج</string>

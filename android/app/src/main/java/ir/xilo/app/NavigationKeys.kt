@@ -35,3 +35,5 @@ data class TagFeedKey(val tag: String) : NavKey
 @Serializable data class ContactDetailKey(val chatId: String) : NavKey
 @Serializable data object DevicesKey : NavKey
 @Serializable data object ChatFoldersKey : NavKey
+@Serializable data object NotificationsKey : NavKey
+@Serializable data object NotificationPreferencesKey : NavKey

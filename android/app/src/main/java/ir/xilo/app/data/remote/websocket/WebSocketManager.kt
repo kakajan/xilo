@@ -3,6 +3,7 @@ package ir.xilo.app.data.remote.websocket
 import ir.xilo.app.data.local.prefs.TokenManager
 import ir.xilo.app.data.remote.AppEnvironment
 import ir.xilo.app.data.remote.dto.MessageResponse
+import ir.xilo.app.data.remote.dto.NotificationResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -359,6 +360,27 @@ class WebSocketManager @Inject constructor(
                 RealtimeEvents.ERROR -> {
                     val error = envelope.error ?: return RealtimeEvent.Unknown(envelope)
                     RealtimeEvent.Error(envelope = envelope, error = error)
+                }
+                RealtimeEvents.NOTIFICATION_NEW -> {
+                    val data = envelope.data ?: return RealtimeEvent.Unknown(envelope)
+                    RealtimeEvent.NotificationNew(
+                        envelope = envelope,
+                        notification = json.decodeFromJsonElement(
+                            NotificationResponse.serializer(),
+                            data,
+                        ),
+                    )
+                }
+                RealtimeEvents.NOTIFICATION_COUNT -> {
+                    val data = envelope.data ?: return RealtimeEvent.Unknown(envelope)
+                    val payload = json.decodeFromJsonElement(
+                        RealtimeNotificationCountPayload.serializer(),
+                        data,
+                    )
+                    RealtimeEvent.NotificationCount(
+                        envelope = envelope,
+                        unread = payload.unread,
+                    )
                 }
                 else -> RealtimeEvent.Unknown(envelope)
             }

@@ -120,15 +120,17 @@
 
 ### 2.4 Notifications
 
-- [x] **T2.4.1** Implement `notifications` table migration + NATS consumer
-  - Acceptance: Events (comment reply, mention, follow) create notifications
+> **v1 delivery note:** Realtime uses Redis Pub/Sub + WebSocket (`BroadcastToUser`). NATS consumer/outbox is deferred (see `backend/pkg/realtime/README.md`). Email digest / SSE / Web Push are out of v1 scope.
+
+- [x] **T2.4.1** Implement `notifications` table migration + notification producers (Redis/WS delivery; NATS deferred)
+  - Acceptance: Events (comment reply, follow, post published, new message) create notifications and push via WS
 - [x] **T2.4.2** Implement notification list endpoint with unread count
   - Acceptance: Returns paginated notifications; Redis-backed unread count
 - [x] **T2.4.3** Add WebSocket push for new notifications
   - Acceptance: Bell icon updates in real-time; red badge shows unread count
 - [x] **T2.4.4** Create notification center page and dropdown
   - Acceptance: List shows notifications; click marks as read; "Mark all read" works
-- [ ] **T2.4.5** Create notification preferences UI
+- [x] **T2.4.5** Create notification preferences UI
   - Acceptance: User can toggle per-type Web/Email preferences
 
 ### 2.5 Bookmarks & Follows
@@ -150,7 +152,7 @@
   - Acceptance: `ANP-3.2` and `REQ-AND-007` pass; Flutter code is not evidence.
 - [ ] **T2.6.2** Wire Android comments and reactions to realtime events.
   - Acceptance: `ANP-2.4` passes on a supported Android test device.
-- [ ] **T2.6.3** Implement Android push registration and in-app notification handling.
+- [x] **T2.6.3** Implement Android push registration and in-app notification handling.
   - Acceptance: `ANP-3.1` and `REQ-AND-006` pass.
 
 ### 2.7 Discover Feed
@@ -221,8 +223,8 @@
 - [x] **T3.2.2** Wire `post_published` → Search Service reindex
   - Acceptance: Publishing a post triggers Meilisearch index update within 2s
 - [x] **T3.2.3** Wire `comment_created` → Notification Service → WebSocket broadcast
-  - Acceptance: End-to-end notification delivery under 500ms
-- [x] **T3.2.4** Implement all events from Event Catalog (design.md §3)
+  - Acceptance: End-to-end notification delivery under 500ms (Redis/WS; NATS deferred)
+- [ ] **T3.2.4** Implement all events from Event Catalog (design.md §3)
   - Acceptance: Every event type flows from publisher to subscriber
 
 ### 3.3 Caching Layer

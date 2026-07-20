@@ -65,6 +65,8 @@ class ChatRealtimeReconciler @Inject constructor(
                 is RealtimeEvent.Ack -> onAck(event)
                 is RealtimeEvent.Typing,
                 is RealtimeEvent.Presence,
+                is RealtimeEvent.NotificationNew,
+                is RealtimeEvent.NotificationCount,
                 is RealtimeEvent.Error,
                 is RealtimeEvent.Unknown -> Unit
             }

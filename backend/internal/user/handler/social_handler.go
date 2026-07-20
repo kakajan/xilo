@@ -1,16 +1,24 @@
 package handler
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	notifsvc "github.com/xilo-platform/xilo/internal/notification/service"
 )
 
 type SocialHandler struct {
-	db *sqlx.DB
+	db    *sqlx.DB
+	notif *notifsvc.NotificationService
 }
 
 func NewSocialHandler(db *sqlx.DB) *SocialHandler {
 	return &SocialHandler{db: db}
+}
+
+func (h *SocialHandler) SetNotifier(n *notifsvc.NotificationService) {
+	h.notif = n
 }
 
 // @Summary      Toggle bookmark on a post
@@ -390,12 +398,28 @@ func (h *SocialHandler) ToggleFollow(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"following": false})
 	}
 
-	_, err = h.db.Exec(`
+	res, err := h.db.Exec(`
 		INSERT INTO follows (follower_id, following_id) VALUES ($1, $2)
 		ON CONFLICT (follower_id, following_id) DO NOTHING
 	`, followerID, followingID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed"})
+	}
+	if h.notif != nil {
+		if n, _ := res.RowsAffected(); n > 0 {
+			if _, err := h.notif.Notify(c.UserContext(), notifsvc.NotifyRequest{
+				RecipientID: followingID,
+				ActorID:     followerID,
+				Type:        notifsvc.TypeNewFollower,
+				Title:       "New follower",
+				Body:        "Someone started following you",
+				Data: map[string]any{
+					"follower_id": followerID,
+				},
+			}); err != nil {
+				slog.Warn("new follower notification failed", "error", err)
+			}
+		}
 	}
 	return c.JSON(fiber.Map{"following": true})
 }

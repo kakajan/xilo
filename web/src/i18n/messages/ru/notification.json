@@ -4,5 +4,16 @@
   "markAllRead": "Отметить все как прочитанные",
   "newComment": "Новый комментарий",
   "newFollower": "Новый подписчик",
-  "newLike": "Новый лайк"
+  "newLike": "Новый лайк",
+  "prefs": {
+    "commentReply": "Ответы на комментарии",
+    "newFollower": "Новые подписчики",
+    "postPublished": "Новые посты от авторов",
+    "newMessage": "Новые сообщения чата",
+    "newMessagePush": "Push сообщений чата (мобильный)",
+    "postReaction": "Реакции на посты",
+    "mention": "Упоминания",
+    "commentReplyEmail": "Ответы на комментарии (email)",
+    "postPublishedEmail": "Новые посты (email-дайджест)"
+  }
 }

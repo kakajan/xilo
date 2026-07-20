@@ -4,7 +4,7 @@ export interface Notification {
   type: string;
   title: string;
   body: string;
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | string | null;
   is_read: boolean;
   created_at: string;
 }

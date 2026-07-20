@@ -4,6 +4,7 @@ import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.BrandRepository
+import ir.xilo.app.data.repository.PushTokenRepository
 import ir.xilo.app.data.repository.ThemeRepository
 import ir.xilo.app.data.sync.OutboxWorkScheduler
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,9 @@ class XiloApplication : Application() {
     @Inject
     lateinit var brandRepository: BrandRepository
 
+    @Inject
+    lateinit var pushTokenRepository: PushTokenRepository
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
@@ -36,6 +40,9 @@ class XiloApplication : Application() {
             authRepository.syncCalendarDefaults()
             themeRepository.syncTheme()
             brandRepository.syncBrand()
+            if (authRepository.isAuthenticated()) {
+                pushTokenRepository.syncPushToken()
+            }
         }
     }
 }

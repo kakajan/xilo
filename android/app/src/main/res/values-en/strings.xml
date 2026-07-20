@@ -222,6 +222,7 @@
     <string name="settings_menu_saved_messages">Saved messages</string>
     <string name="settings_menu_devices">Devices</string>
     <string name="settings_menu_chat_folders">Chat folders</string>
+    <string name="settings_menu_notifications">Notifications</string>
     <string name="settings_menu_logout">Log out</string>
     <string name="settings_username_unset">Username not set</string>
     <string name="settings_username_dialog_title">Username</string>
@@ -317,6 +318,31 @@
     <string name="devices_revoke_other_message">End this session?</string>
     <string name="devices_revoke_action">Revoke access</string>
     <string name="devices_empty">No active sessions</string>
+
+    <!-- Notifications -->
+    <string name="notifications_inbox_title">Notifications</string>
+    <string name="notifications_empty">No notifications yet</string>
+    <string name="notifications_mark_all_read">Mark all read</string>
+    <string name="notifications_unread_badge">New</string>
+    <string name="notifications_prefs_title">Notification settings</string>
+    <string name="notifications_prefs_empty">Preferences unavailable</string>
+    <string name="notif_pref_group_comments">Comments</string>
+    <string name="notif_pref_group_posts">Posts</string>
+    <string name="notif_pref_group_social">Social</string>
+    <string name="notif_pref_group_messages">Messages</string>
+    <string name="notif_pref_comment_reply_inapp">Comment replies (in-app)</string>
+    <string name="notif_pref_comment_reply_push">Comment replies (push)</string>
+    <string name="notif_pref_comment_mention_inapp">Comment mentions (in-app)</string>
+    <string name="notif_pref_post_reaction_inapp">Post reactions (in-app)</string>
+    <string name="notif_pref_post_published_inapp">New posts (in-app)</string>
+    <string name="notif_pref_post_published_push">New posts (push)</string>
+    <string name="notif_pref_new_follower_inapp">New followers (in-app)</string>
+    <string name="notif_pref_new_follower_push">New followers (push)</string>
+    <string name="notif_pref_new_message_inapp">New messages (in-app)</string>
+    <string name="notif_pref_new_message_push">New messages (push)</string>
+    <string name="push_notification_channel_id">xilo_push_default</string>
+    <string name="push_notification_channel_name">Xilo notifications</string>
+    <string name="push_notification_channel_description">Push alerts for messages, comments, and social activity</string>
     <string name="devices_unknown">Unknown device</string>
     <string name="devices_this_device">This device</string>
     <string name="devices_sign_out">Sign out</string>

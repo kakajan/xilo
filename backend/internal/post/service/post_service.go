@@ -9,10 +9,11 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	pkgredis "github.com/xilo-platform/xilo/pkg/redis"
+	notifsvc "github.com/xilo-platform/xilo/internal/notification/service"
 	"github.com/xilo-platform/xilo/internal/post/model"
 	"github.com/xilo-platform/xilo/pkg/hashtag"
 	"github.com/xilo-platform/xilo/pkg/i18n"
+	pkgredis "github.com/xilo-platform/xilo/pkg/redis"
 	"github.com/xilo-platform/xilo/pkg/validator"
 )
 
@@ -30,13 +31,18 @@ type PostRepository interface {
 }
 
 type PostService struct {
-	repo PostRepository
-	rdb  *pkgredis.Client
-	sf   singleflight.Group
+	repo  PostRepository
+	rdb   *pkgredis.Client
+	sf    singleflight.Group
+	notif *notifsvc.NotificationService
 }
 
 func NewPostService(repo PostRepository, rdb *pkgredis.Client) *PostService {
 	return &PostService{repo: repo, rdb: rdb}
+}
+
+func (s *PostService) SetNotifier(n *notifsvc.NotificationService) {
+	s.notif = n
 }
 
 func (s *PostService) Create(ctx context.Context, authorID string, req *model.CreatePostRequest) (*model.Post, error) {
@@ -58,7 +64,14 @@ func (s *PostService) Create(ctx context.Context, authorID string, req *model.Cr
 	if !i18n.IsValidLanguage(req.Language) {
 		return nil, fmt.Errorf("invalid language code: %s", req.Language)
 	}
-	return s.repo.Create(ctx, req, authorID)
+	post, err := s.repo.Create(ctx, req, authorID)
+	if err != nil {
+		return nil, err
+	}
+	if post.Status == "published" {
+		s.notifyFollowersPublished(post)
+	}
+	return post, nil
 }
 
 func (s *PostService) GetBySlug(ctx context.Context, slug string, viewerID string) (*model.Post, error) {
@@ -119,6 +132,7 @@ func (s *PostService) Update(ctx context.Context, id string, userID string, req 
 		return nil, err
 	}
 
+	wasPublished := post.Status == "published"
 	updated, err := s.repo.Update(ctx, id, req)
 	if err != nil {
 		return nil, err
@@ -131,7 +145,42 @@ func (s *PostService) Update(ctx context.Context, id string, userID string, req 
 		}
 	}
 
+	if !wasPublished && updated.Status == "published" {
+		s.notifyFollowersPublished(updated)
+	}
+
 	return updated, nil
+}
+
+func (s *PostService) notifyFollowersPublished(post *model.Post) {
+	if s.notif == nil || post == nil {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		followerIDs, err := s.notif.ListFollowerIDs(ctx, post.AuthorID)
+		if err != nil {
+			slog.Warn("list followers for post notification", "post_id", post.ID, "error", err)
+			return
+		}
+		const batch = 100
+		title := "New post"
+		body := post.Title
+		data := map[string]any{
+			"post_id":   post.ID,
+			"author_id": post.AuthorID,
+			"title":     post.Title,
+			"slug":      post.Slug,
+		}
+		for i := 0; i < len(followerIDs); i += batch {
+			end := i + batch
+			if end > len(followerIDs) {
+				end = len(followerIDs)
+			}
+			s.notif.NotifyMany(ctx, post.AuthorID, notifsvc.TypePostPublished, title, body, data, followerIDs[i:end])
+		}
+	}()
 }
 
 func (s *PostService) Delete(ctx context.Context, id string, userID string) error {

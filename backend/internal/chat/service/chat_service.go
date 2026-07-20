@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/xilo-platform/xilo/internal/chat/model"
 	"github.com/xilo-platform/xilo/internal/chat/repository"
+	notifsvc "github.com/xilo-platform/xilo/internal/notification/service"
 	pkgidempotency "github.com/xilo-platform/xilo/pkg/idempotency"
 	"github.com/xilo-platform/xilo/pkg/realtime"
 )
@@ -124,6 +125,7 @@ type ChatService struct {
 	repo      ChatRepository
 	publisher realtime.Publisher
 	clock     func() time.Time
+	notif     *notifsvc.NotificationService
 }
 
 func NewChatService(repo ChatRepository) *ChatService {
@@ -142,6 +144,10 @@ func NewChatServiceWithPublisher(
 		publisher: publisher,
 		clock:     func() time.Time { return time.Now().UTC() },
 	}
+}
+
+func (s *ChatService) SetNotifier(n *notifsvc.NotificationService) {
+	s.notif = n
 }
 
 func (s *ChatService) CreateChat(
@@ -509,8 +515,47 @@ func (s *ChatService) CreateMessage(
 			toRealtimeMessage(result.Value),
 			key.String(),
 		)
+		s.notifyNewMessage(ctx, userID, result.Value)
 	}
 	return result, nil
+}
+
+func (s *ChatService) notifyNewMessage(ctx context.Context, senderID string, msg *model.Message) {
+	if s.notif == nil || msg == nil {
+		return
+	}
+	chat, err := s.repo.GetChat(ctx, senderID, msg.ChatID)
+	if err != nil || chat == nil {
+		return
+	}
+	body := "New message"
+	if msg.Content != nil && *msg.Content != "" {
+		body = *msg.Content
+		if utf8.RuneCountInString(body) > 120 {
+			runes := []rune(body)
+			body = string(runes[:120]) + "…"
+		}
+	}
+	data := map[string]any{
+		"chat_id":    msg.ChatID,
+		"message_id": msg.ID,
+		"sender_id":  senderID,
+	}
+	for _, member := range chat.Members {
+		if member.UserID == senderID || member.IsMuted {
+			continue
+		}
+		if _, err := s.notif.Notify(ctx, notifsvc.NotifyRequest{
+			RecipientID: member.UserID,
+			ActorID:     senderID,
+			Type:        notifsvc.TypeNewMessage,
+			Title:       "New message",
+			Body:        body,
+			Data:        data,
+		}); err != nil && !errors.Is(err, notifsvc.ErrDuplicateNotification) {
+			slog.Warn("new message notification failed", "chat_id", msg.ChatID, "error", err)
+		}
+	}
 }
 
 func (s *ChatService) UpdateMessage(

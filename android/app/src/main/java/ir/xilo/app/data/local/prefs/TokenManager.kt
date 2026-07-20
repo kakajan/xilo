@@ -181,6 +181,16 @@ class TokenManager @Inject constructor(
             .commit()
     }
 
+    fun getFcmToken(): String? = prefs.getString(FCM_TOKEN_KEY, null)
+
+    fun setFcmToken(token: String) {
+        prefs.edit().putString(FCM_TOKEN_KEY, token).apply()
+    }
+
+    fun clearFcmToken() {
+        prefs.edit().remove(FCM_TOKEN_KEY).apply()
+    }
+
     private fun readTokensLocked(): AuthTokens? {
         val encrypted = prefs.getString(ENCRYPTED_SESSION_KEY, null)
         if (!encrypted.isNullOrBlank()) {
@@ -308,6 +318,7 @@ class TokenManager @Inject constructor(
         private const val LEGACY_REFRESH_TOKEN_KEY = "refresh_token"
         private const val PREFERRED_CALENDAR_KEY = "preferred_calendar"
         private const val USERNAME_PENDING_KEY = "username_pending"
+        private const val FCM_TOKEN_KEY = "fcm_token"
         private const val BLOB_VERSION = 1
 
         private val sessionJson = Json {

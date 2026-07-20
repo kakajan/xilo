@@ -6,6 +6,7 @@ import {
   AtSign,
   Bookmark,
   Calendar,
+  Bell,
   FolderOpen,
   Languages,
   LogOut,
@@ -126,6 +127,12 @@ function UserSettingsContent() {
       icon: Bookmark,
       tint: "text-amber-600",
       onClick: () => router.push("/saved"),
+    },
+    {
+      title: t("notifications"),
+      icon: Bell,
+      tint: "text-blue-600",
+      onClick: () => router.push("/settings/notifications"),
     },
     {
       title: t("devices"),

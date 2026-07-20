@@ -20,14 +20,19 @@ var prefsColumns = map[string]string{
 	"comment_reply_web":        "comment_reply_web",
 	"comment_reply_email":      "comment_reply_email",
 	"comment_reply_sms":        "comment_reply_sms",
+	"comment_reply_push":       "comment_reply_push",
 	"comment_mention_web":      "comment_mention_web",
 	"comment_mention_email":    "comment_mention_email",
 	"comment_mention_sms":      "comment_mention_sms",
 	"post_reaction_web":        "post_reaction_web",
 	"new_follower_web":         "new_follower_web",
+	"new_follower_push":        "new_follower_push",
 	"post_published_web":       "post_published_web",
 	"post_published_email":     "post_published_email",
 	"post_published_sms":       "post_published_sms",
+	"post_published_push":      "post_published_push",
+	"new_message_web":          "new_message_web",
+	"new_message_push":         "new_message_push",
 	"system_announcement_sms":  "system_announcement_sms",
 }
 
@@ -42,30 +47,50 @@ func (h *NotificationPrefsHandler) GetPreferences(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 
 	var prefs struct {
-		CommentReplyWeb        bool `json:"comment_reply_web" db:"comment_reply_web"`
-		CommentReplyEmail      bool `json:"comment_reply_email" db:"comment_reply_email"`
-		CommentReplySMS        bool `json:"comment_reply_sms" db:"comment_reply_sms"`
-		CommentMentionWeb      bool `json:"comment_mention_web" db:"comment_mention_web"`
-		CommentMentionEmail    bool `json:"comment_mention_email" db:"comment_mention_email"`
-		CommentMentionSMS      bool `json:"comment_mention_sms" db:"comment_mention_sms"`
-		PostReactionWeb        bool `json:"post_reaction_web" db:"post_reaction_web"`
-		NewFollowerWeb         bool `json:"new_follower_web" db:"new_follower_web"`
-		PostPublishedWeb       bool `json:"post_published_web" db:"post_published_web"`
-		PostPublishedEmail     bool `json:"post_published_email" db:"post_published_email"`
-		PostPublishedSMS       bool `json:"post_published_sms" db:"post_published_sms"`
-		SystemAnnouncementSMS  bool `json:"system_announcement_sms" db:"system_announcement_sms"`
+		CommentReplyWeb       bool `json:"comment_reply_web" db:"comment_reply_web"`
+		CommentReplyEmail     bool `json:"comment_reply_email" db:"comment_reply_email"`
+		CommentReplySMS       bool `json:"comment_reply_sms" db:"comment_reply_sms"`
+		CommentReplyPush      bool `json:"comment_reply_push" db:"comment_reply_push"`
+		CommentMentionWeb     bool `json:"comment_mention_web" db:"comment_mention_web"`
+		CommentMentionEmail   bool `json:"comment_mention_email" db:"comment_mention_email"`
+		CommentMentionSMS     bool `json:"comment_mention_sms" db:"comment_mention_sms"`
+		PostReactionWeb       bool `json:"post_reaction_web" db:"post_reaction_web"`
+		NewFollowerWeb        bool `json:"new_follower_web" db:"new_follower_web"`
+		NewFollowerPush       bool `json:"new_follower_push" db:"new_follower_push"`
+		PostPublishedWeb      bool `json:"post_published_web" db:"post_published_web"`
+		PostPublishedEmail    bool `json:"post_published_email" db:"post_published_email"`
+		PostPublishedSMS      bool `json:"post_published_sms" db:"post_published_sms"`
+		PostPublishedPush     bool `json:"post_published_push" db:"post_published_push"`
+		NewMessageWeb         bool `json:"new_message_web" db:"new_message_web"`
+		NewMessagePush        bool `json:"new_message_push" db:"new_message_push"`
+		SystemAnnouncementSMS bool `json:"system_announcement_sms" db:"system_announcement_sms"`
 	}
 
-	err := h.db.Get(&prefs, `
-		SELECT comment_reply_web, comment_reply_email, comment_reply_sms,
+	query := `
+		SELECT comment_reply_web, comment_reply_email, comment_reply_sms, comment_reply_push,
 		       comment_mention_web, comment_mention_email, comment_mention_sms,
-		       post_reaction_web, new_follower_web,
-		       post_published_web, post_published_email, post_published_sms,
+		       post_reaction_web, new_follower_web, new_follower_push,
+		       post_published_web, post_published_email, post_published_sms, post_published_push,
+		       new_message_web, new_message_push,
 		       system_announcement_sms
 		FROM notification_preferences WHERE user_id = $1
-	`, userID)
+	`
+	err := h.db.Get(&prefs, query, userID)
 	if err != nil {
-		h.db.Exec(`INSERT INTO notification_preferences (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, userID)
+		_, _ = h.db.Exec(`INSERT INTO notification_preferences (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, userID)
+		if err := h.db.Get(&prefs, query, userID); err != nil {
+			// Defaults when columns/row unavailable
+			prefs.CommentReplyWeb = true
+			prefs.CommentMentionWeb = true
+			prefs.PostReactionWeb = true
+			prefs.NewFollowerWeb = true
+			prefs.PostPublishedWeb = true
+			prefs.NewMessageWeb = true
+			prefs.NewMessagePush = true
+			prefs.CommentReplyPush = true
+			prefs.NewFollowerPush = true
+			prefs.PostPublishedPush = true
+		}
 		return c.JSON(prefs)
 	}
 
@@ -108,6 +133,7 @@ func (h *NotificationPrefsHandler) UpdatePreferences(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"message": "no valid fields"})
 	}
 
+	_, _ = h.db.Exec(`INSERT INTO notification_preferences (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, userID)
 	query := `UPDATE notification_preferences SET ` + strings.Join(setClauses, `, `) + ` WHERE user_id = $1`
 	_, err := h.db.Exec(query, args...)
 	if err != nil {

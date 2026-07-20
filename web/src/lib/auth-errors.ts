@@ -43,6 +43,9 @@ export function mapAuthApiError(raw: string): {
   if (lower.startsWith("password:") || lower.includes("password must")) {
     return { field: "password", message: PASSWORD_RULES_HINT };
   }
+  if (lower.includes("invalid email or password") || lower.includes("login failed")) {
+    return { message: "ایمیل یا رمز عبور نادرست است." };
+  }
   if (lower.includes("email") && (lower.includes("invalid") || lower.includes("already"))) {
     return {
       field: "email",
@@ -50,9 +53,6 @@ export function mapAuthApiError(raw: string): {
         ? "این ایمیل قبلاً ثبت شده است."
         : "ایمیل نامعتبر است.",
     };
-  }
-  if (lower.includes("invalid email or password") || lower.includes("login failed")) {
-    return { message: "ایمیل یا رمز عبور نادرست است." };
   }
   if (lower.includes("registration failed") || msg === "registration failed") {
     return { message: "ثبت‌نام انجام نشد. لطفاً دوباره تلاش کنید." };

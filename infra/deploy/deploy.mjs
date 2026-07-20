@@ -616,12 +616,17 @@ async function doctor() {
 function ensureRemoteSecrets(remoteDir) {
   const gen = `
 set -euo pipefail
-mkdir -p ${remoteDir}/infra/secrets/jwt ${remoteDir}/infra/env ${remoteDir}/logs
+mkdir -p ${remoteDir}/infra/secrets/jwt ${remoteDir}/infra/secrets/firebase ${remoteDir}/infra/env ${remoteDir}/logs
 if [ ! -f ${remoteDir}/infra/secrets/jwt/private.pem ]; then
   openssl genrsa -out ${remoteDir}/infra/secrets/jwt/private.pem 2048
   openssl rsa -in ${remoteDir}/infra/secrets/jwt/private.pem -pubout -out ${remoteDir}/infra/secrets/jwt/public.pem
   chmod 600 ${remoteDir}/infra/secrets/jwt/*.pem
 fi
+# Keep an empty firebase dir so the compose volume mount always succeeds.
+# Drop service-account.json here and set FIREBASE_* in infra/env/prod.env to enable FCM.
+touch ${remoteDir}/infra/secrets/firebase/.keep
+chmod 700 ${remoteDir}/infra/secrets/firebase
+
 if [ ! -f ${remoteDir}/infra/.compose.secrets.env ]; then
   PG=$(openssl rand -base64 24 | tr -d '=+/')
   MEILI=$(openssl rand -base64 24 | tr -d '=+/')
@@ -664,8 +669,14 @@ ZARINPAL_SANDBOX=true
 BASE_URL=https://aile.ir
 WS_ALLOWED_ORIGINS=https://aile.ir,https://www.aile.ir
 PORT=8000
+FIREBASE_CREDENTIALS=/secrets/firebase/service-account.json
+FIREBASE_PROJECT_ID=
 EOF
   chmod 600 ${remoteDir}/infra/.compose.secrets.env ${remoteDir}/infra/env/prod.env
+fi
+# Ensure FCM env keys exist on upgrades (idempotent).
+if ! grep -q '^FIREBASE_CREDENTIALS=' ${remoteDir}/infra/env/prod.env 2>/dev/null; then
+  printf '\\nFIREBASE_CREDENTIALS=/secrets/firebase/service-account.json\\nFIREBASE_PROJECT_ID=\\n' >> ${remoteDir}/infra/env/prod.env
 fi
 `;
   ssh(gen);

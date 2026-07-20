@@ -24,6 +24,8 @@ paging = "3.3.0"
 kotlinxSerializationJson = "1.6.3"
 hiltNavigationCompose = "1.2.0"
 iconsaxAndroid = "1.0.0"
+firebaseBom = "33.7.0"
+googleServices = "4.4.4"
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidxSplashscreen" }
@@ -67,6 +69,8 @@ coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 paging-runtime = { module = "androidx.paging:paging-runtime", version.ref = "paging" }
 paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 iconsax-android = { module = "io.github.being-eyram:iconsax-android", version.ref = "iconsaxAndroid" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

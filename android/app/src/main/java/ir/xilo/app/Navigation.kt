@@ -2,8 +2,12 @@ package ir.xilo.app
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -26,11 +30,41 @@ import ir.xilo.app.ui.profile.FollowListScreen
 import ir.xilo.app.ui.profile.ProfileScreen
 import ir.xilo.app.ui.settings.ChatFoldersScreen
 import ir.xilo.app.ui.settings.DevicesScreen
+import ir.xilo.app.ui.settings.NotificationPreferencesScreen
 import ir.xilo.app.ui.settings.SettingsScreen
+import ir.xilo.app.ui.notifications.NotificationInboxScreen
+import ir.xilo.app.push.PushNavigationCoordinator
+import ir.xilo.app.push.PushNavigationEntryPoint
+import ir.xilo.app.di.AppStateEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun MainNavigation() {
   val backStack = rememberNavBackStack(Main)
+  val context = LocalContext.current
+  val appState = remember {
+    EntryPointAccessors.fromApplication(
+      context.applicationContext,
+      AppStateEntryPoint::class.java,
+    )
+  }
+  val pushNavigationCoordinator = remember {
+    EntryPointAccessors.fromApplication(
+      context.applicationContext,
+      PushNavigationEntryPoint::class.java,
+    ).pushNavigationCoordinator()
+  }
+  val isAuthenticated by appState.tokenManager().isAuthenticatedFlow.collectAsStateWithLifecycle()
+  val onboardingCompleted by appState.authRepository().onboardingCompletedFlow.collectAsStateWithLifecycle()
+  val pendingPushNav by pushNavigationCoordinator.pendingNavKey.collectAsStateWithLifecycle()
+
+  LaunchedEffect(pendingPushNav, isAuthenticated, onboardingCompleted) {
+    val navKey = pendingPushNav ?: return@LaunchedEffect
+    if (!isAuthenticated || !onboardingCompleted) return@LaunchedEffect
+    backStack.add(navKey)
+    pushNavigationCoordinator.consumePendingNavKey()
+  }
 
   NavDisplay(
     backStack = backStack,
@@ -187,6 +221,7 @@ fun MainNavigation() {
             },
             onDevicesClick = { backStack.add(DevicesKey) },
             onChatFoldersClick = { backStack.add(ChatFoldersKey) },
+            onNotificationPreferencesClick = { backStack.add(NotificationPreferencesKey) },
             modifier = Modifier.fillMaxSize()
           )
         }
@@ -229,6 +264,33 @@ fun MainNavigation() {
           ChatFoldersScreen(
             onBackClick = { backStack.removeLastOrNull() },
             modifier = Modifier.fillMaxSize()
+          )
+        }
+        entry<NotificationsKey> {
+          NotificationInboxScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onPostClick = { slug, commentId ->
+              backStack.add(
+                PostDetailKey(
+                  slug = slug,
+                  replyToCommentId = commentId,
+                )
+              )
+            },
+            onChatClick = { chatId ->
+              backStack.add(ChatConversationKey(chatId = chatId))
+            },
+            onProfileClick = { username ->
+              if (username.isNotBlank()) backStack.add(ProfileKey(username))
+            },
+            onPreferencesClick = { backStack.add(NotificationPreferencesKey) },
+            modifier = Modifier.fillMaxSize(),
+          )
+        }
+        entry<NotificationPreferencesKey> {
+          NotificationPreferencesScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            modifier = Modifier.fillMaxSize(),
           )
         }
         entry<ContactDetailKey> { key ->

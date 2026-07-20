@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.xilo.app.core.util.canCreatePost
 import ir.xilo.app.data.NetworkMonitor
+import ir.xilo.app.data.remote.websocket.NotificationRealtimeReconciler
 import ir.xilo.app.data.remote.websocket.WebSocketManager
 import ir.xilo.app.data.repository.AuthRepository
+import ir.xilo.app.data.repository.NotificationRepository
+import ir.xilo.app.data.repository.PushTokenRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,7 +21,11 @@ import javax.inject.Inject
 @HiltViewModel
 class MainScreenViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushTokenRepository: PushTokenRepository,
     private val webSocketManager: WebSocketManager,
+    @Suppress("unused")
+    private val notificationRealtimeReconciler: NotificationRealtimeReconciler,
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
@@ -39,6 +46,9 @@ class MainScreenViewModel @Inject constructor(
 
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val unreadNotificationCount: StateFlow<Int> = notificationRepository.unreadCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     fun requestTab(index: Int) {
         _pendingTab.value = index
@@ -61,6 +71,8 @@ class MainScreenViewModel @Inject constructor(
         refreshPermissions()
         if (authRepository.isAuthenticated()) {
             connectRealtime()
+            syncNotifications()
+            registerPushToken()
         }
     }
 
@@ -75,6 +87,8 @@ class MainScreenViewModel @Inject constructor(
         refreshUsername()
         refreshPermissions()
         connectRealtime()
+        syncNotifications()
+        registerPushToken()
         if (authRepository.isUsernamePending()) {
             _openSettingsForUsername.value = true
         }
@@ -122,6 +136,18 @@ class MainScreenViewModel @Inject constructor(
             authRepository.getUserId()?.let { userId ->
                 webSocketManager.subscribeToUser(userId)
             }
+        }
+    }
+
+    private fun syncNotifications() {
+        viewModelScope.launch {
+            notificationRepository.refreshUnreadCount()
+        }
+    }
+
+    private fun registerPushToken() {
+        viewModelScope.launch {
+            pushTokenRepository.syncPushToken()
         }
     }
 }

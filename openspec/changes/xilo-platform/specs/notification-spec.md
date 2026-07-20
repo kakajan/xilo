@@ -1,7 +1,20 @@
 # Spec: Notification System
 
 ## Overview
-Real-time push notifications delivered via WebSocket and Server-Sent Events (SSE) for in-app notifications, with optional email digests. Event-driven architecture via NATS.
+Real-time push notifications delivered via WebSocket for in-app notifications, with optional email digests and SSE as longer-term channels. Domain fanout persists to PostgreSQL and delivers over Redis Pub/Sub → WebSocket; NATS outbox relay is deferred until transactional outbox exists.
+
+### v1 channels (implemented scope)
+
+| Channel | v1 status |
+|---------|-----------|
+| PostgreSQL inbox + REST list/mark-read/prefs | Required |
+| WebSocket `notification.new` / `notification.count` via Redis `ws:user:*` | Required |
+| Redis unread badge counter | Required |
+| Android FCM (env-gated) | Required when Firebase credentials configured |
+| Email digests / SSE `/stream` / Web Push | Deferred (spec remains authoritative for later phases) |
+| NATS `notification.created` consumer | Deferred (outbox gate) |
+
+**v1 event types produced:** `comment_reply`, `new_follower`, `post_published`, `new_message`.
 
 ---
 

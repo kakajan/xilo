@@ -30,6 +30,7 @@ services:
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
     volumes:
       - ./secrets/jwt:/secrets/jwt:ro
+      - ./secrets/firebase:/secrets/firebase:ro
     ports:
       - "127.0.0.1:18000:8000"
     depends_on:

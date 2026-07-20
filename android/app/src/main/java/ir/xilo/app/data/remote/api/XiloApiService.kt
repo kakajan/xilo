@@ -272,4 +272,36 @@ interface XiloApiService {
         @Query("limit") limit: Int = 50,
         @Query("interest") interest: String? = null,
     ): DiscoverCommentsResponse
+
+    // ── Notifications ─────────────────────────────────────────────────────
+
+    @GET("api/notifications")
+    suspend fun listNotifications(
+        @Query("limit") limit: Int = 20,
+    ): NotificationListResponse
+
+    @GET("api/notifications/unread-count")
+    suspend fun getUnreadNotificationCount(): UnreadCountResponse
+
+    @POST("api/notifications/{id}/read")
+    suspend fun markNotificationRead(@Path("id") id: String): Map<String, String>
+
+    @POST("api/notifications/read-all")
+    suspend fun markAllNotificationsRead(): Map<String, String>
+
+    @GET("api/notifications/preferences")
+    suspend fun getNotificationPreferences(): NotificationPreferencesResponse
+
+    @PATCH("api/notifications/preferences")
+    suspend fun patchNotificationPreferences(
+        @Body body: Map<String, Boolean>,
+    ): Map<String, String>
+
+    // ── Push tokens ───────────────────────────────────────────────────────
+
+    @POST("api/devices/push-tokens")
+    suspend fun registerPushToken(@Body request: PushTokenRegisterRequest): Map<String, String>
+
+    @HTTP(method = "DELETE", path = "api/devices/push-tokens", hasBody = true)
+    suspend fun deletePushToken(@Body request: PushTokenDeleteRequest): Map<String, String>
 }

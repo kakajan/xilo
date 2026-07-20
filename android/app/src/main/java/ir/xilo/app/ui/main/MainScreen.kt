@@ -50,6 +50,7 @@ import ir.xilo.app.CreatePostKey
 import ir.xilo.app.FollowListKey
 import ir.xilo.app.ContactsKey
 import ir.xilo.app.NewChatKey
+import ir.xilo.app.NotificationsKey
 import ir.xilo.app.PostDetailKey
 import ir.xilo.app.ProfileKey
 import ir.xilo.app.SettingsKey
@@ -70,6 +71,7 @@ import ir.xilo.app.ui.components.rememberChromeVisibilityState
 import ir.xilo.app.ui.discover.DiscoverScreen
 import ir.xilo.app.ui.feed.FeedScreen
 import ir.xilo.app.ui.profile.ProfileScreen
+import ir.xilo.app.push.RequestNotificationPermissionEffect
 import kotlinx.coroutines.launch
 
 @Composable
@@ -82,6 +84,7 @@ fun MainScreen(
     val onboardingCompleted by viewModel.onboardingCompleted.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
     val canCreatePost by viewModel.canCreatePost.collectAsState()
+    val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
 
     if (!isAuthenticated) {
         AuthScreen(
@@ -94,6 +97,8 @@ fun MainScreen(
             modifier = modifier
         )
     } else {
+        RequestNotificationPermissionEffect(enabled = true)
+
         val pagerState = rememberPagerState(pageCount = { 4 })
         val selectedTab = pagerState.currentPage
         val coroutineScope = rememberCoroutineScope()
@@ -270,6 +275,8 @@ fun MainScreen(
                                     onItemClick(CreatePostKey(editPostId = postId))
                                 },
                                 onSettingsClick = { onItemClick(SettingsKey) },
+                                onNotificationsClick = { onItemClick(NotificationsKey) },
+                                unreadNotificationCount = unreadNotificationCount,
                                 onProfileClick = {
                                     coroutineScope.launch {
                                         pagerState.animateScrollToPage(3)
