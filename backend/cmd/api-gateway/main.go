@@ -170,6 +170,7 @@ func main() {
 
 	socialH := userhandler.NewSocialHandler(db)
 	profileH := userhandler.NewProfileHandler(db, rdb, postRepo, commentRepo)
+	authH.SetProfileCacheInvalidator(profileH.InvalidateProfileCache)
 	adminH := userhandler.NewAdminHandler(db)
 	analyticsDH := analyticshandler.NewDashboardHandler(db)
 	adH := analyticshandler.NewAdHandler(db)

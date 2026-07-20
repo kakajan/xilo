@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.core.util.canCreatePost
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.data.local.entity.UserEntity
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.CommentResponse
 import ir.xilo.app.data.remote.dto.PostResponse
@@ -77,8 +78,32 @@ class ProfileViewModel @Inject constructor(
 
     private var loadedUsername: String? = null
 
+    init {
+        // Own-profile avatar/name edits land in Room via Settings; keep header in sync
+        // without requiring a full public-profile reload (pager tab stays alive).
+        viewModelScope.launch {
+            authRepository.observeLocalProfile().collect { local ->
+                mergeLocalProfile(local)
+            }
+        }
+    }
+
     fun clearError() {
         _error.value = null
+    }
+
+    /** Soft refresh when returning to the profile tab / after Settings. */
+    fun refreshProfile() {
+        val username = loadedUsername ?: return
+        if (_isLoading.value) return
+        viewModelScope.launch {
+            try {
+                val remote = apiService.getPublicProfile(username)
+                applyPublicProfile(remote)
+            } catch (_: Exception) {
+                // Keep the last successful snapshot; local merge still covers avatar.
+            }
+        }
     }
 
     fun toggleLike(postId: String, currentState: Boolean) {
@@ -136,12 +161,20 @@ class ProfileViewModel @Inject constructor(
             loadedUsername = username
             _isOwnProfile.value = isCurrentUser(username = username, userId = null)
             _canCreatePost.value = canCreatePost(authRepository.getRole())
+
+            // Seed from Room first so a stale/down public-profile API cannot hide the avatar.
+            if (_isOwnProfile.value) {
+                seedFromLocal(authRepository.getLocalProfile())
+            }
+
             try {
                 val remote = apiService.getPublicProfile(username)
                 applyPublicProfile(remote)
                 loadTabContent(tabIndex = 0, force = true)
             } catch (e: Exception) {
-                _error.value = errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                if (_userProfile.value == null) {
+                    _error.value = errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                }
             }
             _isLoading.value = false
         }
@@ -196,13 +229,62 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    private fun applyPublicProfile(remote: PublicProfileResponse) {
-        _userProfile.value = remote.toUserResponse()
+    private suspend fun applyPublicProfile(remote: PublicProfileResponse) {
         _isFollowing.value = remote.isFollowing
         _isOwnProfile.value = isCurrentUser(
             username = remote.username,
             userId = remote.id,
         )
+        _userProfile.value = remote.toUserResponse()
+        // Prefer freshly-saved local avatar when Redis/public API is stale.
+        mergeLocalProfile(authRepository.getLocalProfile())
+    }
+
+    private fun seedFromLocal(local: UserEntity?) {
+        if (local == null) return
+        _userProfile.value = UserResponse(
+            id = local.id,
+            username = local.username,
+            email = local.email,
+            phone = local.phone,
+            displayName = local.displayName,
+            avatarUrl = local.avatarUrl?.takeIf { it.isNotBlank() },
+            bio = local.bio,
+            followerCount = local.followerCount,
+            followingCount = local.followingCount,
+            postCount = local.postCount,
+        )
+    }
+
+    private fun mergeLocalProfile(local: UserEntity?) {
+        if (local == null || !_isOwnProfile.value) return
+        _userProfile.update { current ->
+            val base = current ?: return@update UserResponse(
+                id = local.id,
+                username = local.username,
+                email = local.email,
+                phone = local.phone,
+                displayName = local.displayName,
+                avatarUrl = local.avatarUrl?.takeIf { it.isNotBlank() },
+                bio = local.bio,
+                followerCount = local.followerCount,
+                followingCount = local.followingCount,
+                postCount = local.postCount,
+            )
+            if (base.id != local.id &&
+                !base.username.equals(local.username, ignoreCase = true)
+            ) {
+                return@update current
+            }
+            base.copy(
+                avatarUrl = local.avatarUrl?.takeIf { it.isNotBlank() } ?: base.avatarUrl,
+                displayName = local.displayName?.takeIf { it.isNotBlank() } ?: base.displayName,
+                bio = local.bio ?: base.bio,
+                username = local.username.takeIf { it.isNotBlank() } ?: base.username,
+                phone = local.phone ?: base.phone,
+                email = local.email.takeIf { it.isNotBlank() } ?: base.email,
+            )
+        }
     }
 
     private suspend fun loadTabContent(tabIndex: Int, force: Boolean) {
@@ -215,7 +297,11 @@ class ProfileViewModel @Inject constructor(
                 runCatching { apiService.listUserPosts(username = username, limit = 20) }
                     .onSuccess { page -> _userPosts.value = page.data.map { it.toProfileEntity() } }
                     .onFailure { e ->
-                        _error.value = errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                        // Don't toast over an already-visible header (e.g. offline after local seed).
+                        if (_userPosts.value.isEmpty() && _userProfile.value == null) {
+                            _error.value =
+                                errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                        }
                     }
                 _isTabLoading.value = false
             }
@@ -225,7 +311,10 @@ class ProfileViewModel @Inject constructor(
                 runCatching { apiService.listUserReplies(username = username, limit = 20) }
                     .onSuccess { page -> _userReplies.value = page.data.map { it.toReplyItem() } }
                     .onFailure { e ->
-                        _error.value = errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                        if (_userReplies.value.isEmpty() && _userProfile.value == null) {
+                            _error.value =
+                                errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                        }
                     }
                 _isTabLoading.value = false
             }
@@ -235,7 +324,10 @@ class ProfileViewModel @Inject constructor(
                 runCatching { apiService.listUserLikes(username = username, limit = 20) }
                     .onSuccess { page -> _userLikes.value = page.data.map { it.toProfileEntity() } }
                     .onFailure { e ->
-                        _error.value = errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                        if (_userLikes.value.isEmpty() && _userProfile.value == null) {
+                            _error.value =
+                                errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                        }
                     }
                 _isTabLoading.value = false
             }

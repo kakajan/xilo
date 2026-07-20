@@ -259,9 +259,11 @@ fun XiloAvatar(
             )
         }
 
-        // Main Image
+        // Main Image — blank strings must not skip the placeholder (elvis only checks null).
+        val resolvedUrl = imageUrl?.takeIf { it.isNotBlank() }
+            ?: "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
         AsyncImage(
-            model = imageUrl ?: "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y",
+            model = resolvedUrl,
             contentDescription = "Avatar",
             contentScale = ContentScale.Crop,
             modifier = Modifier

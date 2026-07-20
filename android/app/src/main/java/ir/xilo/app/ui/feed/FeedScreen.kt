@@ -136,7 +136,7 @@ fun FeedScreen(
             onRefresh = { viewModel.refreshFeed() },
             modifier = Modifier.fillMaxSize(),
             state = pullRefreshState,
-            // Drawn in the outer Box below so it sits above the sticky header chips.
+            // Indicator is drawn in the outer Box, below the sticky header.
             indicator = {},
         ) {
             LazyColumn(
@@ -246,10 +246,11 @@ fun FeedScreen(
             }
         }
 
-        // Keep the refresh spinner at the top edge, above search + category chips.
+        // Refresh spinner starts below search + category chips (not under status bar).
         Indicator(
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .padding(top = animatedHeaderHeight)
                 .zIndex(2f),
             isRefreshing = isRefreshing,
             state = pullRefreshState,

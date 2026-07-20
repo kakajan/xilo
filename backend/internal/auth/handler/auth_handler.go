@@ -15,10 +15,17 @@ import (
 
 type AuthHandler struct {
 	svc *service.AuthService
+	// Optional: drop Redis public-profile cache after PATCH /auth/me (avatar/name).
+	invalidateProfileCache func(ctx context.Context, username string)
 }
 
 func NewAuthHandler(svc *service.AuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
+}
+
+// SetProfileCacheInvalidator wires public-profile cache eviction (user:profile:<username>).
+func (h *AuthHandler) SetProfileCacheInvalidator(fn func(ctx context.Context, username string)) {
+	h.invalidateProfileCache = fn
 }
 
 const (
@@ -194,6 +201,9 @@ func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
 		}
 		slog.Warn("update profile failed", "error", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if h.invalidateProfileCache != nil && user != nil && user.Username != "" {
+		h.invalidateProfileCache(c.UserContext(), user.Username)
 	}
 	return c.JSON(user)
 }

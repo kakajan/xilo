@@ -1,7 +1,12 @@
 package ir.xilo.app.ui.profile
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -28,8 +33,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -62,7 +65,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -71,11 +77,15 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.theme.IranSansXFontFamily
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
+import ir.xilo.app.theme.YekanBakhFontFamily
 import ir.xilo.app.ui.components.LocalChromeVisibility
 import ir.xilo.app.ui.components.ProfileSkeleton
 import ir.xilo.app.ui.components.VerifiedBadge
@@ -85,7 +95,6 @@ import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.trackChromeVisibility
 import ir.xilo.app.ui.components.usernameHandle
-import androidx.compose.ui.text.TextStyle
 
 /** Single flat teal for the whole header — including the “ears” above the white sheet. */
 private val ProfileTeal = Color(0xFF14919B)
@@ -95,7 +104,20 @@ private val TabPillBg = Color(0xFFE8E8ED)
 private val TabSelectedBg = XiloBlue
 private val TabSelectedContent = Color.White
 
-private val CollapsedBarHeight = 56.dp
+/** App caption font + room for Persian dots/descenders (no line-height trim). */
+private val PersianSafeCaptionStyle = TextStyle(
+    fontFamily = IranSansXFontFamily,
+    fontWeight = FontWeight.Normal,
+    fontSize = 12.sp,
+    lineHeight = 18.sp,
+    platformStyle = PlatformTextStyle(includeFontPadding = true),
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.None,
+    ),
+)
+
+private val CollapsedBarHeight = 64.dp
 private val AvatarExpandedSize = 112.dp
 private val ActionRowHeight = 72.dp
 private val ExpandedHeaderExtra = 260.dp
@@ -138,6 +160,11 @@ fun ProfileScreen(
 
     LaunchedEffect(username) {
         viewModel.loadProfile(username)
+    }
+
+    // Pager keeps this screen alive under Settings; re-fetch when visible again.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshProfile()
     }
 
     LaunchedEffect(viewModel) {
@@ -246,9 +273,10 @@ fun ProfileScreen(
     val tabsBarHeight = with(density) {
         if (tabsBarHeightPx > 0) tabsBarHeightPx.toDp() else 44.dp
     }
-    // Empty profile tabs must not scroll or collapse.
+    // Own profile can always collapse so the add-post control can appear after scroll.
+    // Other empty tabs stay fixed (no bounce over empty content).
     val canScrollProfile = when {
-        selectedTab == 0 -> userPosts.isNotEmpty()
+        selectedTab == 0 -> userPosts.isNotEmpty() || isOwnProfile
         isOwnProfile -> false
         selectedTab == 1 -> userReplies.isNotEmpty()
         selectedTab == 2 -> userLikes.isNotEmpty()
@@ -542,42 +570,41 @@ fun ProfileScreen(
             )
 
             if (isOwnProfile && canCreatePost) {
-                FloatingActionButton(
-                    onClick = onCreatePostClick,
-                    shape = RoundedCornerShape(22.dp),
-                    containerColor = XiloBlue,
-                    contentColor = Color.White,
-                    elevation = FloatingActionButtonDefaults.elevation(
-                        defaultElevation = 0.dp,
-                        pressedElevation = 0.dp,
-                        focusedElevation = 0.dp,
-                        hoveredElevation = 0.dp,
-                    ),
+                // Show only after the user starts collapsing the header; keep solid XiloBlue.
+                AnimatedVisibility(
+                    visible = scrollProgress > 0.08f,
+                    enter = fadeIn() + scaleIn(initialScale = 0.92f),
+                    exit = fadeOut() + scaleOut(targetScale = 0.92f),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = XiloSpacing.bottomNavPadding + 12.dp)
                         .zIndex(4f)
-                        .graphicsLayer {
-                            alpha = (0.55f + (1f - eased2) * 0.45f).coerceIn(0.55f, 1f)
-                            shadowElevation = 0f
-                        }
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Surface(
+                        onClick = onCreatePostClick,
+                        shape = RoundedCornerShape(12.dp),
+                        color = XiloBlue,
+                        contentColor = Color.White,
+                        shadowElevation = 0.dp,
+                        tonalElevation = 0.dp,
                     ) {
-                        XiloIcon(
-                            icon = XiloIcons.Camera,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.profile_add_post),
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            XiloIcon(
+                                icon = XiloIcons.Camera,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = stringResource(R.string.profile_add_post),
+                                style = PersianSafeCaptionStyle.copy(fontWeight = FontWeight.Medium),
+                                color = Color.White,
+                            )
+                        }
                     }
                 }
             }
@@ -639,6 +666,7 @@ private fun ProfileTopChrome(
                     Text(
                         text = displayName,
                         color = lerpColor(Color.White, Color(0xFF1C1C1E), phase2),
+                        fontFamily = YekanBakhFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp,
                         maxLines = 1,
@@ -649,20 +677,18 @@ private fun ProfileTopChrome(
                         VerifiedBadge(size = 16.dp, tint = verifiedTint)
                     }
                 }
-                Box(
-                    modifier = Modifier.height(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                // Avoid a short fixed height — Persian dots under letters (e.g. پ) need room.
+                Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = stringResource(R.string.chat_online),
                         color = lerpColor(ProfileOnline, Color(0xFF8E8E93), phase2),
-                        fontSize = 12.sp,
+                        style = PersianSafeCaptionStyle,
                         modifier = Modifier.alpha(onlineAlpha)
                     )
                     Text(
                         text = stringResource(R.string.profile_posts_count, postCount),
                         color = Color(0xFF8E8E93),
-                        fontSize = 12.sp,
+                        style = PersianSafeCaptionStyle,
                         modifier = Modifier.alpha(storiesAlpha)
                     )
                 }
@@ -1114,7 +1140,12 @@ fun ProfileStatItem(
     ) {
         Text(text = count, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = countColor)
         Spacer(modifier = Modifier.height(2.dp))
-        Text(text = label, fontSize = 12.sp, color = labelColor, maxLines = 1)
+        Text(
+            text = label,
+            style = PersianSafeCaptionStyle,
+            color = labelColor,
+            maxLines = 1,
+        )
     }
 }
 
