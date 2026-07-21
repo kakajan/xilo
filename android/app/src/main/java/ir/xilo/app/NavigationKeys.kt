@@ -9,6 +9,7 @@ data class PostDetailKey(
     val slug: String,
     val replyToCommentId: String? = null,
     val replyToAuthor: String? = null,
+    val replyToAuthorAvatar: String? = null,
     val replyToPost: Boolean = false,
 ) : NavKey
 @Serializable

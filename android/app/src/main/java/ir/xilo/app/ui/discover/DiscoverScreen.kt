@@ -44,7 +44,12 @@ import ir.xilo.app.ui.feed.isPostOwner
 fun DiscoverScreen(
     onCommentClick: (String) -> Unit,
     onReplyToPost: (String) -> Unit = onCommentClick,
-    onReplyToComment: (slug: String, commentId: String, authorUsername: String) -> Unit,
+    onReplyToComment: (
+        slug: String,
+        commentId: String,
+        authorUsername: String,
+        authorAvatar: String?,
+    ) -> Unit,
     onAuthorClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
     onQuotePost: (String) -> Unit = {},
@@ -328,6 +333,7 @@ fun DiscoverScreen(
                                                     postId = comment.postId,
                                                     commentId = comment.id,
                                                     authorUsername = comment.authorUsername,
+                                                    authorAvatar = comment.authorAvatar,
                                                     onNavigate = onReplyToComment,
                                                 )
                                             },

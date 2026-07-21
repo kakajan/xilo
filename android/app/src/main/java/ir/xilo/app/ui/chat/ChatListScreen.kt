@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.ChatEntity
+import ir.xilo.app.data.local.entity.displayAvatarUrl
+import ir.xilo.app.data.local.entity.displayTitle
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.ui.components.ChromeVisibilityState
@@ -348,7 +350,10 @@ fun ChatListItem(
     onDelete: (() -> Unit)? = null,
 ) {
     var isActionsVisible by remember { mutableStateOf(false) }
-    val chatTitle = chat.name ?: stringResource(R.string.chat_default_title)
+    val chatTitle = chat.displayTitle(
+        fallback = stringResource(R.string.chat_default_title),
+        savedTitle = stringResource(R.string.saved_messages_title),
+    )
 
     Column(
         modifier = Modifier
@@ -373,7 +378,7 @@ fun ChatListItem(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            XiloAvatar(imageUrl = chat.avatarUrl, size = 48.dp)
+            XiloAvatar(imageUrl = chat.displayAvatarUrl(), size = 48.dp)
 
             Spacer(modifier = Modifier.width(12.dp))
 

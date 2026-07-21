@@ -3,6 +3,8 @@ package ir.xilo.app.ui.contact
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.xilo.app.data.local.entity.ChatEntity
+import ir.xilo.app.data.local.entity.displayAvatarUrl
+import ir.xilo.app.data.local.entity.displayTitle
 import ir.xilo.app.data.repository.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,17 +58,14 @@ class ContactDetailViewModel @Inject constructor(
     }
 
     private fun ChatEntity.toContactDetail(): ContactDetail {
-        val displayName = peerDisplayName?.takeIf { it.isNotBlank() }
-            ?: name?.takeIf { it.isNotBlank() }
-            ?: "مخاطب"
         val username = peerUsername?.takeIf { it.isNotBlank() }?.let { "@$it" }.orEmpty()
         return ContactDetail(
             id = id,
-            name = displayName,
+            name = displayTitle(fallback = "مخاطب"),
             username = username,
             phone = "",
             lastSeen = "—",
-            avatarUrl = peerAvatarUrl ?: avatarUrl,
+            avatarUrl = displayAvatarUrl(),
             mediaItems = emptyList()
         )
     }

@@ -299,12 +299,13 @@ fun MainScreen(
                                 onReplyToPost = { slug ->
                                     onItemClick(PostDetailKey(slug = slug, replyToPost = true))
                                 },
-                                onReplyToComment = { slug, commentId, authorUsername ->
+                                onReplyToComment = { slug, commentId, authorUsername, authorAvatar ->
                                     onItemClick(
                                         PostDetailKey(
                                             slug = slug,
                                             replyToCommentId = commentId,
                                             replyToAuthor = authorUsername,
+                                            replyToAuthorAvatar = authorAvatar,
                                         )
                                     )
                                 },

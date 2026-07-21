@@ -86,7 +86,8 @@ object XiloIcons {
     val Message = IconSax.Outline.Message
     val Repeat = IconSax.Outline.Repeat
     val Chart = IconSax.Outline.Chart
-    val Send = IconSax.Linear.Send
+    // Outline.Send2 is the classic paper-plane; matches Outline stroke of Attach/Emoji.
+    val Send = IconSax.Outline.Send2
     val Attach = IconSax.Outline.AttachCircle
     val Emoji = IconSax.Outline.EmojiHappy
     val Verify = IconSax.Bold.Verify

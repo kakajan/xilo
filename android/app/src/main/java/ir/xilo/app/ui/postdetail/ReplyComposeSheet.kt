@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -239,11 +240,13 @@ private fun TwitterStyleReplyThread(
                     .fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                XiloAvatar(
-                    imageUrl = parent.authorAvatar,
-                    size = ReplyAvatarSize,
-                    onClick = openAuthor,
-                )
+                key(parent.authorAvatar) {
+                    XiloAvatar(
+                        imageUrl = parent.authorAvatar,
+                        size = ReplyAvatarSize,
+                        onClick = openAuthor,
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -328,7 +331,9 @@ private fun TwitterStyleReplyThread(
                         .height(8.dp)
                         .background(lineColor, RoundedCornerShape(1.dp)),
                 )
-                XiloAvatar(imageUrl = currentUserAvatarUrl, size = ReplyAvatarSize)
+                key(currentUserAvatarUrl) {
+                    XiloAvatar(imageUrl = currentUserAvatarUrl, size = ReplyAvatarSize)
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))

@@ -46,8 +46,9 @@ class PostDetailViewModel @Inject constructor(
     private val _infoMessage = MutableStateFlow<Int?>(null)
     val infoMessage: StateFlow<Int?> = _infoMessage.asStateFlow()
 
-    private val _currentUserAvatarUrl = MutableStateFlow<String?>(null)
-    val currentUserAvatarUrl: StateFlow<String?> = _currentUserAvatarUrl.asStateFlow()
+    val currentUserAvatarUrl: StateFlow<String?> = authRepository.observeLocalProfile()
+        .map { profile -> profile?.avatarUrl?.takeIf { it.isNotBlank() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _currentUserId = MutableStateFlow(authRepository.getUserId())
     val currentUserId: StateFlow<String?> = _currentUserId.asStateFlow()
@@ -63,12 +64,6 @@ class PostDetailViewModel @Inject constructor(
 
     private var currentPostId: String? = null
     private var commentsJob: Job? = null
-
-    init {
-        viewModelScope.launch {
-            _currentUserAvatarUrl.value = authRepository.getLocalProfile()?.avatarUrl
-        }
-    }
 
     fun loadPost(slug: String) {
         loadedSlug = slug

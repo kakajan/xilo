@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.ChatEntity
+import ir.xilo.app.data.local.entity.displayTitle
 import ir.xilo.app.data.repository.ChatFolderWithChats
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
@@ -334,12 +335,10 @@ private fun AssignChatsDialog(
                                 }
                             )
                             Text(
-                                text = when {
-                                    !chat.name.isNullOrBlank() && chat.type != "saved" -> chat.name
-                                    chat.type == "saved" -> stringResource(R.string.saved_messages_title)
-                                    else -> chat.name?.ifBlank { null }
-                                        ?: stringResource(R.string.chat_default_title)
-                                },
+                                text = chat.displayTitle(
+                                    fallback = stringResource(R.string.chat_default_title),
+                                    savedTitle = stringResource(R.string.saved_messages_title),
+                                ),
                                 modifier = Modifier.weight(1f)
                             )
                         }

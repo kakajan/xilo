@@ -95,6 +95,7 @@ fun PostDetailScreen(
     modifier: Modifier = Modifier,
     replyToCommentId: String? = null,
     replyToAuthor: String? = null,
+    replyToAuthorAvatar: String? = null,
     replyToPost: Boolean = false,
     viewModel: PostDetailViewModel = hiltViewModel()
 ) {
@@ -111,6 +112,9 @@ fun PostDetailScreen(
     var replyDraftText by remember { mutableStateOf("") }
     var replyingToCommentId by remember(replyToCommentId) { mutableStateOf(replyToCommentId) }
     var replyingToAuthor by remember(replyToAuthor) { mutableStateOf(replyToAuthor) }
+    var replyingToAuthorAvatar by remember(replyToAuthorAvatar) {
+        mutableStateOf(replyToAuthorAvatar)
+    }
     var isReplyingToPost by remember(replyToPost) { mutableStateOf(replyToPost) }
     var reportTargetId by remember { mutableStateOf<String?>(null) }
     var focusStack by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -138,13 +142,22 @@ fun PostDetailScreen(
         post,
         replyingToCommentId,
         replyingToAuthor,
+        replyingToAuthorAvatar,
     ) {
         when {
-            replyParentComment != null -> replyParentComment.toReplyComposeParent()
+            replyParentComment != null -> {
+                val mapped = replyParentComment.toReplyComposeParent()
+                // Keep nav-passed avatar if Room row still has a blank avatar.
+                if (mapped.authorAvatar.isNullOrBlank() && !replyingToAuthorAvatar.isNullOrBlank()) {
+                    mapped.copy(authorAvatar = replyingToAuthorAvatar)
+                } else {
+                    mapped
+                }
+            }
             !replyingToCommentId.isNullOrBlank() -> ReplyComposeParent(
                 authorUsername = replyingToAuthor.orEmpty(),
                 authorName = replyingToAuthor,
-                authorAvatar = null,
+                authorAvatar = replyingToAuthorAvatar,
                 content = "",
                 createdAt = 0L,
             )
@@ -373,11 +386,12 @@ fun PostDetailScreen(
                             items(threadDisplays, key = { it.comment.id }) { display ->
                                 CommentThreadItem(
                                     display = display,
-                                    onReplyClick = { commentId, authorName ->
+                                    onReplyClick = { commentId, authorName, authorAvatar ->
                                         replyDraftText = ""
                                         isReplyingToPost = false
                                         replyingToCommentId = commentId
                                         replyingToAuthor = authorName
+                                        replyingToAuthorAvatar = authorAvatar
                                     },
                                     onLikeClick = {
                                         viewModel.toggleCommentLike(display.comment)
@@ -417,6 +431,7 @@ fun PostDetailScreen(
             onDismiss = {
                 replyingToCommentId = null
                 replyingToAuthor = null
+                replyingToAuthorAvatar = null
                 isReplyingToPost = false
                 replyDraftText = ""
             },
@@ -426,6 +441,7 @@ fun PostDetailScreen(
                     replyDraftText = ""
                     replyingToCommentId = null
                     replyingToAuthor = null
+                    replyingToAuthorAvatar = null
                     isReplyingToPost = false
                 }
             },

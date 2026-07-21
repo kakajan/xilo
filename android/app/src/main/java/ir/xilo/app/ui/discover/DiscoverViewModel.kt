@@ -322,11 +322,17 @@ class DiscoverViewModel @Inject constructor(
         postId: String,
         commentId: String,
         authorUsername: String,
-        onNavigate: (slug: String, commentId: String, authorUsername: String) -> Unit,
+        authorAvatar: String? = null,
+        onNavigate: (
+            slug: String,
+            commentId: String,
+            authorUsername: String,
+            authorAvatar: String?,
+        ) -> Unit,
     ) {
         viewModelScope.launch {
             val slug = resolvePostSlug(postId) ?: return@launch
-            onNavigate(slug, commentId, authorUsername)
+            onNavigate(slug, commentId, authorUsername, authorAvatar)
         }
     }
 

@@ -86,7 +86,7 @@ internal fun buildCommentThreadDisplayList(comments: List<CommentEntity>): List<
 @Composable
 fun CommentThreadItem(
     display: CommentThreadDisplay,
-    onReplyClick: (String, String) -> Unit,
+    onReplyClick: (commentId: String, authorUsername: String, authorAvatar: String?) -> Unit,
     onLikeClick: () -> Unit,
     onDislikeClick: () -> Unit,
     onReportClick: () -> Unit,
@@ -103,7 +103,9 @@ fun CommentThreadItem(
         CommentCard(
             comment = comment.copy(replyCount = replyCount),
             onClick = {},
-            onReplyClick = { onReplyClick(comment.id, comment.authorUsername) },
+            onReplyClick = {
+                onReplyClick(comment.id, comment.authorUsername, comment.authorAvatar)
+            },
             onLikeClick = onLikeClick,
             onDislikeClick = onDislikeClick,
             onReportClick = onReportClick,

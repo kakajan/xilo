@@ -85,6 +85,7 @@ fun MainNavigation() {
             slug = key.slug,
             replyToCommentId = key.replyToCommentId,
             replyToAuthor = key.replyToAuthor,
+            replyToAuthorAvatar = key.replyToAuthorAvatar,
             replyToPost = key.replyToPost,
             onBackClick = { backStack.removeLastOrNull() },
             onAuthorClick = { username ->

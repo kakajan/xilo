@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.MessageDeliveryState
 import ir.xilo.app.data.local.entity.MessageEntity
+import ir.xilo.app.data.local.entity.displayAvatarUrl
+import ir.xilo.app.data.local.entity.displayTitle
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.theme.XiloTheme
@@ -96,7 +98,12 @@ fun ChatConversationScreen(
         }
     }
 
-    val chatName = currentChat?.name ?: stringResource(R.string.chat_default_title)
+    val defaultTitle = stringResource(R.string.chat_default_title)
+    val savedTitle = stringResource(R.string.saved_messages_title)
+    val chatName = currentChat?.displayTitle(
+        fallback = defaultTitle,
+        savedTitle = savedTitle,
+    ) ?: if (isSavedMessages) savedTitle else defaultTitle
     val statusText = when {
         peerTyping -> stringResource(R.string.chat_typing)
         peerOnline == true -> stringResource(R.string.chat_online)
@@ -142,7 +149,7 @@ fun ChatConversationScreen(
                 actions = {
                     androidx.compose.material3.TextButton(onClick = onContactClick) {
                         XiloAvatar(
-                            imageUrl = currentChat?.avatarUrl,
+                            imageUrl = currentChat?.displayAvatarUrl(),
                             size = 32.dp
                         )
                     }

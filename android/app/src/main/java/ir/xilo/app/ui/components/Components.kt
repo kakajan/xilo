@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -262,15 +263,18 @@ fun XiloAvatar(
         // Main Image — blank strings must not skip the placeholder (elvis only checks null).
         val resolvedUrl = imageUrl?.takeIf { it.isNotBlank() }
             ?: "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
-        AsyncImage(
-            model = resolvedUrl,
-            contentDescription = "Avatar",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(avatarSize)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
+        // Key forces Coil to remount when URL changes (null/blank → real avatar).
+        key(resolvedUrl) {
+            AsyncImage(
+                model = resolvedUrl,
+                contentDescription = "Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(avatarSize)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+        }
 
         // Online Status Dot
         if (isOnline) {
