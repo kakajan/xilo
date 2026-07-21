@@ -103,6 +103,7 @@ class PostRepository @Inject constructor(
         content: String,
         audioUrl: String? = null,
         quotedPostId: String? = null,
+        quotedCommentId: String? = null,
     ): Result<PostEntity> {
         return try {
             val slugBase = title.ifBlank { content }.lowercase()
@@ -112,6 +113,8 @@ class PostRepository @Inject constructor(
             // Backend expects Tiptap JSON; wrap plain text with structured encoding (safe escaping).
             val tiptapJson = buildTiptapDoc(content)
             val tags = ir.xilo.app.core.util.HashtagParser.extract(content)
+            val quoteComment = quotedCommentId?.takeIf { it.isNotBlank() }
+            val quotePost = quotedPostId?.takeIf { it.isNotBlank() }.takeIf { quoteComment == null }
 
             val request = CreatePostRequest(
                 title = title.ifBlank { content.take(80).ifBlank { "نقل‌قول" } },
@@ -122,7 +125,8 @@ class PostRepository @Inject constructor(
                 audioUrl = audioUrl?.takeIf { it.isNotBlank() },
                 tags = tags.takeIf { it.isNotEmpty() },
                 status = "published",
-                quotedPostId = quotedPostId?.takeIf { it.isNotBlank() },
+                quotedPostId = quotePost,
+                quotedCommentId = quoteComment,
             )
             val remote = apiService.createPost(request)
             val entity = remote.toEntity(feedRank = 0)
@@ -227,6 +231,14 @@ class PostRepository @Inject constructor(
         quotedAuthorUsername = quotedPost?.author?.username,
         quotedAuthorAvatar = quotedPost?.author?.avatarUrl,
         quotedCoverImageUrl = quotedPost?.coverImageUrl,
+        quotedCommentId = quotedCommentId ?: quotedComment?.id,
+        quotedCommentContent = quotedComment?.content,
+        quotedCommentAuthorName = quotedComment?.author?.displayName,
+        quotedCommentAuthorUsername = quotedComment?.author?.username,
+        quotedCommentAuthorAvatar = quotedComment?.author?.avatarUrl,
+        quotedCommentPostTitle = quotedComment?.postTitle,
+        quotedCommentPostSlug = quotedComment?.postSlug,
+        quotedCommentPostAuthorUsername = quotedComment?.postAuthorUsername,
     )
 
     suspend fun recordView(postId: String): Result<Long> {

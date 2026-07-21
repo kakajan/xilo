@@ -62,6 +62,8 @@ func (r *ChatRepo) queryMessages(
 
 	query := `
 		SELECT m.id, m.chat_id, m.sender_id, m.type,
+		       COALESCE(NULLIF(TRIM(sender.display_name), ''), sender.username) AS sender_name,
+		       NULLIF(TRIM(sender.avatar_url), '') AS sender_avatar,
 		       CASE WHEN m.is_deleted THEN NULL ELSE m.content END AS content,
 		       CASE WHEN m.is_deleted THEN NULL ELSE m.media_id END AS media_id,
 		       CASE WHEN m.is_deleted THEN NULL ELSE m.media_url END AS media_url,
@@ -228,6 +230,9 @@ func (r *ChatRepo) CreateMessage(
 	if err != nil {
 		return nil, mapWriteError("insert message", err)
 	}
+	if err := fillMessageSenderProfile(ctx, tx, &message); err != nil {
+		return nil, err
+	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE chats
 		SET last_message_at = GREATEST(COALESCE(last_message_at, $2), $2),
@@ -262,14 +267,17 @@ func (r *ChatRepo) CreateMessage(
 func (r *ChatRepo) GetMessage(ctx context.Context, messageID string) (*model.Message, error) {
 	var message model.Message
 	err := r.db.GetContext(ctx, &message, `
-		SELECT id, chat_id, sender_id, type,
-		       CASE WHEN is_deleted THEN NULL ELSE content END AS content,
-		       CASE WHEN is_deleted THEN NULL ELSE media_id END AS media_id,
-		       CASE WHEN is_deleted THEN NULL ELSE media_url END AS media_url,
-		       reply_to_id, is_edited, is_deleted,
-		       created_at, updated_at, edited_at, deleted_at
-		FROM messages
-		WHERE id = $1
+		SELECT m.id, m.chat_id, m.sender_id, m.type,
+		       COALESCE(NULLIF(TRIM(u.display_name), ''), u.username) AS sender_name,
+		       NULLIF(TRIM(u.avatar_url), '') AS sender_avatar,
+		       CASE WHEN m.is_deleted THEN NULL ELSE m.content END AS content,
+		       CASE WHEN m.is_deleted THEN NULL ELSE m.media_id END AS media_id,
+		       CASE WHEN m.is_deleted THEN NULL ELSE m.media_url END AS media_url,
+		       m.reply_to_id, m.is_edited, m.is_deleted,
+		       m.created_at, m.updated_at, m.edited_at, m.deleted_at
+		FROM messages m
+		JOIN users u ON u.id = m.sender_id
+		WHERE m.id = $1
 	`, messageID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrMessageNotFound
@@ -307,6 +315,9 @@ func (r *ChatRepo) UpdateMessage(
 	}
 	if err != nil {
 		return nil, mapWriteError("update message", err)
+	}
+	if err := fillMessageSenderProfile(ctx, r.db, &message); err != nil {
+		return nil, err
 	}
 	message.Reactions = []model.Reaction{}
 	message.ReadBy = []model.Read{}
@@ -506,6 +517,31 @@ func (r *ChatRepo) attachMessageMetadata(
 			message.ReadBy = append(message.ReadBy, read.Read)
 		}
 	}
+	return nil
+}
+
+type messageSenderQuerier interface {
+	GetContext(ctx context.Context, dest any, query string, args ...any) error
+}
+
+func fillMessageSenderProfile(ctx context.Context, q messageSenderQuerier, msg *model.Message) error {
+	if msg == nil || msg.SenderID == "" {
+		return nil
+	}
+	var row struct {
+		SenderName   string  `db:"sender_name"`
+		SenderAvatar *string `db:"sender_avatar"`
+	}
+	if err := q.GetContext(ctx, &row, `
+		SELECT COALESCE(NULLIF(TRIM(display_name), ''), username) AS sender_name,
+		       NULLIF(TRIM(avatar_url), '') AS sender_avatar
+		FROM users
+		WHERE id = $1
+	`, msg.SenderID); err != nil {
+		return fmt.Errorf("load message sender profile: %w", err)
+	}
+	msg.SenderName = row.SenderName
+	msg.SenderAvatar = row.SenderAvatar
 	return nil
 }
 

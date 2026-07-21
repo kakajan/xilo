@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
+import ir.xilo.app.core.util.canCreateGroup
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.FollowListUserResponse
 import ir.xilo.app.data.repository.AuthRepository
@@ -60,6 +61,9 @@ class NewChatViewModel @Inject constructor(
 
     private val _openChatId = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val openChatId: SharedFlow<String> = _openChatId.asSharedFlow()
+
+    private val _canCreateGroup = MutableStateFlow(canCreateGroup(authRepository.getRole()))
+    val canCreateGroupChat: StateFlow<Boolean> = _canCreateGroup.asStateFlow()
 
     private var searchJob: Job? = null
 

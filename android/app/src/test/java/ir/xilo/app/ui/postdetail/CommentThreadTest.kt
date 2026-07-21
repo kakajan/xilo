@@ -65,6 +65,40 @@ class CommentThreadTest {
         assertTrue(visible[2].showLineAbove)
     }
 
+    @Test
+    fun pathToComment_buildsAncestorChain() {
+        val comments = listOf(
+            comment("a", parentId = null, depth = 0),
+            comment("a1", parentId = "a", depth = 1),
+            comment("a1x", parentId = "a1", depth = 2),
+        )
+
+        assertEquals(listOf("a", "a1", "a1x"), pathToComment(comments, "a1x"))
+        assertEquals(listOf("a"), pathToComment(comments, "a"))
+        assertEquals(emptyList<String>(), pathToComment(comments, "missing"))
+    }
+
+    @Test
+    fun focusStackForTarget_seedsAncestorsForNestedDiscoverHit() {
+        val comments = listOf(
+            comment("a", parentId = null, depth = 0),
+            comment("a1", parentId = "a", depth = 1),
+            comment("a1x", parentId = "a1", depth = 2),
+            comment("a1x1", parentId = "a1x", depth = 3),
+        )
+
+        assertEquals(emptyList<String>(), focusStackForTarget(comments, "a"))
+        assertEquals(listOf("a"), focusStackForTarget(comments, "a1"))
+        assertEquals(listOf("a", "a1"), focusStackForTarget(comments, "a1x"))
+        assertEquals(listOf("a", "a1", "a1x"), focusStackForTarget(comments, "a1x1"))
+
+        val visible = buildVisibleCommentThread(
+            comments,
+            focusCommentId = focusStackForTarget(comments, "a1x").last(),
+        )
+        assertEquals(listOf("a1", "a1x"), visible.map { it.comment.id })
+    }
+
     private fun comment(
         id: String,
         parentId: String?,

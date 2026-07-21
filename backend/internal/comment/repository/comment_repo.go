@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	authmodel "github.com/xilo-platform/xilo/internal/auth/model"
 	"github.com/xilo-platform/xilo/internal/comment/model"
 )
@@ -52,23 +53,27 @@ func (r *CommentRepo) Create(ctx context.Context, postID, authorID string, req *
 
 func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, error) {
 	var row struct {
-		ID           string    `db:"id"`
-		PostID       string    `db:"post_id"`
-		AuthorID     string    `db:"author_id"`
-		ParentID     *string   `db:"parent_id"`
-		RootID       *string   `db:"root_id"`
-		Depth        int       `db:"depth"`
-		Content      string    `db:"content"`
-		ContentHTML  string    `db:"content_html"`
-		MediaURL     string    `db:"media_url"`
-		IsPinned     bool      `db:"is_pinned"`
-		IsSpam       bool      `db:"is_spam"`
-		CreatedAt    time.Time `db:"created_at"`
-		UpdatedAt    time.Time `db:"updated_at"`
-		UserID       string    `db:"user_id"`
-		Username     string    `db:"username"`
-		DisplayName  string    `db:"display_name"`
-		AvatarURL    string    `db:"avatar_url"`
+		ID          string    `db:"id"`
+		PostID      string    `db:"post_id"`
+		AuthorID    string    `db:"author_id"`
+		ParentID    *string   `db:"parent_id"`
+		RootID      *string   `db:"root_id"`
+		Depth       int       `db:"depth"`
+		Content     string    `db:"content"`
+		ContentHTML string    `db:"content_html"`
+		MediaURL    string    `db:"media_url"`
+		IsPinned    bool      `db:"is_pinned"`
+		IsSpam      bool      `db:"is_spam"`
+		RepostCount int       `db:"repost_count"`
+		CreatedAt   time.Time `db:"created_at"`
+		UpdatedAt   time.Time `db:"updated_at"`
+		UserID      string    `db:"user_id"`
+		Username    string    `db:"username"`
+		DisplayName string    `db:"display_name"`
+		AvatarURL   string    `db:"avatar_url"`
+		PostTitle          string `db:"post_title"`
+		PostSlug           string `db:"post_slug"`
+		PostAuthorUsername string `db:"post_author_username"`
 	}
 
 	err := r.db.GetContext(ctx, &row, `
@@ -77,12 +82,18 @@ func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, e
 		       COALESCE(c.content_html, '') AS content_html,
 		       COALESCE(c.media_url, '') AS media_url,
 		       c.is_pinned, c.is_spam,
+		       COALESCE(c.repost_count, 0) AS repost_count,
 		       c.created_at, c.updated_at,
 		       u.id AS user_id, u.username,
 		       COALESCE(u.display_name, '') AS display_name,
-		       COALESCE(u.avatar_url, '') AS avatar_url
+		       COALESCE(u.avatar_url, '') AS avatar_url,
+		       COALESCE(p.title, '') AS post_title,
+		       COALESCE(p.slug, '') AS post_slug,
+		       COALESCE(pu.username, '') AS post_author_username
 		FROM comments c
 		JOIN users u ON c.author_id = u.id
+		LEFT JOIN posts p ON p.id = c.post_id
+		LEFT JOIN users pu ON pu.id = p.author_id
 		WHERE c.id = $1 AND c.deleted_at IS NULL
 	`, id)
 	if err != nil {
@@ -104,6 +115,7 @@ func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, e
 		MediaURL:    row.MediaURL,
 		IsPinned:    row.IsPinned,
 		IsSpam:      row.IsSpam,
+		RepostCount: row.RepostCount,
 		CreatedAt:   row.CreatedAt,
 		UpdatedAt:   row.UpdatedAt,
 		Author: &authmodel.User{
@@ -111,6 +123,12 @@ func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, e
 			Username:    row.Username,
 			DisplayName: row.DisplayName,
 			AvatarURL:   row.AvatarURL,
+		},
+		Post: &model.PostRef{
+			ID:             row.PostID,
+			Title:          row.PostTitle,
+			Slug:           row.PostSlug,
+			AuthorUsername: row.PostAuthorUsername,
 		},
 	}
 	return comment, nil
@@ -139,6 +157,9 @@ func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor stri
 	if err := r.attachBookmarks(ctx, allComments, flatIDs, viewerID); err != nil {
 		return nil, "", err
 	}
+	if err := r.attachReposts(ctx, allComments, flatIDs, viewerID); err != nil {
+		return nil, "", err
+	}
 
 	commentMap := make(map[string]*model.Comment)
 	var roots []*model.Comment
@@ -158,6 +179,8 @@ func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor stri
 			}
 		}
 	}
+
+	sortCommentRoots(roots, sort)
 
 	if cursor != "" {
 		var newRoots []*model.Comment
@@ -188,38 +211,50 @@ func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor stri
 
 func (r *CommentRepo) getAllComments(ctx context.Context, postID string) ([]*model.Comment, error) {
 	var rows []struct {
-		ID           string    `db:"id"`
-		PostID       string    `db:"post_id"`
-		AuthorID     string    `db:"author_id"`
-		ParentID     *string   `db:"parent_id"`
-		RootID       *string   `db:"root_id"`
-		Depth        int       `db:"depth"`
-		Content      string    `db:"content"`
-		ContentHTML  string    `db:"content_html"`
-		MediaURL     string    `db:"media_url"`
-		IsPinned     bool      `db:"is_pinned"`
-		IsSpam       bool      `db:"is_spam"`
-		CreatedAt    time.Time `db:"created_at"`
-		UpdatedAt    time.Time `db:"updated_at"`
-		UserID       string    `db:"user_id"`
-		Username     string    `db:"username"`
-		DisplayName  string    `db:"display_name"`
-		AvatarURL    string    `db:"avatar_url"`
+		ID          string     `db:"id"`
+		PostID      string     `db:"post_id"`
+		AuthorID    string     `db:"author_id"`
+		ParentID    *string    `db:"parent_id"`
+		RootID      *string    `db:"root_id"`
+		Depth       int        `db:"depth"`
+		Content     string     `db:"content"`
+		ContentHTML string     `db:"content_html"`
+		MediaURL    string     `db:"media_url"`
+		IsPinned    bool       `db:"is_pinned"`
+		IsSpam      bool       `db:"is_spam"`
+		RepostCount int        `db:"repost_count"`
+		CreatedAt   time.Time  `db:"created_at"`
+		UpdatedAt   time.Time  `db:"updated_at"`
+		DeletedAt   *time.Time `db:"deleted_at"`
+		UserID      string     `db:"user_id"`
+		Username    string     `db:"username"`
+		DisplayName string     `db:"display_name"`
+		AvatarURL   string     `db:"avatar_url"`
 	}
 
+	// Include live comments plus deleted parents that still have at least one live reply
+	// so clients can render a tombstone without breaking the thread.
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT c.id, c.post_id, c.author_id, c.parent_id, c.root_id, c.depth,
-		       c.content,
-		       COALESCE(c.content_html, '') AS content_html,
-		       COALESCE(c.media_url, '') AS media_url,
+		       CASE WHEN c.deleted_at IS NOT NULL THEN '' ELSE c.content END AS content,
+		       CASE WHEN c.deleted_at IS NOT NULL THEN '' ELSE COALESCE(c.content_html, '') END AS content_html,
+		       CASE WHEN c.deleted_at IS NOT NULL THEN '' ELSE COALESCE(c.media_url, '') END AS media_url,
 		       c.is_pinned, c.is_spam,
-		       c.created_at, c.updated_at,
+		       COALESCE(c.repost_count, 0) AS repost_count,
+		       c.created_at, c.updated_at, c.deleted_at,
 		       u.id AS user_id, u.username,
 		       COALESCE(u.display_name, '') AS display_name,
 		       COALESCE(u.avatar_url, '') AS avatar_url
 		FROM comments c
 		JOIN users u ON c.author_id = u.id
-		WHERE c.post_id = $1 AND c.deleted_at IS NULL
+		WHERE c.post_id = $1
+		  AND (
+		    c.deleted_at IS NULL
+		    OR EXISTS (
+		      SELECT 1 FROM comments child
+		      WHERE child.parent_id = c.id AND child.deleted_at IS NULL
+		    )
+		  )
 		ORDER BY c.created_at ASC
 		LIMIT 500
 	`, postID)
@@ -228,26 +263,29 @@ func (r *CommentRepo) getAllComments(ctx context.Context, postID string) ([]*mod
 	}
 
 	comments := make([]*model.Comment, len(rows))
-	for i, r := range rows {
+	for i, row := range rows {
 		comments[i] = &model.Comment{
-			ID:          r.ID,
-			PostID:      r.PostID,
-			AuthorID:    r.AuthorID,
-			ParentID:    r.ParentID,
-			RootID:      r.RootID,
-			Depth:       r.Depth,
-			Content:     r.Content,
-			ContentHTML: r.ContentHTML,
-			MediaURL:    r.MediaURL,
-			IsPinned:    r.IsPinned,
-			IsSpam:      r.IsSpam,
-			CreatedAt:   r.CreatedAt,
-			UpdatedAt:   r.UpdatedAt,
+			ID:          row.ID,
+			PostID:      row.PostID,
+			AuthorID:    row.AuthorID,
+			ParentID:    row.ParentID,
+			RootID:      row.RootID,
+			Depth:       row.Depth,
+			Content:     row.Content,
+			ContentHTML: row.ContentHTML,
+			MediaURL:    row.MediaURL,
+			IsPinned:    row.IsPinned,
+			IsSpam:      row.IsSpam,
+			RepostCount: row.RepostCount,
+			CreatedAt:   row.CreatedAt,
+			UpdatedAt:   row.UpdatedAt,
+			DeletedAt:   row.DeletedAt,
+			IsDeleted:   row.DeletedAt != nil,
 			Author: &authmodel.User{
-				ID:          r.UserID,
-				Username:    r.Username,
-				DisplayName: r.DisplayName,
-				AvatarURL:   r.AvatarURL,
+				ID:          row.UserID,
+				Username:    row.Username,
+				DisplayName: row.DisplayName,
+				AvatarURL:   row.AvatarURL,
 			},
 		}
 	}
@@ -266,6 +304,51 @@ func (r *CommentRepo) Update(ctx context.Context, id, content string) (*model.Co
 		return nil, fmt.Errorf("update comment: %w", err)
 	}
 	return &comment, nil
+}
+
+// LookupUserLabel returns display name (fallback username) and username for a user id.
+func (r *CommentRepo) LookupUserLabel(ctx context.Context, userID string) (displayName, username string, err error) {
+	var row struct {
+		Username    string `db:"username"`
+		DisplayName string `db:"display_name"`
+	}
+	err = r.db.GetContext(ctx, &row, `
+		SELECT username,
+		       COALESCE(NULLIF(TRIM(display_name), ''), username) AS display_name
+		FROM users
+		WHERE id = $1 AND deleted_at IS NULL
+	`, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", fmt.Errorf("user not found")
+		}
+		return "", "", fmt.Errorf("lookup user label: %w", err)
+	}
+	return row.DisplayName, row.Username, nil
+}
+
+// LookupUserIDsByUsername returns map[userID]username for existing users (case-insensitive).
+func (r *CommentRepo) LookupUserIDsByUsername(ctx context.Context, usernames []string) (map[string]string, error) {
+	if len(usernames) == 0 {
+		return map[string]string{}, nil
+	}
+	type row struct {
+		ID       string `db:"id"`
+		Username string `db:"username"`
+	}
+	var rows []row
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT id, username FROM users
+		WHERE lower(username) = ANY($1) AND deleted_at IS NULL
+	`, pq.Array(usernames))
+	if err != nil {
+		return nil, fmt.Errorf("lookup usernames: %w", err)
+	}
+	out := make(map[string]string, len(rows))
+	for _, row := range rows {
+		out[row.ID] = row.Username
+	}
+	return out, nil
 }
 
 // GetPostNotifyTarget returns the post author's user id, username, and slug for deep links.
@@ -291,8 +374,15 @@ func (r *CommentRepo) GetPostNotifyTarget(ctx context.Context, postID string) (a
 }
 
 func (r *CommentRepo) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx,
-		`UPDATE comments SET deleted_at = NOW() WHERE id = $1`, id)
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE comments
+		SET deleted_at = NOW(),
+		    content = '',
+		    content_html = '',
+		    media_url = NULL,
+		    updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL
+	`, id)
 	return err
 }
 

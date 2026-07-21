@@ -130,6 +130,9 @@ func (r *PostRepo) EnrichPosts(ctx context.Context, posts []*model.Post, viewerI
 	if err := r.EnrichQuotedPosts(ctx, posts); err != nil {
 		return err
 	}
+	if err := r.EnrichQuotedComments(ctx, posts); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -214,6 +217,97 @@ func (r *PostRepo) EnrichQuotedPosts(ctx context.Context, posts []*model.Post) e
 		}
 		if q, ok := byID[*p.QuotedPostID]; ok {
 			p.QuotedPost = q
+		}
+	}
+	return nil
+}
+
+// EnrichQuotedComments attaches one-level quoted_comment summaries.
+func (r *PostRepo) EnrichQuotedComments(ctx context.Context, posts []*model.Post) error {
+	if len(posts) == 0 {
+		return nil
+	}
+	ids := make([]string, 0)
+	seen := make(map[string]struct{})
+	for _, p := range posts {
+		if p.QuotedCommentID == nil || *p.QuotedCommentID == "" {
+			continue
+		}
+		id := *p.QuotedCommentID
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	type quoteRow struct {
+		ID                 string    `db:"id"`
+		Content            string    `db:"content"`
+		CreatedAt          time.Time `db:"created_at"`
+		AuthorID           string    `db:"author_id"`
+		Username           string    `db:"username"`
+		DisplayName        string    `db:"display_name"`
+		AvatarURL          string    `db:"avatar_url"`
+		Role               string    `db:"role"`
+		PostID             string    `db:"post_id"`
+		PostTitle          string    `db:"post_title"`
+		PostSlug           string    `db:"post_slug"`
+		PostAuthorUsername string    `db:"post_author_username"`
+	}
+
+	var rows []quoteRow
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT c.id, c.content, c.created_at, c.author_id,
+		       u.username,
+		       COALESCE(u.display_name, '') AS display_name,
+		       COALESCE(u.avatar_url, '') AS avatar_url,
+		       COALESCE(u.role, '') AS role,
+		       p.id AS post_id, p.title AS post_title, p.slug AS post_slug,
+		       pu.username AS post_author_username
+		FROM comments c
+		JOIN users u ON u.id = c.author_id
+		JOIN posts p ON p.id = c.post_id
+		JOIN users pu ON pu.id = p.author_id
+		WHERE c.id = ANY($1) AND c.deleted_at IS NULL
+	`, pq.Array(ids))
+	if err != nil {
+		return fmt.Errorf("quoted comments: %w", err)
+	}
+
+	byID := make(map[string]*model.QuotedCommentSummary, len(rows))
+	for i := range rows {
+		row := rows[i]
+		author := &authmodel.User{
+			ID:          row.AuthorID,
+			Username:    row.Username,
+			DisplayName: row.DisplayName,
+			AvatarURL:   row.AvatarURL,
+			Role:        row.Role,
+		}
+		author.IsVerified = userutil.IsVerifiedWriter(row.Role)
+		created := row.CreatedAt
+		byID[row.ID] = &model.QuotedCommentSummary{
+			ID:                 row.ID,
+			Content:            row.Content,
+			Author:             author,
+			PostID:             row.PostID,
+			PostTitle:          row.PostTitle,
+			PostSlug:           row.PostSlug,
+			PostAuthorUsername: row.PostAuthorUsername,
+			CreatedAt:          &created,
+		}
+	}
+
+	for _, p := range posts {
+		if p.QuotedCommentID == nil {
+			continue
+		}
+		if q, ok := byID[*p.QuotedCommentID]; ok {
+			p.QuotedComment = q
 		}
 	}
 	return nil

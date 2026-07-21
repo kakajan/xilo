@@ -18,12 +18,16 @@ import (
 )
 
 const (
-	TypeCommentReply         = "comment_reply"
-	TypePostComment          = "post_comment"
-	TypeNewFollower          = "new_follower"
-	TypePostPublished        = "post_published"
-	TypeNewMessage           = "new_message"
-	TypeSystemAnnouncement   = "system_announcement"
+	TypeCommentReply       = "comment_reply"
+	TypePostComment        = "post_comment"
+	TypeCommentMention     = "comment_mention"
+	TypeCommentReposted    = "comment_reposted"
+	TypeCommentQuoted      = "comment_quoted"
+	TypeNewFollower        = "new_follower"
+	TypePostPublished      = "post_published"
+	TypeNewMessage         = "new_message"
+	TypeChatMention        = "chat_mention"
+	TypeSystemAnnouncement = "system_announcement"
 
 	EventNotificationNew   = "notification.new"
 	EventNotificationCount = "notification.count"
@@ -358,14 +362,14 @@ func (s *NotificationService) prefsEnabled(ctx context.Context, userID, notifTyp
 
 func prefColumns(notifType string) (webCol, pushCol string) {
 	switch notifType {
-	case TypeCommentReply, TypePostComment:
-		// Top-level post comments share the comment_reply preference toggles.
+	case TypeCommentReply, TypePostComment, TypeCommentMention, TypeCommentReposted, TypeCommentQuoted:
+		// Comment-thread events share the comment_reply preference toggles.
 		return "comment_reply_web", "comment_reply_push"
 	case TypeNewFollower:
 		return "new_follower_web", "new_follower_push"
 	case TypePostPublished:
 		return "post_published_web", "post_published_push"
-	case TypeNewMessage:
+	case TypeNewMessage, TypeChatMention:
 		return "new_message_web", "new_message_push"
 	default:
 		return "", ""

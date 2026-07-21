@@ -9,15 +9,22 @@ import ir.xilo.app.data.local.entity.MessageEntity
 import ir.xilo.app.data.local.entity.OutboxOperationEntity
 import ir.xilo.app.data.local.entity.OutboxOperationType
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.remote.dto.AddChatMembersRequest
+import ir.xilo.app.data.remote.dto.ChatInviteLinkResponse
 import ir.xilo.app.data.remote.dto.ChatMemberResponse
+import ir.xilo.app.data.remote.dto.ChatPinResponse
 import ir.xilo.app.data.remote.dto.ChatType
 import ir.xilo.app.data.remote.dto.ChatResponse
 import ir.xilo.app.data.remote.dto.CreateChatRequest
 import ir.xilo.app.data.remote.dto.CursorPage
+import ir.xilo.app.data.remote.dto.JoinChatRequest
 import ir.xilo.app.data.remote.dto.MessageResponse
 import ir.xilo.app.data.remote.dto.MessageType
+import ir.xilo.app.data.remote.dto.PinMessageRequest
 import ir.xilo.app.data.remote.dto.SendMessageRequest
 import ir.xilo.app.data.remote.dto.UpdateChatRequest
+import ir.xilo.app.data.remote.dto.UpdateMemberRoleRequest
+import ir.xilo.app.data.remote.dto.UpdateMessageRequest
 import ir.xilo.app.data.remote.idempotency.OperationKeyGenerator
 import ir.xilo.app.data.remote.websocket.ChatRealtimeReconciler
 import ir.xilo.app.data.remote.websocket.WebSocketManager
@@ -197,6 +204,53 @@ class ChatRepository @Inject constructor(
             ),
             operationKey = operationKey
         )
+    }
+
+    suspend fun editMessage(messageId: String, content: String): Result<MessageEntity> {
+        val trimmed = content.trim()
+        if (trimmed.isEmpty()) {
+            return Result.failure(IllegalArgumentException("content is required"))
+        }
+        if (messageId.startsWith("local-")) {
+            return Result.failure(IllegalStateException("Cannot edit a pending message"))
+        }
+        val snapshot = messageDao.getMessageById(messageId)
+        if (snapshot != null) {
+            messageDao.updateEditedContent(messageId, trimmed)
+        }
+        return try {
+            val response = apiService.updateMessage(messageId, UpdateMessageRequest(content = trimmed))
+            val entity = response.toMessageEntity(::parseDateToEpoch)
+            messageDao.upsertAuthoritativeMessage(entity)
+            updateChatPreview(entity.chatId)
+            Result.success(entity)
+        } catch (e: Exception) {
+            if (snapshot != null) {
+                messageDao.insertMessage(snapshot)
+            }
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteMessage(messageId: String): Result<Unit> {
+        if (messageId.startsWith("local-")) {
+            return Result.failure(IllegalStateException("Cannot delete a pending message"))
+        }
+        val snapshot = messageDao.getMessageById(messageId)
+        if (snapshot != null) {
+            messageDao.softDeleteById(messageId)
+            updateChatPreview(snapshot.chatId)
+        }
+        return try {
+            apiService.deleteMessage(messageId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (snapshot != null) {
+                messageDao.insertMessage(snapshot)
+                updateChatPreview(snapshot.chatId)
+            }
+            Result.failure(e)
+        }
     }
 
     /**
@@ -469,6 +523,24 @@ class ChatRepository @Inject constructor(
         webSocketManager.sendTyping(chatId, typing)
     }
 
+    /**
+     * Advances the server read watermark for [chatId] and clears the local unread badge.
+     * Prefers the latest non-local message (peer first, else any) as the mark-read target.
+     */
+    suspend fun markChatAsRead(chatId: String) {
+        if (chatId.isBlank()) return
+        chatDao.clearUnreadCount(chatId)
+        val last = messageDao.getLastMessageForChat(chatId) ?: return
+        val messageId = last.id.takeIf { !it.startsWith("local-") } ?: return
+        messageDao.markRead(messageId)
+        webSocketManager.sendMessageRead(messageId)
+        try {
+            apiService.markMessageRead(messageId)
+        } catch (_: Exception) {
+            // Local badge already cleared; WS may still have delivered the receipt.
+        }
+    }
+
     /** Typed inbound realtime events for chat UI (typing, presence, etc.). */
     val realtimeEvents = webSocketManager.events
 
@@ -548,6 +620,101 @@ class ChatRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    suspend fun addMembers(chatId: String, userIds: List<String>): Result<ChatEntity> = try {
+        val dto = apiService.addChatMembers(chatId, AddChatMembersRequest(userIds))
+        val entity = dto.toChatEntity(authRepository.getUserId(), ::parseDateToEpoch)
+        chatDao.insertChat(entity)
+        Result.success(entity)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun removeMember(chatId: String, userId: String): Result<Unit> = try {
+        apiService.removeChatMember(chatId, userId)
+        fetchAndCacheChat(chatId)
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun updateMemberRole(chatId: String, userId: String, role: String): Result<ChatEntity> =
+        try {
+            val dto = apiService.updateChatMemberRole(
+                chatId,
+                userId,
+                UpdateMemberRoleRequest(role),
+            )
+            val entity = dto.toChatEntity(authRepository.getUserId(), ::parseDateToEpoch)
+            chatDao.insertChat(entity)
+            Result.success(entity)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
+    suspend fun updateGroupMeta(chatId: String, name: String?, avatarUrl: String?): Result<ChatEntity> =
+        try {
+            val dto = apiService.updateChat(
+                chatId,
+                UpdateChatRequest(name = name, avatarUrl = avatarUrl),
+            )
+            val entity = dto.toChatEntity(authRepository.getUserId(), ::parseDateToEpoch)
+            chatDao.insertChat(entity)
+            Result.success(entity)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
+    suspend fun setMuted(chatId: String, muted: Boolean): Result<ChatEntity> = try {
+        val dto = apiService.updateChat(chatId, UpdateChatRequest(isMuted = muted))
+        val entity = dto.toChatEntity(authRepository.getUserId(), ::parseDateToEpoch)
+        chatDao.insertChat(entity)
+        Result.success(entity)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun listPins(chatId: String): Result<List<ChatPinResponse>> = try {
+        Result.success(apiService.listChatPins(chatId))
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun pinMessage(chatId: String, messageId: String): Result<Unit> = try {
+        apiService.pinChatMessage(chatId, PinMessageRequest(messageId))
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun unpinMessage(chatId: String, messageId: String): Result<Unit> = try {
+        apiService.unpinChatMessage(chatId, messageId)
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun createInviteLink(chatId: String): Result<ChatInviteLinkResponse> = try {
+        Result.success(apiService.createChatInviteLink(chatId))
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun revokeInviteLink(chatId: String, token: String): Result<Unit> = try {
+        apiService.revokeChatInviteLink(chatId, token)
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    suspend fun joinByInvite(token: String): Result<ChatEntity> = try {
+        val dto = apiService.joinChatByInvite(JoinChatRequest(token))
+        val entity = dto.toChatEntity(authRepository.getUserId(), ::parseDateToEpoch)
+        chatDao.insertChat(entity)
+        Result.success(entity)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 }
 
 internal fun ChatResponse.toChatEntity(
@@ -603,7 +770,10 @@ internal fun MessageResponse.toMessageEntity(
 )
 
 internal fun MessageResponse.previewContent(): String? =
-    content ?: if (type == MessageType.TEXT) null else "[Media]"
+    when (type) {
+        MessageType.TEXT, MessageType.SYSTEM -> content
+        else -> content ?: "[Media]"
+    }
 
 internal fun MessageEntity.previewContent(): String? =
     when {

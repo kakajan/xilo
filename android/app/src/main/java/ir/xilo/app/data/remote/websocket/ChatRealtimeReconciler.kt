@@ -77,6 +77,8 @@ class ChatRealtimeReconciler @Inject constructor(
 
     private suspend fun onMessageReceive(dto: MessageResponse) {
         val messageEntity = dto.toMessageEntity(::parseDateToEpoch)
+        val viewingChat = webSocketManager.activeJoinedChatIds().contains(dto.chatId)
+        val fromPeer = dto.senderId != authRepository.getUserId()
         transactionRunner.run {
             val inserted = messageDao.upsertAuthoritativeMessage(messageEntity)
             val chat = chatDao.getChatById(dto.chatId) ?: return@run
@@ -85,15 +87,16 @@ class ChatRealtimeReconciler @Inject constructor(
                 chat.copy(
                     lastMessageContent = newest?.previewContent(),
                     lastMessageTime = newest?.createdAt,
-                    unreadCount = if (
-                        inserted && dto.senderId != authRepository.getUserId()
-                    ) {
-                        chat.unreadCount + 1
-                    } else {
-                        chat.unreadCount
+                    unreadCount = when {
+                        viewingChat -> 0
+                        inserted && fromPeer -> chat.unreadCount + 1
+                        else -> chat.unreadCount
                     }
                 )
             )
+        }
+        if (viewingChat && fromPeer && !dto.id.startsWith("local-")) {
+            webSocketManager.sendMessageRead(dto.id)
         }
     }
 

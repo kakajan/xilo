@@ -7,6 +7,7 @@ import { cn, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RepostButton } from "@/components/post/repost-button";
 import { QuotedPostCard } from "@/components/post/quoted-post-card";
+import { QuotedCommentCard } from "@/components/post/quoted-comment-card";
 import { PostOwnerMenu } from "@/components/post/post-owner-menu";
 import { HashtagText } from "@/components/post/hashtag-text";
 import { AuthorHandleMeta, TimeLabel } from "@/components/user/username-handle";
@@ -132,6 +133,7 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
         </p>
       )}
       {post.quoted_post ? <QuotedPostCard quote={post.quoted_post} /> : null}
+      {post.quoted_comment ? <QuotedCommentCard quote={post.quoted_comment} /> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1">

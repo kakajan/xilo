@@ -245,6 +245,7 @@ data class CreatePostRequest(
     val status: String = "published",
     val isPremium: Boolean = false,
     val quotedPostId: String? = null,
+    val quotedCommentId: String? = null,
 )
 
 @Serializable
@@ -256,6 +257,18 @@ data class QuotedPostSummary(
     val coverImageUrl: String? = null,
     val author: UserResponse? = null,
     val publishedAt: String? = null,
+)
+
+@Serializable
+data class QuotedCommentSummary(
+    val id: String,
+    val content: String = "",
+    val author: UserResponse? = null,
+    val postId: String = "",
+    val postTitle: String = "",
+    val postSlug: String = "",
+    val postAuthorUsername: String = "",
+    val createdAt: String? = null,
 )
 
 @Serializable
@@ -309,6 +322,8 @@ data class PostResponse(
     val publishedAt: String? = null,
     val quotedPostId: String? = null,
     val quotedPost: QuotedPostSummary? = null,
+    val quotedCommentId: String? = null,
+    val quotedComment: QuotedCommentSummary? = null,
 ) {
     fun resolvedLikeCount(): Int =
         reactions["like"]
@@ -342,6 +357,8 @@ data class PostRefResponse(
     val id: String,
     val title: String = "",
     val slug: String = "",
+    @SerialName("author_username")
+    val authorUsername: String = "",
 )
 
 @Serializable
@@ -353,21 +370,27 @@ data class CommentResponse(
     val parentId: String? = null,
     val rootId: String? = null,
     val depth: Int = 0,
-    val content: String,
+    val content: String = "",
     val likeCount: Int = 0,
     val replyCount: Int = 0,
+    val repostCount: Int = 0,
     val isLiked: Boolean = false,
     val isPinned: Boolean = false,
     val isBookmarked: Boolean = false,
+    val isReposted: Boolean = false,
+    val isDeleted: Boolean = false,
+    val deletedAt: String? = null,
     val reactions: Map<String, Int> = emptyMap(),
     @SerialName("viewer_reactions")
     val viewerReactions: List<String> = emptyList(),
     val createdAt: String,
     /** Nested children from `ListByPost` (tree response). Flatten before Room persist. */
     val replies: List<CommentResponse> = emptyList(),
-    /** Present on profile replies (`ListUserReplies`). */
+    /** Present on profile replies (`ListUserReplies`) and GET `/api/comments/{id}`. */
     val post: PostRefResponse? = null,
 ) {
+    fun resolvedIsDeleted(): Boolean = isDeleted || deletedAt != null
+
     fun resolvedLikeCount(): Int =
         reactions["like"] ?: reactions["heart"] ?: likeCount
 
@@ -393,14 +416,21 @@ data class BookmarkedCommentResponse(
     val content: String,
     val likeCount: Int = 0,
     val replyCount: Int = 0,
+    val repostCount: Int = 0,
     val isLiked: Boolean = false,
     val isPinned: Boolean = false,
     val isBookmarked: Boolean = true,
+    val isReposted: Boolean = false,
     val reactions: Map<String, Int> = emptyMap(),
     @SerialName("viewer_reactions")
     val viewerReactions: List<String> = emptyList(),
     val createdAt: String,
     val post: PostRefResponse? = null,
+)
+
+@Serializable
+data class PinCommentRequest(
+    val pin: Boolean,
 )
 
 @Serializable
@@ -531,8 +561,63 @@ enum class MessageType {
     VIDEO,
 
     @SerialName("file")
-    FILE
+    FILE,
+
+    @SerialName("system")
+    SYSTEM
 }
+
+@Serializable
+data class AddChatMembersRequest(
+    @SerialName("user_ids")
+    val userIds: List<String>,
+)
+
+@Serializable
+data class UpdateMemberRoleRequest(
+    val role: String,
+)
+
+@Serializable
+data class PinMessageRequest(
+    @SerialName("message_id")
+    val messageId: String,
+)
+
+@Serializable
+data class JoinChatRequest(
+    val token: String,
+)
+
+@Serializable
+data class ChatPinResponse(
+    @SerialName("chat_id")
+    val chatId: String,
+    @SerialName("message_id")
+    val messageId: String,
+    @SerialName("pinned_by")
+    val pinnedBy: String,
+    @SerialName("pinned_at")
+    val pinnedAt: String,
+    val content: String? = null,
+    val type: String? = null,
+)
+
+@Serializable
+data class ChatInviteLinkResponse(
+    val id: String,
+    @SerialName("chat_id")
+    val chatId: String,
+    val token: String,
+    @SerialName("created_by")
+    val createdBy: String,
+    @SerialName("created_at")
+    val createdAt: String,
+    @SerialName("revoked_at")
+    val revokedAt: String? = null,
+    @SerialName("use_count")
+    val useCount: Int = 0,
+)
 
 @Serializable
 data class MessageResponse(
@@ -542,8 +627,6 @@ data class MessageResponse(
     @SerialName("sender_id")
     val senderId: String,
     val type: MessageType,
-    // The backend currently does not enrich messages with sender display data.
-    // Defaults keep the UI mapping safe if/when those fields are added.
     @SerialName("sender_name")
     val senderName: String? = null,
     @SerialName("sender_avatar")
@@ -595,6 +678,11 @@ data class SendMessageRequest(
     val mediaUrl: String? = null,
     @SerialName("reply_to_id")
     val replyToId: String? = null
+)
+
+@Serializable
+data class UpdateMessageRequest(
+    val content: String,
 )
 
 // ────────────────────── Interests / Contacts / Discover ──────────────────────
@@ -671,6 +759,14 @@ data class ContactsListResponse(
 )
 
 @Serializable
+data class DiscoverParentSummaryDto(
+    val id: String,
+    val authorUsername: String = "",
+    val authorDisplayName: String = "",
+    val contentPreview: String = "",
+)
+
+@Serializable
 data class DiscoverCommentDto(
     val id: String,
     val postId: String,
@@ -682,14 +778,17 @@ data class DiscoverCommentDto(
     val content: String,
     val likeCount: Int = 0,
     val replyCount: Int = 0,
+    val repostCount: Int = 0,
     val isLiked: Boolean = false,
     val isPinned: Boolean = false,
     val isBookmarked: Boolean = false,
+    val isReposted: Boolean = false,
     val reactions: Map<String, Int> = emptyMap(),
     @SerialName("viewer_reactions")
     val viewerReactions: List<String> = emptyList(),
     val createdAt: String,
     val post: PostRefResponse? = null,
+    val parent: DiscoverParentSummaryDto? = null,
 ) {
     fun resolvedLikeCount(): Int =
         reactions["like"] ?: reactions["heart"] ?: likeCount

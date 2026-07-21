@@ -63,9 +63,10 @@ fun CreatePostScreen(
     onPostCreated: () -> Unit,
     editPostId: String? = null,
     quotedPostId: String? = null,
+    quotedCommentId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: CreatePostViewModel = hiltViewModel(
-        key = "create-post-${editPostId.orEmpty()}-${quotedPostId.orEmpty()}",
+        key = "create-post-${editPostId.orEmpty()}-${quotedPostId.orEmpty()}-${quotedCommentId.orEmpty()}",
     ),
 ) {
     val title by viewModel.title.collectAsState()
@@ -80,9 +81,11 @@ fun CreatePostScreen(
     val allowed by viewModel.allowed.collectAsState()
     val tagSuggestions by viewModel.tagSuggestions.collectAsState()
     val quotedPost by viewModel.quotedPost.collectAsState()
+    val quotedComment by viewModel.quotedComment.collectAsState()
+    val quotedCommentPostTitle by viewModel.quotedCommentPostTitle.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val isEditing = !editPostId.isNullOrBlank()
-    val isQuote = !quotedPostId.isNullOrBlank()
+    val isQuote = !quotedPostId.isNullOrBlank() || !quotedCommentId.isNullOrBlank()
 
     val audioPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -90,8 +93,8 @@ fun CreatePostScreen(
         if (uri != null) viewModel.uploadAudio(uri)
     }
 
-    LaunchedEffect(editPostId, quotedPostId) {
-        viewModel.prepare(editPostId, quotedPostId)
+    LaunchedEffect(editPostId, quotedPostId, quotedCommentId) {
+        viewModel.prepare(editPostId, quotedPostId, quotedCommentId)
     }
 
     LaunchedEffect(allowed) {
@@ -277,7 +280,14 @@ fun CreatePostScreen(
 
             if (isQuote) {
                 Spacer(modifier = Modifier.height(12.dp))
-                QuotedPostPreview(post = quotedPost)
+                if (!quotedCommentId.isNullOrBlank()) {
+                    QuotedCommentPreview(
+                        comment = quotedComment,
+                        postTitle = quotedCommentPostTitle,
+                    )
+                } else {
+                    QuotedPostPreview(post = quotedPost)
+                }
             }
         }
     }

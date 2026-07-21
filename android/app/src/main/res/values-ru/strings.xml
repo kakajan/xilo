@@ -83,6 +83,9 @@
     <string name="feed_category_tech">Технологии</string>
     <string name="feed_category_ai">ИИ</string>
     <string name="feed_category_design">Дизайн</string>
+    <string name="discover_comment_on_post">К посту: %1$s</string>
+    <string name="discover_comment_reply_to">В ответ @%1$s</string>
+    <string name="discover_comment_reply_to_with_preview">В ответ @%1$s — %2$s</string>
     <string name="discover_action_reply">Ответить</string>
     <string name="discover_action_like">Нравится</string>
     <string name="discover_action_dislike">Не нравится</string>

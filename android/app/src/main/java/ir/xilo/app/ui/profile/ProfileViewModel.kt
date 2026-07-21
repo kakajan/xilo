@@ -393,6 +393,22 @@ class ProfileViewModel @Inject constructor(
         isBookmarked = isBookmarked,
         isReposted = isReposted,
         createdAt = 0L,
+        quotedPostId = quotedPostId ?: quotedPost?.id,
+        quotedTitle = quotedPost?.title,
+        quotedSlug = quotedPost?.slug,
+        quotedExcerpt = quotedPost?.excerpt,
+        quotedAuthorName = quotedPost?.author?.displayName,
+        quotedAuthorUsername = quotedPost?.author?.username,
+        quotedAuthorAvatar = quotedPost?.author?.avatarUrl,
+        quotedCoverImageUrl = quotedPost?.coverImageUrl,
+        quotedCommentId = quotedCommentId ?: quotedComment?.id,
+        quotedCommentContent = quotedComment?.content,
+        quotedCommentAuthorName = quotedComment?.author?.displayName,
+        quotedCommentAuthorUsername = quotedComment?.author?.username,
+        quotedCommentAuthorAvatar = quotedComment?.author?.avatarUrl,
+        quotedCommentPostTitle = quotedComment?.postTitle,
+        quotedCommentPostSlug = quotedComment?.postSlug,
+        quotedCommentPostAuthorUsername = quotedComment?.postAuthorUsername,
     )
 
     private fun CommentResponse.toReplyItem(): ProfileReplyItem = ProfileReplyItem(

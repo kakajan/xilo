@@ -16,3 +16,8 @@ export function canCreatePost(role: User["role"] | string | undefined | null): b
 export function canRepost(role: User["role"] | string | undefined | null): boolean {
   return canCreatePost(role);
 }
+
+/** Group chat creation uses the same writer+ gate as posts. */
+export function canCreateGroup(role: User["role"] | string | undefined | null): boolean {
+  return canCreatePost(role);
+}

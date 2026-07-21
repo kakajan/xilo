@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.R
+import ir.xilo.app.core.util.canModerate
 import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.CommentRepository
@@ -58,6 +59,9 @@ class PostDetailViewModel @Inject constructor(
 
     private val _canRepost = MutableStateFlow(canRepost(authRepository.getRole()))
     val canRepost: StateFlow<Boolean> = _canRepost.asStateFlow()
+
+    private val _canModerate = MutableStateFlow(canModerate(authRepository.getRole()))
+    val canModerateComments: StateFlow<Boolean> = _canModerate.asStateFlow()
 
     private val _postRemoved = MutableStateFlow(false)
     val postRemoved: StateFlow<Boolean> = _postRemoved.asStateFlow()
@@ -141,6 +145,17 @@ class PostDetailViewModel @Inject constructor(
         }
     }
 
+    fun deleteComment(comment: CommentEntity) {
+        val postId = currentPostId ?: comment.postId
+        viewModelScope.launch {
+            commentRepository.deleteComment(postId, comment.id)
+                .onFailure {
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+                }
+        }
+    }
+
     fun toggleCommentLike(comment: CommentEntity) {
         viewModelScope.launch {
             commentRepository.toggleCommentReaction(
@@ -172,6 +187,30 @@ class PostDetailViewModel @Inject constructor(
                 _errorMessage.value =
                     errorMessageResolver.fromThrowable(it, R.string.error_unknown)
             }
+        }
+    }
+
+    fun toggleCommentRepost(comment: CommentEntity) {
+        if (!_canRepost.value) return
+        viewModelScope.launch {
+            commentRepository.toggleCommentRepost(comment.id, comment.isReposted)
+                .onFailure {
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+                }
+        }
+    }
+
+    fun pinComment(comment: CommentEntity) {
+        val post = _post.value ?: return
+        val isPostAuthor = currentUserId.value != null && post.authorId == currentUserId.value
+        if (!isPostAuthor && !_canModerate.value) return
+        viewModelScope.launch {
+            commentRepository.pinComment(comment.id, pin = !comment.isPinned)
+                .onFailure {
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+                }
         }
     }
 

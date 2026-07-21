@@ -6,8 +6,10 @@ import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.BookmarkedCommentResponse
 import ir.xilo.app.data.remote.dto.CommentResponse
 import ir.xilo.app.data.remote.dto.CreateCommentRequest
+import ir.xilo.app.data.remote.dto.PinCommentRequest
 import ir.xilo.app.data.remote.dto.ToggleReactionRequest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.text.SimpleDateFormat
@@ -15,6 +17,13 @@ import java.util.Locale
 import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
+
+data class CommentDetail(
+    val comment: CommentEntity,
+    val postTitle: String? = null,
+    val postSlug: String? = null,
+    val postAuthorUsername: String? = null,
+)
 
 @Singleton
 class CommentRepository @Inject constructor(
@@ -61,6 +70,33 @@ class CommentRepository @Inject constructor(
             commentDao.insertComments(listOf(entity))
             Result.success(entity)
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Soft-deletes a comment. Keeps a local tombstone when live replies remain;
+     * otherwise removes the row. Server list refresh reconciles final state.
+     */
+    suspend fun deleteComment(postId: String, commentId: String): Result<Unit> {
+        val snapshot = commentDao.getCommentById(commentId)
+        val siblings = commentDao.getCommentsForPostFlow(postId).first()
+        val hasLiveReplies = siblings.any { it.parentId == commentId && !it.isDeleted }
+        if (snapshot != null) {
+            if (hasLiveReplies) {
+                commentDao.softDeleteCommentById(commentId)
+            } else {
+                commentDao.deleteCommentById(commentId)
+            }
+        }
+        return try {
+            apiService.deleteComment(postId, commentId)
+            refreshComments(postId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (snapshot != null) {
+                commentDao.insertComments(listOf(snapshot))
+            }
             Result.failure(e)
         }
     }
@@ -128,6 +164,68 @@ class CommentRepository @Inject constructor(
         }
     }
 
+    suspend fun getCommentById(commentId: String): Result<CommentDetail> {
+        return try {
+            val response = apiService.getCommentById(commentId)
+            Result.success(
+                CommentDetail(
+                    comment = response.toEntity(),
+                    postTitle = response.post?.title?.takeIf { it.isNotBlank() },
+                    postSlug = response.post?.slug?.takeIf { it.isNotBlank() },
+                    postAuthorUsername = response.post?.authorUsername?.takeIf { it.isNotBlank() },
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun toggleCommentRepost(
+        commentId: String,
+        currentRepostState: Boolean,
+    ): Result<Boolean> {
+        val snapshot = commentDao.getCommentById(commentId)
+        val newState = !currentRepostState
+        if (snapshot != null) {
+            val newCount = snapshot.repostCount + if (newState) 1 else -1
+            commentDao.updateComment(
+                snapshot.copy(
+                    isReposted = newState,
+                    repostCount = newCount.coerceAtLeast(0),
+                )
+            )
+        }
+        return try {
+            if (currentRepostState) {
+                apiService.unrepostComment(commentId)
+            } else {
+                apiService.repostComment(commentId)
+            }
+            Result.success(newState)
+        } catch (e: Exception) {
+            if (snapshot != null) {
+                commentDao.updateComment(snapshot)
+            }
+            Result.failure(e)
+        }
+    }
+
+    suspend fun pinComment(commentId: String, pin: Boolean): Result<Unit> {
+        val snapshot = commentDao.getCommentById(commentId)
+        if (snapshot != null) {
+            commentDao.updateComment(snapshot.copy(isPinned = pin))
+        }
+        return try {
+            apiService.pinComment(commentId, PinCommentRequest(pin = pin))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (snapshot != null) {
+                commentDao.updateComment(snapshot)
+            }
+            Result.failure(e)
+        }
+    }
+
     private suspend fun applyOptimisticReaction(
         commentId: String,
         reaction: String,
@@ -176,10 +274,13 @@ class CommentRepository @Inject constructor(
         likeCount = resolvedLikeCount(),
         dislikeCount = resolvedDislikeCount(),
         replyCount = replyCount,
+        repostCount = repostCount,
         isLiked = resolvedIsLiked(),
         isDisliked = resolvedIsDisliked(),
         isBookmarked = isBookmarked,
+        isReposted = isReposted,
         isPinned = isPinned,
+        isDeleted = resolvedIsDeleted(),
         createdAt = parseDateToEpoch(createdAt)
     )
 

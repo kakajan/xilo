@@ -76,6 +76,14 @@ data class PostEntity(
     val quotedAuthorUsername: String? = null,
     val quotedAuthorAvatar: String? = null,
     val quotedCoverImageUrl: String? = null,
+    val quotedCommentId: String? = null,
+    val quotedCommentContent: String? = null,
+    val quotedCommentAuthorName: String? = null,
+    val quotedCommentAuthorUsername: String? = null,
+    val quotedCommentAuthorAvatar: String? = null,
+    val quotedCommentPostTitle: String? = null,
+    val quotedCommentPostSlug: String? = null,
+    val quotedCommentPostAuthorUsername: String? = null,
 )
 
 @Entity(tableName = "comments")
@@ -93,10 +101,14 @@ data class CommentEntity(
     val likeCount: Int = 0,
     val dislikeCount: Int = 0,
     val replyCount: Int = 0,
+    val repostCount: Int = 0,
     val isLiked: Boolean = false,
     val isDisliked: Boolean = false,
     val isBookmarked: Boolean = false,
+    val isReposted: Boolean = false,
     val isPinned: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isDeleted: Boolean = false,
     val createdAt: Long
 )
 

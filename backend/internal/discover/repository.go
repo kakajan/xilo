@@ -77,39 +77,15 @@ func (r *Repository) ListComments(ctx context.Context, userID, interestFilter st
 	}
 	scoredRows := make([]scored, 0, len(rows))
 	for _, row := range rows {
-		tags := []string(row.PostTags)
-		if tags == nil {
-			tags = []string{}
-		}
-		c := Comment{
-			ID:         row.ID,
-			PostID:     row.PostID,
-			AuthorID:   row.AuthorID,
-			Content:    row.Content,
-			CreatedAt:  row.CreatedAt,
-			LikeCount:  row.LikesCount,
-			ReplyCount: row.RepliesCount,
-			Author: Author{
-				ID:          row.AuthorID,
-				Username:    row.Username,
-				DisplayName: row.DisplayName,
-				AvatarURL:   row.AvatarURL,
-			},
-			Post: PostContext{
-				ID:             row.PostID,
-				Title:          row.PostTitle,
-				Slug:           row.PostSlug,
-				AuthorUsername: row.PostAuthorUsername,
-				Category:       row.PostCategory,
-				Tags:           tags,
-			},
-		}
+		c := row.toComment()
+		tags := c.Post.Tags
 		scoredRows = append(scoredRows, scored{
 			comment: c,
 			score: ScoreComment(ScoreInput{
 				CreatedAt:     row.CreatedAt,
 				LikesCount:    row.LikesCount,
 				RepliesCount:  row.RepliesCount,
+				RepostCount:   row.RepostCount,
 				PostCategory:  row.PostCategory,
 				PostTags:      tags,
 				InterestSlugs: slugs,
@@ -206,6 +182,34 @@ func (r *Repository) attachEngagement(ctx context.Context, comments []Comment, v
 			comments[i].ViewerReactions = reactions
 		}
 	}
+
+	var bookmarked []string
+	if err := r.db.SelectContext(ctx, &bookmarked, `
+		SELECT comment_id FROM comment_bookmarks
+		WHERE user_id = $1 AND comment_id = ANY($2)
+	`, viewerID, pq.Array(ids)); err == nil {
+		bm := make(map[string]bool, len(bookmarked))
+		for _, id := range bookmarked {
+			bm[id] = true
+		}
+		for i := range comments {
+			comments[i].IsBookmarked = bm[comments[i].ID]
+		}
+	}
+
+	var reposted []string
+	if err := r.db.SelectContext(ctx, &reposted, `
+		SELECT comment_id FROM comment_reposts
+		WHERE user_id = $1 AND comment_id = ANY($2)
+	`, viewerID, pq.Array(ids)); err == nil {
+		rp := make(map[string]bool, len(reposted))
+		for _, id := range reposted {
+			rp[id] = true
+		}
+		for i := range comments {
+			comments[i].IsReposted = rp[comments[i].ID]
+		}
+	}
 	return nil
 }
 
@@ -215,6 +219,9 @@ func (r *Repository) fetchCandidates(ctx context.Context, interestFilter string,
 			c.id,
 			c.content,
 			c.created_at,
+			c.parent_id,
+			c.root_id,
+			COALESCE(c.depth, 0)::int AS depth,
 			COALESCE((
 				SELECT COUNT(*)::int
 				FROM reactions rx
@@ -227,6 +234,7 @@ func (r *Repository) fetchCandidates(ctx context.Context, interestFilter string,
 				FROM comments r
 				WHERE r.parent_id = c.id AND r.deleted_at IS NULL
 			), 0) AS replies_count,
+			COALESCE(c.repost_count, 0) AS repost_count,
 			u.id AS author_id,
 			u.username,
 			COALESCE(NULLIF(u.display_name, ''), u.username) AS display_name,
@@ -236,11 +244,17 @@ func (r *Repository) fetchCandidates(ctx context.Context, interestFilter string,
 			p.slug AS post_slug,
 			pu.username AS post_author_username,
 			COALESCE(p.category, '') AS post_category,
-			COALESCE(p.tags, '{}') AS post_tags
+			COALESCE(p.tags, '{}') AS post_tags,
+			pc.id AS parent_comment_id,
+			pc.content AS parent_content,
+			paru.username AS parent_author_username,
+			COALESCE(NULLIF(paru.display_name, ''), paru.username) AS parent_author_display_name
 		FROM comments c
 		JOIN users u ON u.id = c.author_id AND u.deleted_at IS NULL
 		JOIN posts p ON p.id = c.post_id AND p.deleted_at IS NULL AND p.status = 'published'
 		JOIN users pu ON pu.id = p.author_id AND pu.deleted_at IS NULL
+		LEFT JOIN comments pc ON pc.id = c.parent_id AND pc.deleted_at IS NULL
+		LEFT JOIN users paru ON paru.id = pc.author_id AND paru.deleted_at IS NULL
 		WHERE c.deleted_at IS NULL
 		  AND c.is_spam = FALSE
 	`

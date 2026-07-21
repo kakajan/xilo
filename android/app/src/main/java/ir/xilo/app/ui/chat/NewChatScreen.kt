@@ -56,6 +56,7 @@ import ir.xilo.app.ui.components.usernameHandle
 fun NewChatScreen(
     onBackClick: () -> Unit,
     onChatStarted: (chatId: String) -> Unit,
+    onNewGroupClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: NewChatViewModel = hiltViewModel(),
 ) {
@@ -65,6 +66,7 @@ fun NewChatScreen(
     val isLoadingSuggestions by viewModel.isLoadingSuggestions.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
     val isStartingChat by viewModel.isStartingChat.collectAsState()
+    val canCreateGroupChat by viewModel.canCreateGroupChat.collectAsState()
     val error by viewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -117,6 +119,38 @@ fun NewChatScreen(
                     .fillMaxWidth()
                     .padding(horizontal = XiloSpacing.horizontal, vertical = 12.dp),
             )
+
+            if (canCreateGroupChat) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onNewGroupClick)
+                        .padding(horizontal = XiloSpacing.horizontal, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(XiloBlue.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        XiloIcon(
+                            icon = XiloIcons.UserAdd,
+                            contentDescription = null,
+                            tint = XiloBlue,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.chat_new_group_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = XiloBlue,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
 
             HorizontalDivider(color = Color.Black.copy(alpha = 0.06f), thickness = 0.5.dp)
 

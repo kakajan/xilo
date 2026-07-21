@@ -5,23 +5,32 @@ import {
   Bookmark,
   Flag,
   MessageCircle,
+  Pin,
+  Share2,
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CommentRepostButton } from "@/components/comment/comment-repost-button";
 
 interface CommentActionsProps {
+  commentId?: string;
   replyCount?: number;
   likeCount?: number;
   dislikeCount?: number;
+  repostCount?: number;
   liked?: boolean;
   disliked?: boolean;
   bookmarked?: boolean;
+  reposted?: boolean;
+  pinned?: boolean;
   onReply?: () => void;
   onLike?: () => void;
   onDislike?: () => void;
   onBookmark?: () => void;
   onReport?: () => void;
+  onShare?: () => void;
+  onPin?: () => void;
   className?: string;
   /** Hide bookmark/report (e.g. nested reply composer context). */
   showSecondary?: boolean;
@@ -64,19 +73,25 @@ function ActionButton({
   );
 }
 
-/** Android CommentCard action row: reply · thumbs up · thumbs down | bookmark · report */
+/** Android CommentCard action row: reply · like · dislike · amplify | share · pin · bookmark · report */
 export function CommentActions({
+  commentId,
   replyCount = 0,
   likeCount = 0,
   dislikeCount = 0,
+  repostCount = 0,
   liked = false,
   disliked = false,
   bookmarked = false,
+  reposted = false,
+  pinned = false,
   onReply,
   onLike,
   onDislike,
   onBookmark,
   onReport,
+  onShare,
+  onPin,
   className,
   showSecondary = true,
 }: CommentActionsProps) {
@@ -109,10 +124,30 @@ export function CommentActions({
         >
           <ThumbsDown className={cn("h-4 w-4 shrink-0", disliked && "fill-current")} />
         </ActionButton>
+        {commentId ? (
+          <CommentRepostButton
+            commentId={commentId}
+            repostCount={repostCount}
+            reposted={reposted}
+          />
+        ) : null}
       </div>
 
       {showSecondary ? (
         <div className="flex items-center gap-1">
+          <ActionButton label="اشتراک‌گذاری" onClick={onShare}>
+            <Share2 className="h-4 w-4 shrink-0" />
+          </ActionButton>
+          {onPin ? (
+            <ActionButton
+              label={pinned ? "برداشتن پین" : "پین نظر"}
+              active={pinned}
+              activeClass="text-primary"
+              onClick={onPin}
+            >
+              <Pin className={cn("h-4 w-4 shrink-0", pinned && "fill-current")} />
+            </ActionButton>
+          ) : null}
           <ActionButton
             label={bookmarked ? "حذف از ذخیره‌ها" : "ذخیره نظر"}
             active={bookmarked}

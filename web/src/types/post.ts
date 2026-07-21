@@ -22,6 +22,8 @@ export interface Post {
   author?: User;
   quoted_post_id?: string | null;
   quoted_post?: QuotedPostSummary | null;
+  quoted_comment_id?: string | null;
+  quoted_comment?: QuotedCommentSummary | null;
   comment_count?: number;
   repost_count?: number;
   reactions?: Record<string, number>;
@@ -38,6 +40,17 @@ export interface QuotedPostSummary {
   cover_image_url?: string | null;
   author?: User;
   published_at?: string | null;
+}
+
+export interface QuotedCommentSummary {
+  id: string;
+  content: string;
+  author?: User;
+  post_id: string;
+  post_title: string;
+  post_slug: string;
+  post_author_username: string;
+  created_at?: string | null;
 }
 
 import { User } from "./user";
@@ -69,4 +82,5 @@ export interface CreatePostRequest {
   status?: string;
   is_premium?: boolean;
   quoted_post_id?: string;
+  quoted_comment_id?: string;
 }

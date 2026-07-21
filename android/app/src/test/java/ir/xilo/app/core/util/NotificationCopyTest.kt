@@ -60,4 +60,26 @@ class NotificationCopyTest {
         assertNull(NotificationCopy.followerLabel(emptyMap()))
         assertNull(NotificationCopy.followerLabel(mapOf("follower_id" to "uuid")))
     }
+
+    @Test
+    fun actorLabel_messagePrefersDisplayName() {
+        assertEquals(
+            "Asher",
+            NotificationCopy.actorLabel(
+                "new_message",
+                mapOf(
+                    "sender_display_name" to "Asher",
+                    "sender_username" to "asher",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun actorLabel_commentFallsBackToUsername() {
+        assertEquals(
+            "@sabi",
+            NotificationCopy.actorLabel("post_comment", mapOf("author_username" to "sabi")),
+        )
+    }
 }

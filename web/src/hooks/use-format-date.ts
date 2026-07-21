@@ -3,7 +3,12 @@
 import { useEffect } from "react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useCalendarStore } from "@/stores/calendar-store";
-import { formatDateString, resolveCalendar, type FormatDateOptions } from "@/lib/format-date";
+import {
+  defaultDateTimePattern,
+  formatDateString,
+  resolveCalendar,
+  type FormatDateOptions,
+} from "@/lib/format-date";
 
 /** Default UI locale until full i18n lands (platform default is fa). */
 const UI_LOCALE = "fa";
@@ -25,4 +30,15 @@ export function useFormatDate() {
       calendar,
       locale: UI_LOCALE,
     });
+}
+
+/** Date + hour:minute for chat messages, comments, and notifications. */
+export function useFormatDateTime() {
+  const formatDate = useFormatDate();
+  const user = useAuthStore((s) => s.user);
+  const defaults = useCalendarStore((s) => s.defaults);
+  const calendar = resolveCalendar(user?.preferred_calendar, UI_LOCALE, defaults);
+
+  return (date: string | Date | null | undefined) =>
+    formatDate(date, { pattern: defaultDateTimePattern(calendar) });
 }

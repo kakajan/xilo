@@ -46,6 +46,24 @@ function asDataString(data: Record<string, unknown>, key: string): string | unde
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function actorLabel(data: Record<string, unknown>, type: string): string {
+  if (type === "new_message") {
+    const displayName = asDataString(data, "sender_display_name");
+    const username = asDataString(data, "sender_username");
+    return displayName || (username ? `@${username}` : "");
+  }
+  if (
+    type === "post_comment" ||
+    type === "comment_reply" ||
+    type === "comment_mention"
+  ) {
+    const displayName = asDataString(data, "author_display_name");
+    const username = asDataString(data, "author_username");
+    return displayName || (username ? `@${username}` : "");
+  }
+  return "";
+}
+
 /** Template bodies only — user content (comments, messages, post titles) stays as API text. */
 function bodyForType(
   n: Notification,
@@ -59,6 +77,16 @@ function bodyForType(
       const name = displayName || (username ? `@${username}` : "");
       if (name) return t("bodies.newFollower", { name });
       return t("bodies.newFollowerAnonymous");
+    }
+    case "new_message":
+    case "post_comment":
+    case "comment_reply":
+    case "comment_mention": {
+      const name = actorLabel(notificationData(n), n.type);
+      const content = (n.body || "").trim();
+      if (name && content) return `${name}: ${content}`;
+      if (name) return name;
+      return content;
     }
     default:
       return n.body;
@@ -157,7 +185,7 @@ export function NotificationCenter() {
                 <p className="text-sm font-medium">{titleForType(n, t)}</p>
                 {body && <p className="mt-0.5 text-xs text-muted-foreground">{body}</p>}
                 <TimeLabel className="mt-1 text-xs text-muted-foreground">
-                  {formatDate(n.created_at)}
+                  {formatDate(n.created_at, { withTime: true })}
                 </TimeLabel>
               </button>
             );

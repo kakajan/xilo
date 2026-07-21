@@ -60,7 +60,7 @@ import ir.xilo.app.ui.components.forInput
 import ir.xilo.app.ui.components.forRelativeTime
 import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.usernameHandle
-import ir.xilo.app.ui.feed.getRelativeTimeSpan
+import ir.xilo.app.core.util.DateFormatter
 import kotlinx.coroutines.delay
 
 private val ReplyAvatarSize = 40.dp
@@ -295,10 +295,7 @@ private fun TwitterStyleReplyThread(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = getRelativeTimeSpan(
-                                androidx.compose.ui.platform.LocalContext.current,
-                                parent.createdAt,
-                            ),
+                            text = DateFormatter.formatDateTime(parent.createdAt),
                             style = MaterialTheme.typography.bodyMedium.forRelativeTime(),
                             color = MaterialTheme.colorScheme.secondary,
                             maxLines = 1,

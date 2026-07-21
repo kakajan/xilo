@@ -57,6 +57,10 @@ func TestNotifyPostComment_NotifiesPostAuthor(t *testing.T) {
 		WithArgs(postID).
 		WillReturnRows(sqlmock.NewRows([]string{"author_id", "username", "slug"}).
 			AddRow(authorID, "usher", "hello-world"))
+	mock.ExpectQuery(`SELECT username,.+AS display_name`).
+		WithArgs(actorID).
+		WillReturnRows(sqlmock.NewRows([]string{"username", "display_name"}).
+			AddRow("commenter", "Commenter"))
 
 	comment := &model.Comment{
 		ID:       commentID,
@@ -88,6 +92,12 @@ func TestNotifyPostComment_NotifiesPostAuthor(t *testing.T) {
 	if req.Data["comment_id"] != commentID {
 		t.Fatalf("comment_id data: %v", req.Data["comment_id"])
 	}
+	if req.Data["author_display_name"] != "Commenter" {
+		t.Fatalf("author_display_name: %v", req.Data["author_display_name"])
+	}
+	if req.Data["author_username"] != "commenter" {
+		t.Fatalf("author_username: %v", req.Data["author_username"])
+	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)
 	}
@@ -113,6 +123,10 @@ func TestNotifyAfterCreate_TopLevelUsesPostComment(t *testing.T) {
 		WithArgs(postID).
 		WillReturnRows(sqlmock.NewRows([]string{"author_id", "username", "slug"}).
 			AddRow(authorID, "usher", "post-slug"))
+	mock.ExpectQuery(`SELECT username,.+AS display_name`).
+		WithArgs(actorID).
+		WillReturnRows(sqlmock.NewRows([]string{"username", "display_name"}).
+			AddRow("commenter", "Commenter"))
 
 	svc.notifyAfterCreate(context.Background(), &model.Comment{
 		ID:       "c1",
@@ -153,14 +167,22 @@ func TestNotifyAfterCreate_ReplyUsesCommentReply(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "post_id", "author_id", "parent_id", "root_id", "depth",
 			"content", "content_html", "media_url", "is_pinned", "is_spam",
+			"repost_count",
 			"created_at", "updated_at",
 			"user_id", "username", "display_name", "avatar_url",
+			"post_title", "post_slug", "post_author_username",
 		}).AddRow(
 			parentID, postID, parentAuthor, nil, nil, 0,
 			"parent", "parent", "", false, false,
+			0,
 			now, now,
 			parentAuthor, "parentuser", "Parent", "",
+			"", "", "",
 		))
+	mock.ExpectQuery(`SELECT username,.+AS display_name`).
+		WithArgs(actorID).
+		WillReturnRows(sqlmock.NewRows([]string{"username", "display_name"}).
+			AddRow("commenter", "Commenter"))
 	mock.ExpectQuery(`SELECT p.author_id, u.username, p.slug`).
 		WithArgs(postID).
 		WillReturnRows(sqlmock.NewRows([]string{"author_id", "username", "slug"}).

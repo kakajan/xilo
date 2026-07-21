@@ -76,6 +76,8 @@ function postHref(comment: DiscoverComment) {
   return `/${postAuthor}/${postSlug}?reply=${encodeURIComponent(comment.id)}`;
 }
 
+type InterestItem = { id: string; slug: string; name_fa?: string; name?: string };
+
 export default function DiscoverPage() {
   const router = useRouter();
   const [searchActive, setSearchActive] = useState(false);
@@ -84,13 +86,35 @@ export default function DiscoverPage() {
   const [comments, setComments] = useState<DiscoverComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState<string | null>(null);
+  const [interest, setInterest] = useState<string>("");
+
+  const { data: interests = [] } = useQuery({
+    queryKey: ["discover-interests"],
+    queryFn: async () => {
+      try {
+        const mine = await apiFetch<{ interests?: InterestItem[] } | InterestItem[]>(
+          "/api/users/me/interests"
+        );
+        const list = Array.isArray(mine) ? mine : mine.interests ?? [];
+        if (list.length) return list;
+      } catch {
+        // fall through
+      }
+      const all = await apiFetch<{ interests?: InterestItem[] } | InterestItem[]>(
+        "/api/interests"
+      );
+      return Array.isArray(all) ? all : all.interests ?? [];
+    },
+  });
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       try {
+        const qs = new URLSearchParams({ limit: "50" });
+        if (interest) qs.set("interest", interest);
         const discoverRes = await apiFetch<{ data?: DiscoverApiComment[] }>(
-          "/api/discover/comments?limit=50"
+          `/api/discover/comments?${qs.toString()}`
         );
         const rows = discoverRes.data ?? [];
         if (rows.length > 0) {
@@ -136,7 +160,7 @@ export default function DiscoverPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [interest]);
 
   useEffect(() => {
     void refresh();
@@ -234,6 +258,36 @@ export default function DiscoverPage() {
 
       {info ? (
         <p className="mb-3 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">{info}</p>
+      ) : null}
+
+      {!searchActive && interests.length > 0 ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setInterest("")}
+            className={`min-h-9 rounded-full px-3 text-xs font-medium ${
+              !interest
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            همه
+          </button>
+          {interests.map((item) => (
+            <button
+              key={item.id || item.slug}
+              type="button"
+              onClick={() => setInterest(item.slug)}
+              className={`min-h-9 rounded-full px-3 text-xs font-medium ${
+                interest === item.slug
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              {item.name_fa || item.name || item.slug}
+            </button>
+          ))}
+        </div>
       ) : null}
 
       {searchActive && (

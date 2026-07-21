@@ -128,6 +128,19 @@ interface CommentDao {
     @Query("DELETE FROM comments WHERE postId = :postId")
     suspend fun clearCommentsForPost(postId: String)
 
+    @Query("DELETE FROM comments WHERE id = :id")
+    suspend fun deleteCommentById(id: String)
+
+    @Query(
+        """
+        UPDATE comments
+        SET isDeleted = 1,
+            content = ''
+        WHERE id = :id
+        """
+    )
+    suspend fun softDeleteCommentById(id: String)
+
     /** Clear + insert in one transaction so Flow observers never see an empty intermediate list. */
     @Transaction
     suspend fun replaceCommentsForPost(postId: String, comments: List<CommentEntity>) {
@@ -137,7 +150,7 @@ interface CommentDao {
         }
     }
 
-    @Query("SELECT * FROM comments ORDER BY createdAt DESC LIMIT :limit")
+    @Query("SELECT * FROM comments WHERE isDeleted = 0 ORDER BY createdAt DESC LIMIT :limit")
     fun getRecentCommentsFlow(limit: Int): Flow<List<CommentEntity>>
 }
 
@@ -160,6 +173,9 @@ interface ChatDao {
 
     @Query("UPDATE chats SET isArchived = :isArchived WHERE id = :chatId")
     suspend fun updateArchivedStatus(chatId: String, isArchived: Boolean)
+
+    @Query("UPDATE chats SET unreadCount = 0 WHERE id = :chatId")
+    suspend fun clearUnreadCount(chatId: String): Int
 
     @Query("DELETE FROM chats WHERE id = :chatId")
     suspend fun deleteChatById(chatId: String)

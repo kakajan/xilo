@@ -48,8 +48,10 @@ import ir.xilo.app.ui.components.forRelativeTime
 import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.usernameHandle
 import ir.xilo.app.ui.feed.PostOwnerMenu
+import ir.xilo.app.ui.feed.QuotedCommentEmbed
 import ir.xilo.app.ui.feed.QuotedPostEmbed
 import ir.xilo.app.ui.feed.RepostMenuButton
+import ir.xilo.app.ui.feed.hasQuotedComment
 import ir.xilo.app.ui.feed.hasQuotedPost
 import ir.xilo.app.ui.feed.isPostOwner
 
@@ -90,7 +92,9 @@ fun PostDetailScreen(
     onAuthorClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
     onQuotePost: (String) -> Unit = {},
+    onQuoteComment: (String) -> Unit = {},
     onQuotedPostClick: (String) -> Unit = {},
+    onQuotedCommentClick: (String) -> Unit = {},
     onHashtagClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     replyToCommentId: String? = null,
@@ -107,6 +111,7 @@ fun PostDetailScreen(
     val currentUserId by viewModel.currentUserId.collectAsState()
     val currentUsername by viewModel.currentUsername.collectAsState()
     val canRepost by viewModel.canRepost.collectAsState()
+    val canModerateComments by viewModel.canModerateComments.collectAsState()
     val postRemoved by viewModel.postRemoved.collectAsState()
 
     var replyDraftText by remember { mutableStateOf("") }
@@ -124,6 +129,17 @@ fun PostDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     var didScrollToReplyTarget by remember(replyToCommentId) { mutableStateOf(false) }
+    var didSeedFocusFromReply by remember(replyToCommentId) { mutableStateOf(false) }
+
+    LaunchedEffect(comments, replyToCommentId) {
+        val targetId = replyToCommentId ?: return@LaunchedEffect
+        if (didSeedFocusFromReply || comments.isEmpty()) return@LaunchedEffect
+        val seeded = focusStackForTarget(comments, targetId)
+        if (seeded.isNotEmpty()) {
+            focusStack = seeded
+        }
+        didSeedFocusFromReply = true
+    }
 
     val handleBack: () -> Unit = {
         if (focusStack.isNotEmpty()) {
@@ -256,14 +272,15 @@ fun PostDetailScreen(
                     }
                     val pullRefreshState = rememberPullToRefreshState()
 
-                    LaunchedEffect(threadDisplays, replyToCommentId, focusCommentId) {
+                    LaunchedEffect(threadDisplays, replyToCommentId, focusCommentId, didSeedFocusFromReply) {
                         val targetId = replyToCommentId ?: return@LaunchedEffect
-                        if (focusCommentId != null) return@LaunchedEffect
+                        if (replyToCommentId != null && !didSeedFocusFromReply) return@LaunchedEffect
                         if (didScrollToReplyTarget || threadDisplays.isEmpty()) return@LaunchedEffect
                         val commentIndex = threadDisplays.indexOfFirst { it.comment.id == targetId }
                         if (commentIndex < 0) return@LaunchedEffect
-                        // Lazy items: header(0), divider(1), comments from 2 (focus bar only when drilled in).
-                        listState.animateScrollToItem(index = commentIndex + 2)
+                        // Lazy items: header(0), divider(1), optional focus bar, then comments.
+                        val focusBarOffset = if (focusCommentId != null) 1 else 0
+                        listState.animateScrollToItem(index = commentIndex + 2 + focusBarOffset)
                         didScrollToReplyTarget = true
                     }
 
@@ -311,6 +328,9 @@ fun PostDetailScreen(
                                 },
                                 onQuotedPostClick = detailPost.quotedSlug?.takeIf { it.isNotBlank() }
                                     ?.let { quotedSlug -> { onQuotedPostClick(quotedSlug) } },
+                                onQuotedCommentClick = detailPost.quotedCommentPostSlug
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?.let { slug -> { onQuotedCommentClick(slug) } },
                                 onAuthorClick = {
                                     onAuthorClick(detailPost.authorUsername)
                                 },
@@ -384,6 +404,9 @@ fun PostDetailScreen(
                             }
                         } else {
                             items(threadDisplays, key = { it.comment.id }) { display ->
+                                val detailPost = post!!
+                                val canPinComment = canModerateComments ||
+                                    (currentUserId != null && detailPost.authorId == currentUserId)
                                 CommentThreadItem(
                                     display = display,
                                     onReplyClick = { commentId, authorName, authorAvatar ->
@@ -405,9 +428,35 @@ fun PostDetailScreen(
                                     onBookmarkClick = {
                                         viewModel.toggleCommentBookmark(display.comment)
                                     },
+                                    onDeleteClick = if (
+                                        currentUserId != null &&
+                                        display.comment.authorId == currentUserId &&
+                                        !display.comment.isDeleted
+                                    ) {
+                                        { viewModel.deleteComment(display.comment) }
+                                    } else {
+                                        null
+                                    },
                                     onAuthorClick = {
                                         onAuthorClick(display.comment.authorUsername)
                                     },
+                                    onRepostClick = if (canRepost) {
+                                        { viewModel.toggleCommentRepost(display.comment) }
+                                    } else {
+                                        null
+                                    },
+                                    onQuoteClick = if (canRepost) {
+                                        { onQuoteComment(display.comment.id) }
+                                    } else {
+                                        null
+                                    },
+                                    onPinClick = if (canPinComment) {
+                                        { viewModel.pinComment(display.comment) }
+                                    } else {
+                                        null
+                                    },
+                                    postAuthorUsername = detailPost.authorUsername,
+                                    postSlug = detailPost.slug,
                                     onDrillDownClick = { commentId ->
                                         focusStack = focusStack + commentId
                                     },
@@ -460,6 +509,7 @@ fun PostDetailHeader(
     onRepostClick: (() -> Unit)? = null,
     onQuoteClick: (() -> Unit)? = null,
     onQuotedPostClick: (() -> Unit)? = null,
+    onQuotedCommentClick: (() -> Unit)? = null,
     onAuthorClick: (() -> Unit)? = null,
     onHashtagClick: (String) -> Unit = {},
     isOwner: Boolean = false,
@@ -587,6 +637,14 @@ fun PostDetailHeader(
             QuotedPostEmbed(
                 post = post,
                 onClick = onQuotedPostClick,
+            )
+        }
+
+        if (post.hasQuotedComment()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            QuotedCommentEmbed(
+                post = post,
+                onClick = onQuotedCommentClick,
             )
         }
 

@@ -49,12 +49,24 @@ function patchCommentTree(
 export function CommentSection({
   postId,
   initialReplyTo,
+  postAuthorUsername,
+  postSlug,
+  postAuthorId,
 }: {
   postId: string;
   initialReplyTo?: string | null;
+  postAuthorUsername?: string;
+  postSlug?: string;
+  postAuthorId?: string;
 }) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const canModerate =
+    Boolean(user?.id) &&
+    (user?.id === postAuthorId ||
+      user?.role === "editor" ||
+      user?.role === "admin" ||
+      user?.role === "superadmin");
   const [newComment, setNewComment] = useState("");
   const [replyToId, setReplyToId] = useState<string | null>(initialReplyTo ?? null);
   const [replyDraft, setReplyDraft] = useState("");
@@ -171,6 +183,19 @@ export function CommentSection({
     }
   };
 
+  const onPin = async (comment: Comment) => {
+    const next = !comment.is_pinned;
+    updateCachedComment(comment.id, { is_pinned: next });
+    try {
+      await apiFetch(`/api/comments/${comment.id}/pin`, {
+        method: "POST",
+        body: JSON.stringify({ pin: next }),
+      });
+    } catch {
+      updateCachedComment(comment.id, { is_pinned: comment.is_pinned });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -260,6 +285,9 @@ export function CommentSection({
               key={c.id}
               comment={c}
               currentUserId={user?.id}
+              canModerate={canModerate}
+              postAuthorUsername={postAuthorUsername}
+              postSlug={postSlug}
               replyToId={replyToId}
               replyDraft={replyDraft}
               onReplyDraft={setReplyDraft}
@@ -277,6 +305,7 @@ export function CommentSection({
               onDislike={(comment) => void onVote(comment, "dislike")}
               onBookmark={(comment) => void onBookmark(comment)}
               onReport={() => setInfo("گزارش ثبت شد")}
+              onPin={(comment) => void onPin(comment)}
               depth={0}
             />
           ))
@@ -332,6 +361,9 @@ export function CommentSection({
 function CommentBubble({
   comment,
   currentUserId,
+  canModerate,
+  postAuthorUsername,
+  postSlug,
   replyToId,
   replyDraft,
   onReplyDraft,
@@ -343,10 +375,14 @@ function CommentBubble({
   onDislike,
   onBookmark,
   onReport,
+  onPin,
   depth,
 }: {
   comment: Comment;
   currentUserId?: string;
+  canModerate?: boolean;
+  postAuthorUsername?: string;
+  postSlug?: string;
   replyToId: string | null;
   replyDraft: string;
   onReplyDraft: (v: string) => void;
@@ -358,6 +394,7 @@ function CommentBubble({
   onDislike: (comment: Comment) => void;
   onBookmark: (comment: Comment) => void;
   onReport: () => void;
+  onPin: (comment: Comment) => void;
   depth: number;
 }) {
   const formatDate = useFormatDate();
@@ -404,7 +441,7 @@ function CommentBubble({
           )
         ) : null}
         <TimeLabel className="text-xs text-muted-foreground">
-          {formatDate(comment.created_at)}
+          {formatDate(comment.created_at, { withTime: true })}
         </TimeLabel>
       </div>
 
@@ -417,30 +454,39 @@ function CommentBubble({
         <p className="whitespace-pre-wrap">{comment.content}</p>
       </div>
 
+      {(comment.repost_count ?? 0) > 0 ? (
+        <p className="mt-1 text-xs font-medium text-emerald-600">تقویت‌شده</p>
+      ) : null}
+
       <CommentActions
         className="mt-1"
+        commentId={comment.id}
         replyCount={replyCount}
         likeCount={commentLikeCount(comment.reactions)}
         dislikeCount={commentDislikeCount(comment.reactions)}
+        repostCount={comment.repost_count ?? 0}
         liked={hasViewerReaction(comment.viewer_reactions, "like")}
         disliked={hasViewerReaction(comment.viewer_reactions, "dislike")}
         bookmarked={comment.is_bookmarked}
+        reposted={comment.is_reposted}
+        pinned={comment.is_pinned}
         onReply={() => onReply(comment.id)}
         onLike={() => onLike(comment)}
         onDislike={() => onDislike(comment)}
         onBookmark={() => onBookmark(comment)}
         onReport={onReport}
+        onShare={
+          postAuthorUsername && postSlug
+            ? () => {
+                const path = `/${postAuthorUsername}/${postSlug}?reply=${encodeURIComponent(comment.id)}`;
+                void navigator.clipboard?.writeText(
+                  `${window.location.origin}${path}`
+                );
+              }
+            : undefined
+        }
+        onPin={canModerate ? () => onPin(comment) : undefined}
       />
-
-      {(comment.replies?.length ?? 0) > 0 && depth === 0 ? (
-        <button
-          type="button"
-          className="mt-1 min-h-8 text-xs text-muted-foreground hover:text-primary"
-          onClick={() => onDrill(comment.id)}
-        >
-          {comment.replies!.length} پاسخ — مشاهده رشته
-        </button>
-      ) : null}
 
       {replyToId === comment.id && (
         <form
@@ -466,26 +512,50 @@ function CommentBubble({
         </form>
       )}
 
-      {comment.replies?.map((r) => (
-        <div key={r.id} className="mt-3">
-          <CommentBubble
-            comment={r}
-            currentUserId={currentUserId}
-            replyToId={replyToId}
-            replyDraft={replyDraft}
-            onReplyDraft={onReplyDraft}
-            onReply={onReply}
-            onCancelReply={onCancelReply}
-            onSubmitReply={onSubmitReply}
-            onDrill={onDrill}
-            onLike={onLike}
-            onDislike={onDislike}
-            onBookmark={onBookmark}
-            onReport={onReport}
-            depth={depth + 1}
-          />
-        </div>
-      ))}
+      {/* Hard 2-level window: only direct children under the focus root; deeper via drill. */}
+      {depth === 0
+        ? (comment.replies ?? []).map((r) => {
+            const nestedCount = r.replies?.length ?? 0;
+            const grandCount = Math.max(r.reply_count ?? 0, nestedCount);
+            return (
+              <div key={r.id} className="mt-3">
+                <CommentBubble
+                  comment={{
+                    ...r,
+                    reply_count: r.reply_count ?? nestedCount,
+                    replies: undefined,
+                  }}
+                  currentUserId={currentUserId}
+                  canModerate={canModerate}
+                  postAuthorUsername={postAuthorUsername}
+                  postSlug={postSlug}
+                  replyToId={replyToId}
+                  replyDraft={replyDraft}
+                  onReplyDraft={onReplyDraft}
+                  onReply={onReply}
+                  onCancelReply={onCancelReply}
+                  onSubmitReply={onSubmitReply}
+                  onDrill={onDrill}
+                  onLike={onLike}
+                  onDislike={onDislike}
+                  onBookmark={onBookmark}
+                  onReport={onReport}
+                  onPin={onPin}
+                  depth={1}
+                />
+                {nestedCount > 0 ? (
+                  <button
+                    type="button"
+                    className="mt-1 min-h-8 ps-4 text-xs font-medium text-primary hover:underline"
+                    onClick={() => onDrill(r.id)}
+                  >
+                    {grandCount} پاسخ — مشاهده رشته
+                  </button>
+                ) : null}
+              </div>
+            );
+          })
+        : null}
     </div>
   );
 }

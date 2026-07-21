@@ -15,11 +15,14 @@ const (
 	engagementSoftener = 10.0
 )
 
+const shareCap = 20
+
 // ScoreInput holds the fields used by the simplified discover ranking helper.
 type ScoreInput struct {
 	CreatedAt     time.Time
 	LikesCount    int
 	RepliesCount  int
+	RepostCount   int
 	PostCategory  string
 	PostTags      []string
 	InterestSlugs []string
@@ -71,7 +74,14 @@ func ScoreComment(in ScoreInput) float64 {
 	}
 	recency := math.Exp(-recencyLambda * hours)
 
-	rawEngagement := float64(in.LikesCount) + 2*float64(in.RepliesCount)
+	shares := in.RepostCount
+	if shares > shareCap {
+		shares = shareCap
+	}
+	if shares < 0 {
+		shares = 0
+	}
+	rawEngagement := float64(in.LikesCount) + 2*float64(in.RepliesCount) + 3*float64(shares)
 	if rawEngagement < 0 {
 		rawEngagement = 0
 	}

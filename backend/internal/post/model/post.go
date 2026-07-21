@@ -33,15 +33,17 @@ type Post struct {
 	DeletedAt    *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 
 	QuotedPostID     *string           `json:"quoted_post_id,omitempty" db:"quoted_post_id"`
+	QuotedCommentID  *string           `json:"quoted_comment_id,omitempty" db:"quoted_comment_id"`
 
-	Author           *authmodel.User   `json:"author,omitempty" db:"-"`
-	QuotedPost       *QuotedPostSummary `json:"quoted_post,omitempty" db:"-"`
-	CommentCount     int               `json:"comment_count" db:"-"`
-	RepostCount      int               `json:"repost_count" db:"-"`
-	Reactions        map[string]int    `json:"reactions,omitempty" db:"-"`
-	ViewerReactions  []string          `json:"viewer_reactions,omitempty" db:"-"`
-	IsBookmarked     bool              `json:"is_bookmarked" db:"-"`
-	IsReposted       bool              `json:"is_reposted" db:"-"`
+	Author            *authmodel.User      `json:"author,omitempty" db:"-"`
+	QuotedPost        *QuotedPostSummary   `json:"quoted_post,omitempty" db:"-"`
+	QuotedComment     *QuotedCommentSummary `json:"quoted_comment,omitempty" db:"-"`
+	CommentCount      int                  `json:"comment_count" db:"-"`
+	RepostCount       int                  `json:"repost_count" db:"-"`
+	Reactions         map[string]int       `json:"reactions,omitempty" db:"-"`
+	ViewerReactions   []string             `json:"viewer_reactions,omitempty" db:"-"`
+	IsBookmarked      bool                 `json:"is_bookmarked" db:"-"`
+	IsReposted        bool                 `json:"is_reposted" db:"-"`
 }
 
 // QuotedPostSummary is a one-level embed of the original post being quoted.
@@ -53,6 +55,18 @@ type QuotedPostSummary struct {
 	CoverImageURL *string         `json:"cover_image_url,omitempty"`
 	Author        *authmodel.User `json:"author,omitempty"`
 	PublishedAt   *time.Time      `json:"published_at,omitempty"`
+}
+
+// QuotedCommentSummary is a one-level embed of a comment quoted into a new post.
+type QuotedCommentSummary struct {
+	ID                 string          `json:"id"`
+	Content            string          `json:"content"`
+	Author             *authmodel.User `json:"author,omitempty"`
+	PostID             string          `json:"post_id"`
+	PostTitle          string          `json:"post_title"`
+	PostSlug           string          `json:"post_slug"`
+	PostAuthorUsername string          `json:"post_author_username"`
+	CreatedAt          *time.Time      `json:"created_at,omitempty"`
 }
 
 var ErrInvalidViewSession = errors.New("session_id is required for anonymous views")
@@ -91,8 +105,9 @@ type CreatePostRequest struct {
 	Status        string     `json:"status"`
 	IsPremium     bool       `json:"is_premium"`
 	Language      string     `json:"language"`
-	ScheduledAt   *time.Time `json:"scheduled_at"`
-	QuotedPostID  string     `json:"quoted_post_id,omitempty"`
+	ScheduledAt      *time.Time `json:"scheduled_at"`
+	QuotedPostID     string     `json:"quoted_post_id,omitempty"`
+	QuotedCommentID  string     `json:"quoted_comment_id,omitempty"`
 }
 
 type UpdatePostRequest struct {

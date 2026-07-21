@@ -169,6 +169,77 @@ func TestListCommentBookmarks_Empty(t *testing.T) {
 	}
 }
 
+func TestToggleCommentRepost_CreateAndRemove(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock: %v", err)
+	}
+	defer db.Close()
+
+	sqlxDB := sqlx.NewDb(db, "sqlmock")
+	h := NewSocialHandler(sqlxDB)
+
+	app := fiber.New()
+	app.Post("/comments/:id/repost", func(c *fiber.Ctx) error {
+		c.Locals("userID", "user-1")
+		return h.ToggleCommentRepost(c)
+	})
+	app.Delete("/comments/:id/repost", func(c *fiber.Ctx) error {
+		c.Locals("userID", "user-1")
+		return h.ToggleCommentRepost(c)
+	})
+
+	commentID := "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+
+	mock.ExpectQuery(`SELECT author_id FROM comments`).
+		WithArgs(commentID).
+		WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow("author-2"))
+	mock.ExpectExec(`INSERT INTO comment_reposts`).
+		WithArgs("user-1", commentID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectQuery(`SELECT COUNT`).
+		WithArgs(commentID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectExec(`UPDATE comments SET repost_count`).
+		WithArgs(commentID, 1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	req := httptest.NewRequest("POST", "/comments/"+commentID+"/repost", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("POST status = %d", resp.StatusCode)
+	}
+
+	mock.ExpectQuery(`SELECT author_id FROM comments`).
+		WithArgs(commentID).
+		WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow("author-2"))
+	mock.ExpectExec(`DELETE FROM comment_reposts`).
+		WithArgs("user-1", commentID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`SELECT COUNT`).
+		WithArgs(commentID).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectExec(`UPDATE comments SET repost_count`).
+		WithArgs(commentID, 0).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	req = httptest.NewRequest("DELETE", "/comments/"+commentID+"/repost", nil)
+	resp, err = app.Test(req)
+	if err != nil {
+		t.Fatalf("DELETE: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("DELETE status = %d", resp.StatusCode)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
 func TestToggleRepost_PostNotFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {

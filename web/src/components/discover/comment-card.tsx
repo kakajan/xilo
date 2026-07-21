@@ -23,6 +23,19 @@ export interface DiscoverComment extends Comment {
   reply_count?: number;
 }
 
+function ReplyToStrip({ comment }: { comment: DiscoverComment }) {
+  const parent = comment.parent;
+  const handle = (parent?.author_username || "").trim();
+  if (!handle) return null;
+  const preview = (parent?.content_preview || "").trim();
+  return (
+    <p className="mb-2 text-sm text-muted-foreground">
+      در پاسخ به <UsernameHandle username={handle} />
+      {preview ? <> — {preview}</> : null}
+    </p>
+  );
+}
+
 interface CommentCardProps {
   comment: DiscoverComment;
   liked?: boolean;
@@ -33,6 +46,9 @@ interface CommentCardProps {
   onDislike?: () => void;
   onBookmark?: () => void;
   onReport?: () => void;
+  onShare?: () => void;
+  onPin?: () => void;
+  canPin?: boolean;
 }
 
 export function CommentCard({
@@ -45,6 +61,9 @@ export function CommentCard({
   onDislike,
   onBookmark,
   onReport,
+  onShare,
+  onPin,
+  canPin,
 }: CommentCardProps) {
   const formatDate = useFormatDate();
   const name = comment.author?.display_name || comment.author?.username || "کاربر";
@@ -98,13 +117,18 @@ export function CommentCard({
             )}
             <AuthorHandleMeta
               username={username}
-              timeLabel={formatDate(comment.created_at)}
+              timeLabel={formatDate(comment.created_at, { withTime: true })}
             />
           </div>
+
+          {(comment.repost_count ?? 0) > 0 ? (
+            <p className="mb-1 text-xs font-medium text-emerald-600">تقویت‌شده</p>
+          ) : null}
 
           {canOpenPost ? (
             <Link href={href} className="block">
               <p className="mb-2 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
+              <ReplyToStrip comment={comment} />
               {comment.post_title ? (
                 <p className="mb-2 text-sm text-primary">
                   روی پست: {comment.post_title}
@@ -118,21 +142,39 @@ export function CommentCard({
               ) : null}
             </Link>
           ) : (
-            <p className="mb-2 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
+            <>
+              <p className="mb-2 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
+              <ReplyToStrip comment={comment} />
+            </>
           )}
 
           <CommentActions
+            commentId={comment.id}
             replyCount={replies}
             likeCount={likes}
             dislikeCount={dislikes}
+            repostCount={comment.repost_count ?? 0}
             liked={liked}
             disliked={disliked}
             bookmarked={bookmarked}
+            reposted={comment.is_reposted}
+            pinned={comment.is_pinned}
             onReply={onReply}
             onLike={onLike}
             onDislike={onDislike}
             onBookmark={onBookmark}
             onReport={onReport}
+            onShare={
+              onShare ||
+              (canOpenPost
+                ? () => {
+                    void navigator.clipboard?.writeText(
+                      `${window.location.origin}${href}`
+                    );
+                  }
+                : undefined)
+            }
+            onPin={canPin ? onPin : undefined}
           />
         </div>
       </div>

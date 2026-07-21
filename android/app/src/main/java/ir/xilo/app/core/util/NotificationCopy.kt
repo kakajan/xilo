@@ -35,16 +35,21 @@ object NotificationCopy {
         fallback: String,
         data: Map<String, String> = emptyMap(),
     ): String {
-        if (type.trim().lowercase() != "new_follower") {
-            val resId = bodyResId(type) ?: return fallback
-            return AppLocale.string(context, resId)
+        val normalized = type.trim().lowercase()
+        if (normalized == "new_follower") {
+            val name = followerLabel(data)
+            return if (name != null) {
+                AppLocale.string(context, R.string.notif_body_new_follower, name)
+            } else {
+                AppLocale.string(context, R.string.notif_body_new_follower_anonymous)
+            }
         }
-        val name = followerLabel(data)
-        return if (name != null) {
-            AppLocale.string(context, R.string.notif_body_new_follower, name)
-        } else {
-            AppLocale.string(context, R.string.notif_body_new_follower_anonymous)
-        }
+        val actor = actorLabel(normalized, data)
+        val content = fallback.trim()
+        if (actor != null && content.isNotEmpty()) return "$actor: $content"
+        if (actor != null) return actor
+        val resId = bodyResId(normalized) ?: return fallback
+        return AppLocale.string(context, resId)
     }
 
     /** Prefer display name, else `@username` — null when actor info is missing (legacy rows). */
@@ -53,5 +58,20 @@ object NotificationCopy {
         val username = data["follower_username"]?.trim()?.takeIf { it.isNotEmpty() }
             ?: data["username"]?.trim()?.takeIf { it.isNotEmpty() }
         return username?.let { "@$it" }
+    }
+
+    /** Actor for message/comment notifications — null when legacy rows lack name fields. */
+    fun actorLabel(type: String, data: Map<String, String>): String? {
+        return when (type.trim().lowercase()) {
+            "new_message" -> {
+                data["sender_display_name"]?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: data["sender_username"]?.trim()?.takeIf { it.isNotEmpty() }?.let { "@$it" }
+            }
+            "post_comment", "comment_reply", "comment_mention" -> {
+                data["author_display_name"]?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: data["author_username"]?.trim()?.takeIf { it.isNotEmpty() }?.let { "@$it" }
+            }
+            else -> null
+        }
     }
 }

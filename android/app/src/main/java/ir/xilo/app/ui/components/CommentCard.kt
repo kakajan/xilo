@@ -1,5 +1,6 @@
 package ir.xilo.app.ui.components
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,7 +38,8 @@ import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
-import ir.xilo.app.ui.feed.getRelativeTimeSpan
+import ir.xilo.app.core.util.DateFormatter
+import ir.xilo.app.ui.feed.RepostMenuButton
 
 private val CommentAvatarSize = 40.dp
 private val CommentThreadLineWidth = 2.dp
@@ -51,13 +53,26 @@ fun CommentCard(
     onDislikeClick: () -> Unit,
     onReportClick: () -> Unit,
     onBookmarkClick: () -> Unit = {},
+    onDeleteClick: (() -> Unit)? = null,
     onAuthorClick: (() -> Unit)? = null,
+    /** Null hides Author+ repost menu; readers still see count when > 0. */
+    onRepostClick: (() -> Unit)? = null,
+    onQuoteClick: (() -> Unit)? = null,
+    onShareClick: (() -> Unit)? = null,
+    onPinClick: (() -> Unit)? = null,
+    postAuthorUsername: String? = null,
+    postSlug: String? = null,
     modifier: Modifier = Modifier,
     contentMaxLines: Int = 3,
     startIndent: Dp = 0.dp,
     showThreadLineAbove: Boolean = false,
     showThreadLineBelow: Boolean = false,
     threadLineColor: Color = Color.Unspecified,
+    postTitle: String? = null,
+    /** Discover: username of the comment this hit replies to. */
+    replyToUsername: String? = null,
+    /** Discover: short preview of the parent comment body. */
+    replyToPreview: String? = null,
 ) {
     val contentStart = XiloSpacing.horizontal + startIndent
     val openAuthor = onAuthorClick?.takeIf { comment.authorUsername.isNotBlank() }
@@ -67,6 +82,23 @@ fun CommentCard(
         MaterialTheme.colorScheme.outline.copy(alpha = 0.55f)
     }
     val useThreadGutter = showThreadLineAbove || showThreadLineBelow
+    val context = LocalContext.current
+    val shareComment = onShareClick ?: run {
+        val author = postAuthorUsername?.takeIf { it.isNotBlank() }
+        val slug = postSlug?.takeIf { it.isNotBlank() }
+        if (author != null && slug != null) {
+            {
+                val link = "/$author/$slug?reply=${comment.id}"
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, link)
+                }
+                context.startActivity(Intent.createChooser(intent, null))
+            }
+        } else {
+            null
+        }
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -167,22 +199,86 @@ fun CommentCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = getRelativeTimeSpan(LocalContext.current, comment.createdAt),
+                        text = DateFormatter.formatDateTime(comment.createdAt),
                         style = MaterialTheme.typography.bodyMedium.forRelativeTime(),
                         color = MaterialTheme.colorScheme.secondary,
                         maxLines = 1
+                    )
+                    if (comment.isPinned) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.comment_pinned_badge),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = XiloBlue,
+                            maxLines = 1,
+                        )
+                    }
+                }
+
+                if (comment.repostCount > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.comment_amplified_badge),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = ColorSuccess,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
                     )
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                ContentAwareText(
-                    text = comment.content,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = contentMaxLines,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (comment.isDeleted) {
+                    Text(
+                        text = stringResource(R.string.comment_deleted),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontWeight = FontWeight.Medium,
+                    )
+                } else {
+                    ContentAwareText(
+                        text = comment.content,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = contentMaxLines,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                val resolvedReplyTo = replyToUsername?.takeIf { it.isNotBlank() }
+                if (resolvedReplyTo != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    val preview = replyToPreview?.takeIf { it.isNotBlank() }
+                    Text(
+                        text = if (preview != null) {
+                            stringResource(
+                                R.string.discover_comment_reply_to_with_preview,
+                                resolvedReplyTo,
+                                preview,
+                            )
+                        } else {
+                            stringResource(R.string.discover_comment_reply_to, resolvedReplyTo)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                val resolvedPostTitle = postTitle?.takeIf { it.isNotBlank() }
+                if (resolvedPostTitle != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.discover_comment_on_post, resolvedPostTitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = XiloBlue,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
                 Row(
                     modifier = Modifier
@@ -199,6 +295,25 @@ fun CommentCard(
                             onClick = onReplyClick
                         )
                         Spacer(modifier = Modifier.width(12.dp))
+                        if (onRepostClick != null && onQuoteClick != null) {
+                            RepostMenuButton(
+                                repostCount = comment.repostCount,
+                                isReposted = comment.isReposted,
+                                onRepostClick = onRepostClick,
+                                onQuoteClick = onQuoteClick,
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                        } else if (comment.repostCount > 0) {
+                            CommentCardAction(
+                                icon = XiloIcons.Repeat,
+                                count = comment.repostCount.toString(),
+                                contentDescription = stringResource(R.string.cd_repost),
+                                tint = MaterialTheme.colorScheme.secondary,
+                                countColor = MaterialTheme.colorScheme.secondary,
+                                onClick = null,
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                        }
                         CommentCardAction(
                             icon = if (comment.isLiked) XiloIcons.ThumbUpFilled else XiloIcons.ThumbUp,
                             count = comment.likeCount.toString(),
@@ -219,26 +334,65 @@ fun CommentCard(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CommentCardAction(
-                            icon = if (comment.isBookmarked) XiloIcons.BookmarkFilled else XiloIcons.Bookmark,
-                            count = null,
-                            contentDescription = stringResource(
-                                if (comment.isBookmarked) {
-                                    R.string.comment_action_unbookmark
-                                } else {
-                                    R.string.comment_action_bookmark
-                                }
-                            ),
-                            tint = if (comment.isBookmarked) XiloBlue else MaterialTheme.colorScheme.secondary,
-                            onClick = onBookmarkClick
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        CommentCardAction(
-                            icon = XiloIcons.Report,
-                            count = null,
-                            contentDescription = stringResource(R.string.discover_action_report),
-                            onClick = onReportClick
-                        )
+                        if (onPinClick != null && !comment.isDeleted) {
+                            CommentCardAction(
+                                icon = XiloIcons.Pin,
+                                count = null,
+                                contentDescription = stringResource(
+                                    if (comment.isPinned) {
+                                        R.string.comment_action_unpin
+                                    } else {
+                                        R.string.comment_action_pin
+                                    }
+                                ),
+                                tint = if (comment.isPinned) XiloBlue else MaterialTheme.colorScheme.secondary,
+                                onClick = onPinClick,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        if (shareComment != null && !comment.isDeleted) {
+                            CommentCardAction(
+                                icon = XiloIcons.Share,
+                                count = null,
+                                contentDescription = stringResource(R.string.cd_share),
+                                onClick = shareComment,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        if (!comment.isDeleted) {
+                            CommentCardAction(
+                                icon = if (comment.isBookmarked) XiloIcons.BookmarkFilled else XiloIcons.Bookmark,
+                                count = null,
+                                contentDescription = stringResource(
+                                    if (comment.isBookmarked) {
+                                        R.string.comment_action_unbookmark
+                                    } else {
+                                        R.string.comment_action_bookmark
+                                    }
+                                ),
+                                tint = if (comment.isBookmarked) XiloBlue else MaterialTheme.colorScheme.secondary,
+                                onClick = onBookmarkClick
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        if (onDeleteClick != null) {
+                            CommentCardAction(
+                                icon = XiloIcons.Trash,
+                                count = null,
+                                contentDescription = stringResource(R.string.comment_action_delete),
+                                tint = ColorError,
+                                onClick = onDeleteClick,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        if (!comment.isDeleted) {
+                            CommentCardAction(
+                                icon = XiloIcons.Report,
+                                count = null,
+                                contentDescription = stringResource(R.string.discover_action_report),
+                                onClick = onReportClick
+                            )
+                        }
                     }
                 }
             }

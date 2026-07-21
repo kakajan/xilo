@@ -1,3 +1,11 @@
+/** Short parent summary on Discover reply hits. */
+export interface CommentParentSummary {
+  id: string;
+  author_username: string;
+  author_display_name: string;
+  content_preview: string;
+}
+
 export interface Comment {
   id: string;
   post_id: string;
@@ -22,9 +30,19 @@ export interface Comment {
   reactions?: Record<string, number>;
   viewer_reactions?: string[];
   is_bookmarked?: boolean;
+  is_reposted?: boolean;
+  repost_count?: number;
   /** Present on discover / denormalized payloads. */
   like_count?: number;
   reply_count?: number;
+  post?: {
+    id: string;
+    title: string;
+    slug: string;
+    author_username?: string;
+  };
+  /** Present on Discover when this comment replies to another. */
+  parent?: CommentParentSummary | null;
 }
 
 export interface CreateCommentRequest {

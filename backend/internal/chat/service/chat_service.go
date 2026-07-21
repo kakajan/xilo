@@ -82,6 +82,7 @@ type ChatRepository interface {
 	) error
 	AddMembers(ctx context.Context, chatID string, actorID string, userIDs []string) error
 	RemoveMember(ctx context.Context, chatID string, actorID string, targetID string) error
+	UpdateMemberRole(ctx context.Context, chatID string, actorID string, targetID string, role string) error
 	LeaveChat(ctx context.Context, chatID string, userID string) error
 	EnsureSavedMessagesChat(ctx context.Context, userID string) (*model.Chat, error)
 	ListMessages(
@@ -104,6 +105,14 @@ type ChatRepository interface {
 		idempotencyRequest pkgidempotency.Request,
 		req *model.CreateMessageRequest,
 	) (*pkgidempotency.MutationResult[model.Message], error)
+	InsertSystemMessage(ctx context.Context, chatID string, senderID string, content string) (*model.Message, error)
+	LookupUserIDsByUsernames(ctx context.Context, usernames []string) (map[string]string, error)
+	PinMessage(ctx context.Context, chatID string, actorID string, messageID string) error
+	UnpinMessage(ctx context.Context, chatID string, actorID string, messageID string) error
+	ListPins(ctx context.Context, chatID string, userID string) ([]*model.ChatPin, error)
+	CreateInviteLink(ctx context.Context, chatID string, actorID string) (*model.ChatInviteLink, error)
+	RevokeInviteLink(ctx context.Context, chatID string, actorID string, token string) error
+	JoinByInviteToken(ctx context.Context, userID string, token string) (string, error)
 	GetMessage(ctx context.Context, messageID string) (*model.Message, error)
 	UpdateMessage(
 		ctx context.Context,
@@ -119,6 +128,18 @@ type ChatRepository interface {
 		userID string,
 		reaction string,
 	) (*model.ReactionResult, error)
+}
+
+var writerRoles = map[string]struct{}{
+	"author":     {},
+	"editor":     {},
+	"admin":      {},
+	"superadmin": {},
+}
+
+func canCreateGroup(role string) bool {
+	_, ok := writerRoles[strings.ToLower(strings.TrimSpace(role))]
+	return ok
 }
 
 type ChatService struct {
@@ -153,6 +174,7 @@ func (s *ChatService) SetNotifier(n *notifsvc.NotificationService) {
 func (s *ChatService) CreateChat(
 	ctx context.Context,
 	actorID string,
+	actorRole string,
 	idempotencyKey string,
 	receivedAt time.Time,
 	req *model.CreateChatRequest,
@@ -196,8 +218,11 @@ func (s *ChatService) CreateChat(
 		sort.Strings(pair)
 		directLow, directHigh = pair[0], pair[1]
 	case model.ChatTypeGroup:
-		if len(otherIDs) < 2 {
-			return nil, validation("group chat requires at least two other members")
+		if !canCreateGroup(actorRole) {
+			return nil, forbidden("only authors and admins may create group chats", nil)
+		}
+		if len(otherIDs) < 1 {
+			return nil, validation("group chat requires at least one other member")
 		}
 		if req.Name == nil {
 			return nil, validation("group chat name is required")
@@ -240,6 +265,9 @@ func (s *ChatService) CreateChat(
 	)
 	if err != nil {
 		return nil, translateRepositoryError(err, "chat")
+	}
+	if !result.IsReplay() && result.Value != nil && result.Value.Type == model.ChatTypeGroup {
+		s.emitSystemMessage(ctx, result.Value.ID, actorID, "Group created")
 	}
 	return result, nil
 }
@@ -360,6 +388,9 @@ func (s *ChatService) LeaveChat(ctx context.Context, userID string, chatID strin
 	if err := s.repo.LeaveChat(ctx, chatID, userID); err != nil {
 		return translateRepositoryError(err, "chat")
 	}
+	if chat.Type == model.ChatTypeGroup {
+		s.emitSystemMessage(ctx, chatID, userID, "A member left the group")
+	}
 	return nil
 }
 
@@ -389,6 +420,38 @@ func (s *ChatService) AddMembers(
 	if err := s.repo.AddMembers(ctx, chatID, actorID, userIDs); err != nil {
 		return nil, translateRepositoryError(err, "chat")
 	}
+	s.emitSystemMessage(ctx, chatID, actorID, fmt.Sprintf("%d member(s) added", len(userIDs)))
+	return s.GetChat(ctx, actorID, chatID)
+}
+
+func (s *ChatService) UpdateMemberRole(
+	ctx context.Context,
+	actorID string,
+	chatID string,
+	targetID string,
+	req *model.UpdateMemberRoleRequest,
+) (*model.Chat, error) {
+	if err := validateIDs(actorID, chatID, targetID); err != nil {
+		return nil, err
+	}
+	role := strings.ToLower(strings.TrimSpace(req.Role))
+	if role != model.MemberRoleAdmin && role != model.MemberRoleMember {
+		return nil, validation("role must be admin or member")
+	}
+	chat, err := s.repo.GetChat(ctx, actorID, chatID)
+	if err != nil {
+		return nil, translateRepositoryError(err, "chat")
+	}
+	if chat.Type != model.ChatTypeGroup || chat.CurrentRole != model.MemberRoleAdmin {
+		return nil, forbidden("only group admins may change member roles", nil)
+	}
+	if err := s.repo.UpdateMemberRole(ctx, chatID, actorID, targetID, role); err != nil {
+		if errors.Is(err, repository.ErrForbidden) {
+			return nil, forbidden("cannot demote the last group admin", err)
+		}
+		return nil, translateRepositoryError(err, "chat")
+	}
+	s.emitSystemMessage(ctx, chatID, actorID, fmt.Sprintf("Member role changed to %s", role))
 	return s.GetChat(ctx, actorID, chatID)
 }
 
@@ -414,7 +477,127 @@ func (s *ChatService) RemoveMember(
 	if err := s.repo.RemoveMember(ctx, chatID, actorID, targetID); err != nil {
 		return translateRepositoryError(err, "chat")
 	}
+	if actorID != targetID {
+		s.emitSystemMessage(ctx, chatID, actorID, "A member was removed")
+	} else {
+		s.emitSystemMessage(ctx, chatID, actorID, "A member left the group")
+	}
 	return nil
+}
+
+func (s *ChatService) RequireActiveMember(ctx context.Context, chatID string, userID string) error {
+	_, err := s.requireMember(ctx, chatID, userID)
+	return err
+}
+
+func (s *ChatService) PinMessage(
+	ctx context.Context,
+	userID string,
+	chatID string,
+	messageID string,
+) error {
+	if err := validateIDs(userID, chatID, messageID); err != nil {
+		return err
+	}
+	if err := s.repo.PinMessage(ctx, chatID, userID, messageID); err != nil {
+		return translateRepositoryError(err, "message")
+	}
+	s.emitSystemMessage(ctx, chatID, userID, "A message was pinned")
+	return nil
+}
+
+func (s *ChatService) UnpinMessage(
+	ctx context.Context,
+	userID string,
+	chatID string,
+	messageID string,
+) error {
+	if err := validateIDs(userID, chatID, messageID); err != nil {
+		return err
+	}
+	if err := s.repo.UnpinMessage(ctx, chatID, userID, messageID); err != nil {
+		return translateRepositoryError(err, "message")
+	}
+	return nil
+}
+
+func (s *ChatService) ListPins(
+	ctx context.Context,
+	userID string,
+	chatID string,
+) ([]*model.ChatPin, error) {
+	if err := validateIDs(userID, chatID); err != nil {
+		return nil, err
+	}
+	pins, err := s.repo.ListPins(ctx, chatID, userID)
+	if err != nil {
+		return nil, translateRepositoryError(err, "chat")
+	}
+	return pins, nil
+}
+
+func (s *ChatService) CreateInviteLink(
+	ctx context.Context,
+	userID string,
+	chatID string,
+) (*model.ChatInviteLink, error) {
+	if err := validateIDs(userID, chatID); err != nil {
+		return nil, err
+	}
+	link, err := s.repo.CreateInviteLink(ctx, chatID, userID)
+	if err != nil {
+		return nil, translateRepositoryError(err, "chat")
+	}
+	return link, nil
+}
+
+func (s *ChatService) RevokeInviteLink(
+	ctx context.Context,
+	userID string,
+	chatID string,
+	token string,
+) error {
+	if err := validateIDs(userID, chatID); err != nil {
+		return err
+	}
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return validation("token is required")
+	}
+	if err := s.repo.RevokeInviteLink(ctx, chatID, userID, token); err != nil {
+		return translateRepositoryError(err, "chat")
+	}
+	return nil
+}
+
+func (s *ChatService) JoinByInviteToken(
+	ctx context.Context,
+	userID string,
+	token string,
+) (*model.Chat, error) {
+	userID, err := canonicalID(userID)
+	if err != nil {
+		return nil, forbidden("invalid authenticated user", err)
+	}
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, validation("token is required")
+	}
+	chatID, err := s.repo.JoinByInviteToken(ctx, userID, token)
+	if err != nil {
+		return nil, translateRepositoryError(err, "chat")
+	}
+	s.emitSystemMessage(ctx, chatID, userID, "A member joined via invite link")
+	return s.GetChat(ctx, userID, chatID)
+}
+
+func (s *ChatService) emitSystemMessage(ctx context.Context, chatID, actorID, content string) {
+	msg, err := s.repo.InsertSystemMessage(ctx, chatID, actorID, content)
+	if err != nil {
+		slog.Warn("system message failed", "chat_id", chatID, "error", err)
+		return
+	}
+	s.publish(ctx, "chat:"+chatID, realtime.EventMessageReceive, toRealtimeMessage(msg), "")
 }
 
 func (s *ChatService) ListMessages(
@@ -516,12 +699,13 @@ func (s *ChatService) CreateMessage(
 			key.String(),
 		)
 		s.notifyNewMessage(ctx, userID, result.Value)
+		s.notifyMentions(ctx, userID, result.Value)
 	}
 	return result, nil
 }
 
 func (s *ChatService) notifyNewMessage(ctx context.Context, senderID string, msg *model.Message) {
-	if s.notif == nil || msg == nil {
+	if s.notif == nil || msg == nil || msg.Type == model.MessageTypeSystem {
 		return
 	}
 	chat, err := s.repo.GetChat(ctx, senderID, msg.ChatID)
@@ -541,6 +725,13 @@ func (s *ChatService) notifyNewMessage(ctx context.Context, senderID string, msg
 		"message_id": msg.ID,
 		"sender_id":  senderID,
 	}
+	senderDisplay, senderUsername := senderLabelFromMembers(chat.Members, senderID, msg.SenderName)
+	if senderDisplay != "" {
+		data["sender_display_name"] = senderDisplay
+	}
+	if senderUsername != "" {
+		data["sender_username"] = senderUsername
+	}
 	for _, member := range chat.Members {
 		if member.UserID == senderID || member.IsMuted {
 			continue
@@ -556,6 +747,100 @@ func (s *ChatService) notifyNewMessage(ctx context.Context, senderID string, msg
 			slog.Warn("new message notification failed", "chat_id", msg.ChatID, "error", err)
 		}
 	}
+}
+
+func senderLabelFromMembers(members []model.ChatMember, senderID, fallbackName string) (displayName, username string) {
+	for _, member := range members {
+		if member.UserID != senderID {
+			continue
+		}
+		username = strings.TrimSpace(member.Username)
+		displayName = strings.TrimSpace(member.DisplayName)
+		if displayName == "" {
+			displayName = username
+		}
+		return displayName, username
+	}
+	fallbackName = strings.TrimSpace(fallbackName)
+	return fallbackName, ""
+}
+
+func (s *ChatService) notifyMentions(ctx context.Context, senderID string, msg *model.Message) {
+	if s.notif == nil || msg == nil || msg.Content == nil || msg.Type != model.MessageTypeText {
+		return
+	}
+	usernames := extractMentionUsernames(*msg.Content)
+	if len(usernames) == 0 {
+		return
+	}
+	idsByUsername, err := s.repo.LookupUserIDsByUsernames(ctx, usernames)
+	if err != nil {
+		slog.Warn("mention lookup failed", "chat_id", msg.ChatID, "error", err)
+		return
+	}
+	chat, err := s.repo.GetChat(ctx, senderID, msg.ChatID)
+	if err != nil || chat == nil {
+		return
+	}
+	active := map[string]bool{}
+	muted := map[string]bool{}
+	for _, member := range chat.Members {
+		active[member.UserID] = true
+		muted[member.UserID] = member.IsMuted
+	}
+	body := *msg.Content
+	if utf8.RuneCountInString(body) > 120 {
+		runes := []rune(body)
+		body = string(runes[:120]) + "…"
+	}
+	data := map[string]any{
+		"chat_id":    msg.ChatID,
+		"message_id": msg.ID,
+		"sender_id":  senderID,
+	}
+	senderDisplay, senderUsername := senderLabelFromMembers(chat.Members, senderID, msg.SenderName)
+	if senderDisplay != "" {
+		data["sender_display_name"] = senderDisplay
+	}
+	if senderUsername != "" {
+		data["sender_username"] = senderUsername
+	}
+	seen := map[string]struct{}{}
+	for _, userID := range idsByUsername {
+		if userID == senderID || !active[userID] || muted[userID] {
+			continue
+		}
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		seen[userID] = struct{}{}
+		if _, err := s.notif.Notify(ctx, notifsvc.NotifyRequest{
+			RecipientID: userID,
+			ActorID:     senderID,
+			Type:        notifsvc.TypeChatMention,
+			Title:       "Mentioned you",
+			Body:        body,
+			Data:        data,
+		}); err != nil && !errors.Is(err, notifsvc.ErrDuplicateNotification) {
+			slog.Warn("chat mention notification failed", "chat_id", msg.ChatID, "error", err)
+		}
+	}
+}
+
+func extractMentionUsernames(content string) []string {
+	var out []string
+	for _, part := range strings.Fields(content) {
+		if !strings.HasPrefix(part, "@") || len(part) < 2 {
+			continue
+		}
+		name := strings.Trim(part, ".,!?;:()[]{}\"'")
+		name = strings.TrimPrefix(name, "@")
+		if name == "" {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out
 }
 
 func (s *ChatService) UpdateMessage(

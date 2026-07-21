@@ -197,6 +197,14 @@ fun PostCard(
                         onClick = post.quotedSlug?.let { slug -> { onPostClick(slug) } },
                     )
                 }
+
+                if (post.hasQuotedComment()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    QuotedCommentEmbed(
+                        post = post,
+                        onClick = post.quotedCommentPostSlug?.let { slug -> { onPostClick(slug) } },
+                    )
+                }
             }
 
             if (isOwner && onEditClick != null && onArchiveClick != null && onDeleteClick != null) {

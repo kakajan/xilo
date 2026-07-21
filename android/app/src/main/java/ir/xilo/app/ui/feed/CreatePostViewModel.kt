@@ -9,11 +9,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import ir.xilo.app.R
 import ir.xilo.app.core.util.HashtagParser
 import ir.xilo.app.core.util.canCreatePost
+import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.prefs.ComposeDraftStore
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.TagSuggestion
 import ir.xilo.app.data.repository.AuthRepository
+import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
 import ir.xilo.app.ui.components.PostField
 import ir.xilo.app.ui.postdetail.extractPlainText
@@ -32,6 +34,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CreatePostViewModel @Inject constructor(
     private val postRepository: PostRepository,
+    private val commentRepository: CommentRepository,
     private val authRepository: AuthRepository,
     private val apiService: XiloApiService,
     private val errorMessageResolver: ErrorMessageResolver,
@@ -78,7 +81,14 @@ class CreatePostViewModel @Inject constructor(
     private val _quotedPost = MutableStateFlow<PostEntity?>(null)
     val quotedPost: StateFlow<PostEntity?> = _quotedPost.asStateFlow()
 
+    private val _quotedComment = MutableStateFlow<CommentEntity?>(null)
+    val quotedComment: StateFlow<CommentEntity?> = _quotedComment.asStateFlow()
+
+    private val _quotedCommentPostTitle = MutableStateFlow<String?>(null)
+    val quotedCommentPostTitle: StateFlow<String?> = _quotedCommentPostTitle.asStateFlow()
+
     private var quotedPostId: String? = null
+    private var quotedCommentId: String? = null
     private var suggestJob: Job? = null
     private var draftSaveJob: Job? = null
     private var draftKey: String = ComposeDraftStore.KEY_NEW
@@ -98,18 +108,27 @@ class CreatePostViewModel @Inject constructor(
     }
 
     /** Resets compose/edit state whenever the screen is (re)opened. */
-    fun prepare(editPostId: String?, quotedPostId: String? = null) {
+    fun prepare(
+        editPostId: String?,
+        quotedPostId: String? = null,
+        quotedCommentId: String? = null,
+    ) {
         _success.value = false
         _error.value = null
         _fieldErrors.value = emptyMap()
         _isSubmitting.value = false
         _isLoadingEdit.value = false
         draftSaveJob?.cancel()
+        this.quotedCommentId = quotedCommentId?.takeIf { it.isNotBlank() }
         this.quotedPostId = quotedPostId?.takeIf { it.isNotBlank() }
+            ?.takeIf { this.quotedCommentId == null }
         _quotedPost.value = null
+        _quotedComment.value = null
+        _quotedCommentPostTitle.value = null
         draftKey = composeDraftStore.draftKey(
             when {
                 !editPostId.isNullOrBlank() -> editPostId
+                !this.quotedCommentId.isNullOrBlank() -> "quote-comment-${this.quotedCommentId}"
                 !this.quotedPostId.isNullOrBlank() -> "quote-${this.quotedPostId}"
                 else -> null
             }
@@ -117,6 +136,7 @@ class CreatePostViewModel @Inject constructor(
         if (editPostId.isNullOrBlank()) {
             _editPostId.value = null
             restoreLocalDraft(force = restoreDoneForKey != draftKey)
+            this.quotedCommentId?.let { loadQuotedComment(it) }
             this.quotedPostId?.let { loadQuotedPost(it) }
         } else {
             loadForEdit(editPostId, force = true)
@@ -128,6 +148,20 @@ class CreatePostViewModel @Inject constructor(
             val post = postRepository.getPostById(postId)
                 ?: postRepository.getPostBySlug(postId).getOrNull()
             _quotedPost.value = post
+        }
+    }
+
+    private fun loadQuotedComment(commentId: String) {
+        viewModelScope.launch {
+            commentRepository.getCommentById(commentId)
+                .onSuccess { detail ->
+                    _quotedComment.value = detail.comment
+                    _quotedCommentPostTitle.value = detail.postTitle
+                        ?: postRepository.getPostById(detail.comment.postId)?.title
+                }
+                .onFailure {
+                    _error.value = errorMessageResolver.fromThrowable(it, R.string.error_load_post)
+                }
         }
     }
 
@@ -254,7 +288,7 @@ class CreatePostViewModel @Inject constructor(
             _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
             return
         }
-        val quoting = !quotedPostId.isNullOrBlank()
+        val quoting = !quotedPostId.isNullOrBlank() || !quotedCommentId.isNullOrBlank()
         val errors = validate(title, content, requireTitle = !quoting)
         if (errors.isNotEmpty()) {
             _fieldErrors.value = errors
@@ -273,6 +307,7 @@ class CreatePostViewModel @Inject constructor(
                 content = content,
                 audioUrl = audioUrl.takeIf { it.isNotBlank() },
                 quotedPostId = quotedPostId,
+                quotedCommentId = quotedCommentId,
             )
                 .onSuccess {
                     clearLocalDraft()

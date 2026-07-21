@@ -10,13 +10,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/xilo-platform/xilo/internal/chat/model"
 	"github.com/xilo-platform/xilo/internal/chat/service"
+	mediasvc "github.com/xilo-platform/xilo/internal/media/service"
 	pkgidempotency "github.com/xilo-platform/xilo/pkg/idempotency"
 	"github.com/xilo-platform/xilo/pkg/pagination"
 )
 
 type ChatHandler struct {
-	svc   *service.ChatService
-	clock func() time.Time
+	svc      *service.ChatService
+	mediaSvc *mediasvc.MediaService
+	clock    func() time.Time
 }
 
 func NewChatHandler(svc *service.ChatService) *ChatHandler {
@@ -24,6 +26,10 @@ func NewChatHandler(svc *service.ChatService) *ChatHandler {
 		svc:   svc,
 		clock: func() time.Time { return time.Now().UTC() },
 	}
+}
+
+func (h *ChatHandler) SetMediaService(mediaSvc *mediasvc.MediaService) {
+	h.mediaSvc = mediaSvc
 }
 
 // @Summary      List chats
@@ -83,6 +89,7 @@ func (h *ChatHandler) CreateChat(c *fiber.Ctx) error {
 	result, err := h.svc.CreateChat(
 		c.UserContext(),
 		userID(c),
+		userRole(c),
 		idempotencyKey,
 		receivedAt,
 		&req,
@@ -194,6 +201,154 @@ func (h *ChatHandler) RemoveMember(c *fiber.Ctx) error {
 		return writeError(c, err)
 	}
 	return c.JSON(fiber.Map{"message": "member removed", "code": "member_removed"})
+}
+
+// @Summary      Update group member role
+// @Tags         chats
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Chat ID"
+// @Param        userId path string true "User ID"
+// @Param        request body model.UpdateMemberRoleRequest true "Role"
+// @Success      200 {object} model.Chat
+// @Router       /chats/{id}/members/{userId} [patch]
+func (h *ChatHandler) UpdateMemberRole(c *fiber.Ctx) error {
+	var req model.UpdateMemberRoleRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeInvalidBody(c)
+	}
+	chat, err := h.svc.UpdateMemberRole(
+		c.UserContext(),
+		userID(c),
+		c.Params("id"),
+		c.Params("userId"),
+		&req,
+	)
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(chat)
+}
+
+// @Summary      Upload media for a chat membership
+// @Tags         chats
+// @Accept       multipart/form-data
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Chat ID"
+// @Param        file formData file true "File"
+// @Success      201 {object} map[string]interface{}
+// @Router       /chats/{id}/media [post]
+func (h *ChatHandler) UploadChatMedia(c *fiber.Ctx) error {
+	if h.mediaSvc == nil {
+		return writeError(c, &service.Error{
+			Code:    service.CodeInternal,
+			Message: "media upload unavailable",
+		})
+	}
+	chatID := c.Params("id")
+	if err := h.svc.RequireActiveMember(c.UserContext(), chatID, userID(c)); err != nil {
+		return writeError(c, err)
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		return writeError(c, &service.Error{
+			Code:    service.CodeValidation,
+			Message: "no file provided",
+		})
+	}
+	f, err := file.Open()
+	if err != nil {
+		return writeError(c, &service.Error{
+			Code:    service.CodeInternal,
+			Message: "failed to read file",
+			Cause:   err,
+		})
+	}
+	defer f.Close()
+	mimeType := file.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+	resp, err := h.mediaSvc.Upload(
+		c.UserContext(),
+		userID(c),
+		file.Filename,
+		f,
+		file.Size,
+		mimeType,
+	)
+	if err != nil {
+		return writeError(c, &service.Error{
+			Code:    service.CodeValidation,
+			Message: err.Error(),
+		})
+	}
+	return c.Status(fiber.StatusCreated).JSON(resp)
+}
+
+func (h *ChatHandler) ListPins(c *fiber.Ctx) error {
+	pins, err := h.svc.ListPins(c.UserContext(), userID(c), c.Params("id"))
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(pins)
+}
+
+func (h *ChatHandler) PinMessage(c *fiber.Ctx) error {
+	var req model.PinMessageRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeInvalidBody(c)
+	}
+	if err := h.svc.PinMessage(c.UserContext(), userID(c), c.Params("id"), req.MessageID); err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(fiber.Map{"message": "message pinned", "code": "message_pinned"})
+}
+
+func (h *ChatHandler) UnpinMessage(c *fiber.Ctx) error {
+	if err := h.svc.UnpinMessage(
+		c.UserContext(),
+		userID(c),
+		c.Params("id"),
+		c.Params("messageId"),
+	); err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(fiber.Map{"message": "message unpinned", "code": "message_unpinned"})
+}
+
+func (h *ChatHandler) CreateInviteLink(c *fiber.Ctx) error {
+	link, err := h.svc.CreateInviteLink(c.UserContext(), userID(c), c.Params("id"))
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.Status(fiber.StatusCreated).JSON(link)
+}
+
+func (h *ChatHandler) RevokeInviteLink(c *fiber.Ctx) error {
+	if err := h.svc.RevokeInviteLink(
+		c.UserContext(),
+		userID(c),
+		c.Params("id"),
+		c.Params("token"),
+	); err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(fiber.Map{"message": "invite revoked", "code": "invite_revoked"})
+}
+
+func (h *ChatHandler) JoinByInvite(c *fiber.Ctx) error {
+	var req model.JoinChatRequest
+	if err := c.BodyParser(&req); err != nil {
+		return writeInvalidBody(c)
+	}
+	chat, err := h.svc.JoinByInviteToken(c.UserContext(), userID(c), req.Token)
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(chat)
 }
 
 // @Summary      List messages
@@ -413,6 +568,11 @@ func listParams(c *fiber.Ctx, defaultLimit int) (model.ListParams, error) {
 
 func userID(c *fiber.Ctx) string {
 	value, _ := c.Locals("userID").(string)
+	return value
+}
+
+func userRole(c *fiber.Ctx) string {
+	value, _ := c.Locals("role").(string)
 	return value
 }
 

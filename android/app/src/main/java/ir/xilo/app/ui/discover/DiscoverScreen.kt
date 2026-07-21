@@ -53,11 +53,15 @@ fun DiscoverScreen(
     onAuthorClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
     onQuotePost: (String) -> Unit = {},
+    onQuoteComment: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel()
 ) {
     val searchResults by viewModel.searchResults.collectAsState()
     val discoverComments by viewModel.discoverComments.collectAsState()
+    val postTitleByPostId by viewModel.postTitleByPostId.collectAsState()
+    val postRefByPostId by viewModel.postRefByPostId.collectAsState()
+    val replyParentByCommentId by viewModel.replyParentByCommentId.collectAsState()
     val topicInterests by viewModel.topicInterests.collectAsState()
     val selectedInterestSlug by viewModel.selectedInterestSlug.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
@@ -323,10 +327,25 @@ fun DiscoverScreen(
                                     }
                                 } else {
                                     items(discoverComments, key = { it.id }) { comment ->
+                                        val postRef = postRefByPostId[comment.postId]
+                                        val replyParent = replyParentByCommentId[comment.id]
                                         CommentCard(
                                             comment = comment,
+                                            postTitle = postTitleByPostId[comment.postId]
+                                                ?: postRef?.title,
+                                            postAuthorUsername = postRef?.authorUsername,
+                                            postSlug = postRef?.slug,
+                                            replyToUsername = replyParent?.authorUsername,
+                                            replyToPreview = replyParent?.contentPreview,
                                             onClick = {
-                                                viewModel.openCommentPost(comment.postId, onCommentClick)
+                                                // Seed PostDetail focus path (same as web ?reply=).
+                                                viewModel.openCommentReply(
+                                                    postId = comment.postId,
+                                                    commentId = comment.id,
+                                                    authorUsername = comment.authorUsername,
+                                                    authorAvatar = comment.authorAvatar,
+                                                    onNavigate = onReplyToComment,
+                                                )
                                             },
                                             onReplyClick = {
                                                 viewModel.openCommentReply(
@@ -342,6 +361,16 @@ fun DiscoverScreen(
                                             onReportClick = { reportTargetId = comment.id },
                                             onBookmarkClick = { viewModel.toggleCommentBookmark(comment) },
                                             onAuthorClick = { onAuthorClick(comment.authorUsername) },
+                                            onRepostClick = if (canRepost) {
+                                                { viewModel.toggleCommentRepost(comment) }
+                                            } else {
+                                                null
+                                            },
+                                            onQuoteClick = if (canRepost) {
+                                                { onQuoteComment(comment.id) }
+                                            } else {
+                                                null
+                                            },
                                         )
                                     }
                                 }

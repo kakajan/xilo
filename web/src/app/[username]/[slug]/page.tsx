@@ -10,6 +10,7 @@ import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
 import { StickyAudioPlayer } from "@/components/post/sticky-audio-player";
 import { PostBody } from "@/components/post/post-body";
 import { QuotedPostCard } from "@/components/post/quoted-post-card";
+import { QuotedCommentCard } from "@/components/post/quoted-comment-card";
 import { RecordPostView } from "@/components/post/record-post-view";
 import {
   AuthorHandleMeta,
@@ -120,6 +121,12 @@ export default async function PostPage({
         </div>
       ) : null}
 
+      {post.quoted_comment ? (
+        <div className="mt-6">
+          <QuotedCommentCard quote={post.quoted_comment} />
+        </div>
+      ) : null}
+
       {post.audio_url ? (
         <StickyAudioPlayer src={post.audio_url} title={post.title} />
       ) : null}
@@ -132,7 +139,13 @@ export default async function PostPage({
 
       <div className="border-t pt-8">
         <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-          <CommentSection postId={post.id} initialReplyTo={reply} />
+          <CommentSection
+            postId={post.id}
+            initialReplyTo={reply}
+            postAuthorUsername={post.author?.username || username}
+            postSlug={post.slug}
+            postAuthorId={post.author_id}
+          />
         </Suspense>
       </div>
     </article>

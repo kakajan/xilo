@@ -201,12 +201,14 @@ class ErrorMessageResolver @Inject constructor(
     private data class ApiErrorBody(
         val error: String? = null,
         val message: String? = null,
+        val code: String? = null,
         @SerialName("error_message") val errorMessage: String? = null,
     ) {
         fun resolvedMessage(): String? =
             error?.takeIf { it.isNotBlank() }
                 ?: message?.takeIf { it.isNotBlank() }
                 ?: errorMessage?.takeIf { it.isNotBlank() }
+                ?: code?.takeIf { it.isNotBlank() }
     }
 
     private companion object {
@@ -238,6 +240,8 @@ class ErrorMessageResolver @Inject constructor(
             "failed to send otp" to R.string.error_otp_sms_unavailable,
             "no file provided" to R.string.error_avatar_upload,
             "unable to read image" to R.string.error_avatar_upload,
+            "message edit window has expired" to R.string.chat_edit_window_expired,
+            "edit_window_expired" to R.string.chat_edit_window_expired,
         )
 
         private val VALIDATION_MAP = mapOf(

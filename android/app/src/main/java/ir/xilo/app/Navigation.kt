@@ -18,7 +18,9 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import ir.xilo.app.ui.chat.ChatConversationScreen
 import ir.xilo.app.ui.chat.ChatViewModel
+import ir.xilo.app.ui.chat.GroupInfoScreen
 import ir.xilo.app.ui.chat.NewChatScreen
+import ir.xilo.app.ui.chat.NewGroupScreen
 import ir.xilo.app.ui.chat.SavedHubScreen
 import ir.xilo.app.ui.contact.ContactDetailScreen
 import ir.xilo.app.ui.contacts.ContactsScreen
@@ -97,8 +99,14 @@ fun MainNavigation() {
             onQuotePost = { postId ->
               backStack.add(CreatePostKey(quotedPostId = postId))
             },
+            onQuoteComment = { commentId ->
+              backStack.add(CreatePostKey(quotedCommentId = commentId))
+            },
             onQuotedPostClick = { quotedSlug ->
               if (quotedSlug.isNotBlank()) backStack.add(PostDetailKey(slug = quotedSlug))
+            },
+            onQuotedCommentClick = { postSlug ->
+              if (postSlug.isNotBlank()) backStack.add(PostDetailKey(slug = postSlug))
             },
             onHashtagClick = { tag ->
               if (tag.isNotBlank()) backStack.add(TagFeedKey(tag = tag))
@@ -176,7 +184,14 @@ fun MainNavigation() {
           ChatConversationScreen(
             chatId = key.chatId,
             onBackClick = { backStack.removeLastOrNull() },
-            onContactClick = { backStack.add(ContactDetailKey(key.chatId)) },
+            onContactClick = {
+              val chat = chatViewModel.currentChat.value
+              if (chat?.type == "group") {
+                backStack.add(GroupInfoKey(key.chatId))
+              } else {
+                backStack.add(ContactDetailKey(key.chatId))
+              }
+            },
             isSavedMessages = key.isSavedMessages,
             modifier = Modifier.fillMaxSize(),
             viewModel = chatViewModel
@@ -188,6 +203,32 @@ fun MainNavigation() {
             onChatStarted = { chatId ->
               backStack.removeLastOrNull()
               backStack.add(ChatConversationKey(chatId = chatId))
+            },
+            onNewGroupClick = { backStack.add(NewGroupKey) },
+            modifier = Modifier.fillMaxSize(),
+          )
+        }
+        entry<NewGroupKey> {
+          NewGroupScreen(
+            onBackClick = { backStack.removeLastOrNull() },
+            onGroupCreated = { chatId ->
+              backStack.removeLastOrNull()
+              backStack.removeLastOrNull()
+              backStack.add(ChatConversationKey(chatId = chatId))
+            },
+            modifier = Modifier.fillMaxSize(),
+          )
+        }
+        entry<GroupInfoKey> { key ->
+          GroupInfoScreen(
+            chatId = key.chatId,
+            onBackClick = { backStack.removeLastOrNull() },
+            onLeftGroup = {
+              while (backStack.lastOrNull() is GroupInfoKey ||
+                backStack.lastOrNull() is ChatConversationKey
+              ) {
+                backStack.removeLastOrNull()
+              }
             },
             modifier = Modifier.fillMaxSize(),
           )
@@ -209,6 +250,7 @@ fun MainNavigation() {
           ir.xilo.app.ui.feed.CreatePostScreen(
             editPostId = key.editPostId,
             quotedPostId = key.quotedPostId,
+            quotedCommentId = key.quotedCommentId,
             onBackClick = { backStack.removeLastOrNull() },
             onPostCreated = { backStack.removeLastOrNull() },
             modifier = Modifier.fillMaxSize()

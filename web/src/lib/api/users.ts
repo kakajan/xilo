@@ -31,8 +31,8 @@ export function listFollowers(username: string, cursor?: string) {
   return apiFetch<CursorPage<FollowListUser>>(`/api/users/${username}/followers?${q}`);
 }
 
-export function listFollowing(username: string, cursor?: string) {
-  const q = new URLSearchParams({ limit: "20" });
+export function listFollowing(username: string, cursor?: string, limit = 20) {
+  const q = new URLSearchParams({ limit: String(limit) });
   if (cursor) q.set("cursor", cursor);
   return apiFetch<CursorPage<FollowListUser>>(`/api/users/${username}/following?${q}`);
 }

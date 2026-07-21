@@ -27,7 +27,7 @@ export interface ChatMessage {
   id: string;
   chat_id: string;
   sender_id: string;
-  type: "text" | "image" | "video" | "file";
+  type: "text" | "image" | "video" | "file" | "system";
   sender_name?: string | null;
   sender_avatar?: string | null;
   content?: string | null;

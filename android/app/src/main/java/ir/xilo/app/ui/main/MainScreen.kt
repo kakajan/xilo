@@ -318,6 +318,9 @@ fun MainScreen(
                                 onQuotePost = { postId ->
                                     onItemClick(CreatePostKey(quotedPostId = postId))
                                 },
+                                onQuoteComment = { commentId ->
+                                    onItemClick(CreatePostKey(quotedCommentId = commentId))
+                                },
                                 modifier = Modifier.fillMaxSize()
                             )
                             2 -> {

@@ -36,12 +36,30 @@ func (m *mockPostRepo) Create(ctx context.Context, req *model.CreatePostRequest,
 		id := req.QuotedPostID
 		post.QuotedPostID = &id
 	}
+	if req.QuotedCommentID != "" {
+		id := req.QuotedCommentID
+		post.QuotedCommentID = &id
+	}
 	m.posts[post.ID] = post
 	return post, nil
 }
 
 func (m *mockPostRepo) RecordRepost(ctx context.Context, userID, postID string) error {
 	return nil
+}
+
+func (m *mockPostRepo) RecordCommentRepost(ctx context.Context, userID, commentID string) error {
+	return nil
+}
+
+func (m *mockPostRepo) GetCommentQuoteTarget(ctx context.Context, commentID string) (*model.QuotedCommentSummary, string, error) {
+	return &model.QuotedCommentSummary{
+		ID:        commentID,
+		Content:   "quoted comment",
+		PostID:    "post-orig",
+		PostTitle: "Original",
+		PostSlug:  "original",
+	}, "comment-author-1", nil
 }
 
 func (m *mockPostRepo) GetBySlug(ctx context.Context, slug string) (*model.Post, error) {
@@ -248,5 +266,37 @@ func TestCreatePost_QuoteAutoTitle(t *testing.T) {
 	}
 	if post.QuotedPostID == nil || *post.QuotedPostID != "orig-1" {
 		t.Fatalf("expected quoted_post_id, got %v", post.QuotedPostID)
+	}
+}
+
+func TestCreatePost_QuoteComment(t *testing.T) {
+	repo := newMockPostRepo()
+	svc := NewPostService(repo, nil)
+
+	post, err := svc.Create(context.Background(), "author-1", &model.CreatePostRequest{
+		ContentMD:       "تقویت این نظر",
+		QuotedCommentID: "comment-1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if post.QuotedCommentID == nil || *post.QuotedCommentID != "comment-1" {
+		t.Fatalf("expected quoted_comment_id, got %v", post.QuotedCommentID)
+	}
+	if post.Status != "published" {
+		t.Fatalf("expected published, got %s", post.Status)
+	}
+}
+
+func TestCreatePost_RejectDualQuote(t *testing.T) {
+	repo := newMockPostRepo()
+	svc := NewPostService(repo, nil)
+	_, err := svc.Create(context.Background(), "author-1", &model.CreatePostRequest{
+		ContentMD:       "x",
+		QuotedPostID:    "post-1",
+		QuotedCommentID: "comment-1",
+	})
+	if err == nil {
+		t.Fatal("expected error for dual quote")
 	}
 }

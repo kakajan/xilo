@@ -112,6 +112,12 @@ interface XiloApiService {
         @Body request: CreateCommentRequest
     ): CommentResponse
 
+    @DELETE("api/posts/{postId}/comments/{id}")
+    suspend fun deleteComment(
+        @Path("postId") postId: String,
+        @Path("id") id: String,
+    ): Map<String, kotlinx.serialization.json.JsonElement>
+
     @POST("api/{type}/{id}/reactions")
     suspend fun toggleReaction(
         @Path("type") type: String, // "post" or "comment"
@@ -133,6 +139,21 @@ interface XiloApiService {
 
     @DELETE("api/posts/{id}/repost")
     suspend fun unrepostPost(@Path("id") id: String): Map<String, kotlinx.serialization.json.JsonElement>
+
+    @GET("api/comments/{id}")
+    suspend fun getCommentById(@Path("id") id: String): CommentResponse
+
+    @POST("api/comments/{id}/repost")
+    suspend fun repostComment(@Path("id") id: String): Map<String, kotlinx.serialization.json.JsonElement>
+
+    @DELETE("api/comments/{id}/repost")
+    suspend fun unrepostComment(@Path("id") id: String): Map<String, kotlinx.serialization.json.JsonElement>
+
+    @POST("api/comments/{id}/pin")
+    suspend fun pinComment(
+        @Path("id") id: String,
+        @Body request: PinCommentRequest,
+    ): Map<String, kotlinx.serialization.json.JsonElement>
 
     @GET("api/bookmarks")
     suspend fun getBookmarks(): CursorPage<PostResponse>
@@ -222,6 +243,52 @@ interface XiloApiService {
     @DELETE("api/chats/{id}")
     suspend fun leaveChat(@Path("id") id: String): Map<String, String>
 
+    @POST("api/chats/{id}/members")
+    suspend fun addChatMembers(
+        @Path("id") id: String,
+        @Body request: AddChatMembersRequest,
+    ): ChatResponse
+
+    @PATCH("api/chats/{id}/members/{userId}")
+    suspend fun updateChatMemberRole(
+        @Path("id") id: String,
+        @Path("userId") userId: String,
+        @Body request: UpdateMemberRoleRequest,
+    ): ChatResponse
+
+    @DELETE("api/chats/{id}/members/{userId}")
+    suspend fun removeChatMember(
+        @Path("id") id: String,
+        @Path("userId") userId: String,
+    ): Map<String, String>
+
+    @GET("api/chats/{id}/pins")
+    suspend fun listChatPins(@Path("id") id: String): List<ChatPinResponse>
+
+    @POST("api/chats/{id}/pins")
+    suspend fun pinChatMessage(
+        @Path("id") id: String,
+        @Body request: PinMessageRequest,
+    ): Map<String, String>
+
+    @DELETE("api/chats/{id}/pins/{messageId}")
+    suspend fun unpinChatMessage(
+        @Path("id") id: String,
+        @Path("messageId") messageId: String,
+    ): Map<String, String>
+
+    @POST("api/chats/{id}/invite-links")
+    suspend fun createChatInviteLink(@Path("id") id: String): ChatInviteLinkResponse
+
+    @DELETE("api/chats/{id}/invite-links/{token}")
+    suspend fun revokeChatInviteLink(
+        @Path("id") id: String,
+        @Path("token") token: String,
+    ): Map<String, String>
+
+    @POST("api/chats/join")
+    suspend fun joinChatByInvite(@Body request: JoinChatRequest): ChatResponse
+
     @GET("api/chats/{id}/messages")
     suspend fun listMessages(
         @Path("id") id: String,
@@ -235,6 +302,18 @@ interface XiloApiService {
         @Header("Idempotency-Key") operationKey: String,
         @Body request: SendMessageRequest
     ): MessageResponse
+
+    @POST("api/messages/{id}/read")
+    suspend fun markMessageRead(@Path("id") id: String): Map<String, String>
+
+    @PATCH("api/messages/{id}")
+    suspend fun updateMessage(
+        @Path("id") id: String,
+        @Body request: UpdateMessageRequest,
+    ): MessageResponse
+
+    @DELETE("api/messages/{id}")
+    suspend fun deleteMessage(@Path("id") id: String): Map<String, String>
 
     // ── Chat folders ──────────────────────────────────────────────────────
 

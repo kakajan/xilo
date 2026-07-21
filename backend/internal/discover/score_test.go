@@ -90,6 +90,21 @@ func TestScoreComment_InterestMatchRanksHigher(t *testing.T) {
 	}
 }
 
+func TestScoreComment_RepostsBoostEngagement(t *testing.T) {
+	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
+	base := ScoreInput{
+		CreatedAt:    now.Add(-1 * time.Hour),
+		LikesCount:   2,
+		RepliesCount: 1,
+		Now:          now,
+	}
+	amplified := base
+	amplified.RepostCount = 5
+	if ScoreComment(amplified) <= ScoreComment(base) {
+		t.Fatal("repost_count should increase discover score")
+	}
+}
+
 func TestScoreComment_NoInterestsUsesEngagementAndRecency(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 

@@ -43,6 +43,10 @@ func (r *PostRepo) Create(ctx context.Context, req *model.CreatePostRequest, aut
 	if id := strings.TrimSpace(req.QuotedPostID); id != "" {
 		quotedPostID = &id
 	}
+	var quotedCommentID *string
+	if id := strings.TrimSpace(req.QuotedCommentID); id != "" {
+		quotedCommentID = &id
+	}
 	var publishedAt *time.Time
 	if req.Status == "published" {
 		now := time.Now().UTC()
@@ -53,15 +57,15 @@ func (r *PostRepo) Create(ctx context.Context, req *model.CreatePostRequest, aut
 		INSERT INTO posts (author_id, title, slug, excerpt, content, content_md,
 		                   cover_image_url, audio_url, category, tags, status, is_premium,
 		                   word_count, reading_time, language, scheduled_at, published_at,
-		                   quoted_post_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+		                   quoted_post_id, quoted_comment_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
 		          cover_image_url, audio_url, category, tags, status, is_premium,
 		          word_count, reading_time, language, view_count, scheduled_at, published_at,
-		          quoted_post_id, created_at, updated_at
+		          quoted_post_id, quoted_comment_id, created_at, updated_at
 	`, authorID, req.Title, slug, req.Excerpt, ensureJSON(req.Content), req.ContentMD,
 		coverImageURL, audioURL, req.Category, pq.Array(req.Tags), req.Status, req.IsPremium,
-		wordCount, readingTime, req.Language, req.ScheduledAt, publishedAt, quotedPostID)
+		wordCount, readingTime, req.Language, req.ScheduledAt, publishedAt, quotedPostID, quotedCommentID)
 	if err != nil {
 		return nil, fmt.Errorf("insert post: %w", err)
 	}
@@ -75,7 +79,7 @@ func (r *PostRepo) GetBySlug(ctx context.Context, slug string) (*model.Post, err
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.content::text, p.content_md,
 		       p.cover_image_url, p.audio_url, p.category, p.tags, p.status, p.is_premium,
 		       p.word_count, p.reading_time, p.language, p.view_count, p.scheduled_at, p.published_at,
-		       p.quoted_post_id, p.created_at, p.updated_at
+		       p.quoted_post_id, p.quoted_comment_id, p.created_at, p.updated_at
 		FROM posts p
 		WHERE p.slug = $1 AND p.deleted_at IS NULL AND p.status = 'published'
 	`, slug)
@@ -110,7 +114,7 @@ func (r *PostRepo) GetByID(ctx context.Context, id string) (*model.Post, error) 
 		SELECT id, author_id, title, slug, excerpt, content::text, content_md,
 		       cover_image_url, audio_url, category, tags, status, is_premium,
 		       word_count, reading_time, language, view_count, scheduled_at, published_at,
-		       quoted_post_id, created_at, updated_at
+		       quoted_post_id, quoted_comment_id, created_at, updated_at
 		FROM posts
 		WHERE id = $1 AND deleted_at IS NULL
 	`, id)
@@ -185,7 +189,7 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
 		          cover_image_url, audio_url, category, tags, status, is_premium,
 		          word_count, reading_time, language, view_count, scheduled_at, published_at,
-		          quoted_post_id, created_at, updated_at
+		          quoted_post_id, quoted_comment_id, created_at, updated_at
 	`, id, title, slug, excerpt, content, contentMD, coverImageURL, audioURL, category, tags, status, isPremium,
 		wordCount, readingTime, language, req.ScheduledAt, publishedAt)
 	if err != nil {
@@ -213,6 +217,89 @@ func (r *PostRepo) RecordRepost(ctx context.Context, userID, postID string) erro
 	return nil
 }
 
+// RecordCommentRepost inserts a comment amplify row and refreshes denormalized count.
+func (r *PostRepo) RecordCommentRepost(ctx context.Context, userID, commentID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO comment_reposts (user_id, comment_id) VALUES ($1, $2)
+		ON CONFLICT (user_id, comment_id) DO NOTHING
+	`, userID, commentID)
+	if err != nil {
+		return fmt.Errorf("record comment repost: %w", err)
+	}
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE comments
+		SET repost_count = (
+			SELECT COUNT(*)::int FROM comment_reposts WHERE comment_id = $1
+		)
+		WHERE id = $1
+	`, commentID)
+	if err != nil {
+		return fmt.Errorf("refresh comment repost_count: %w", err)
+	}
+	return nil
+}
+
+// GetCommentQuoteTarget loads a comment eligible for quote-as-post.
+func (r *PostRepo) GetCommentQuoteTarget(ctx context.Context, commentID string) (*model.QuotedCommentSummary, string, error) {
+	var row struct {
+		ID                 string    `db:"id"`
+		Content            string    `db:"content"`
+		AuthorID           string    `db:"author_id"`
+		Username           string    `db:"username"`
+		DisplayName        string    `db:"display_name"`
+		AvatarURL          string    `db:"avatar_url"`
+		Role               string    `db:"role"`
+		PostID             string    `db:"post_id"`
+		PostTitle          string    `db:"post_title"`
+		PostSlug           string    `db:"post_slug"`
+		PostAuthorUsername string    `db:"post_author_username"`
+		PostStatus         string    `db:"post_status"`
+		CreatedAt          time.Time `db:"created_at"`
+	}
+	err := r.db.GetContext(ctx, &row, `
+		SELECT c.id, c.content, c.author_id, c.created_at,
+		       u.username,
+		       COALESCE(u.display_name, '') AS display_name,
+		       COALESCE(u.avatar_url, '') AS avatar_url,
+		       COALESCE(u.role, '') AS role,
+		       p.id AS post_id, p.title AS post_title, p.slug AS post_slug, p.status AS post_status,
+		       pu.username AS post_author_username
+		FROM comments c
+		JOIN users u ON u.id = c.author_id
+		JOIN posts p ON p.id = c.post_id AND p.deleted_at IS NULL
+		JOIN users pu ON pu.id = p.author_id
+		WHERE c.id = $1 AND c.deleted_at IS NULL
+	`, commentID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, "", fmt.Errorf("quoted comment not found")
+		}
+		return nil, "", fmt.Errorf("get quoted comment: %w", err)
+	}
+	if row.PostStatus != "published" {
+		return nil, "", fmt.Errorf("quoted comment not found")
+	}
+	created := row.CreatedAt
+	author := &authmodel.User{
+		ID:          row.AuthorID,
+		Username:    row.Username,
+		DisplayName: row.DisplayName,
+		AvatarURL:   row.AvatarURL,
+		Role:        row.Role,
+	}
+	author.IsVerified = userutil.IsVerifiedWriter(row.Role)
+	return &model.QuotedCommentSummary{
+		ID:                 row.ID,
+		Content:            row.Content,
+		Author:             author,
+		PostID:             row.PostID,
+		PostTitle:          row.PostTitle,
+		PostSlug:           row.PostSlug,
+		PostAuthorUsername: row.PostAuthorUsername,
+		CreatedAt:          &created,
+	}, row.AuthorID, nil
+}
+
 func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*model.Post, string, error) {
 	limit := params.Limit
 	if limit <= 0 || limit > 50 {
@@ -232,7 +319,7 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.cover_image_url, p.audio_url,
 		       p.category, p.tags, p.status, p.is_premium,
 		       p.word_count, p.reading_time, p.language, p.view_count, p.published_at,
-		       p.quoted_post_id, p.created_at, p.updated_at
+		       p.quoted_post_id, p.quoted_comment_id, p.created_at, p.updated_at
 		FROM posts p
 		WHERE p.status = $1 AND p.deleted_at IS NULL
 	`

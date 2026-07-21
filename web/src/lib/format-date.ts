@@ -34,6 +34,17 @@ export interface FormatDateOptions {
   locale?: string;
   /** date-fns pattern; defaults depend on calendar */
   pattern?: string;
+  /** When true, use date+time default pattern (hour:minute). */
+  withTime?: boolean;
+}
+
+/** Default absolute date+time patterns (hour:minute included). */
+export function defaultDateTimePattern(calendar: CalendarSystem): string {
+  return calendar === "jalali" ? "d MMMM yyyy، HH:mm" : "MMM d, yyyy, HH:mm";
+}
+
+export function defaultDatePattern(calendar: CalendarSystem): string {
+  return calendar === "jalali" ? "d MMMM yyyy" : "MMM d, yyyy";
 }
 
 export function formatDateString(date: string | Date | null | undefined, options: FormatDateOptions = {}): string {
@@ -43,7 +54,9 @@ export function formatDateString(date: string | Date | null | undefined, options
 
   const locale = options.locale ?? "fa";
   const calendar = options.calendar ?? resolveCalendar("auto", locale);
-  const pattern = options.pattern ?? (calendar === "jalali" ? "d MMMM yyyy" : "MMM d, yyyy");
+  const pattern =
+    options.pattern ??
+    (options.withTime ? defaultDateTimePattern(calendar) : defaultDatePattern(calendar));
 
   if (calendar === "jalali") {
     return formatJalali(d, pattern, { locale: faIR });

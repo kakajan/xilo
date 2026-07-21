@@ -165,6 +165,72 @@ func (f *fakeRepository) MarkRead(
 	return &model.Read{UserID: testActor}, nil
 }
 
+func (f *fakeRepository) InsertSystemMessage(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ string,
+) (*model.Message, error) {
+	return &model.Message{ID: testMsg, ChatID: testChat, Type: model.MessageTypeSystem}, nil
+}
+
+func (f *fakeRepository) LookupUserIDsByUsernames(
+	_ context.Context,
+	_ []string,
+) (map[string]string, error) {
+	return map[string]string{}, nil
+}
+
+func (f *fakeRepository) UpdateMemberRole(
+	_ context.Context, _, _, _, _ string,
+) error {
+	return nil
+}
+
+func (f *fakeRepository) PinMessage(_ context.Context, _, _, _ string) error { return nil }
+func (f *fakeRepository) UnpinMessage(_ context.Context, _, _, _ string) error {
+	return nil
+}
+func (f *fakeRepository) ListPins(_ context.Context, _, _ string) ([]*model.ChatPin, error) {
+	return []*model.ChatPin{}, nil
+}
+func (f *fakeRepository) CreateInviteLink(_ context.Context, _, _ string) (*model.ChatInviteLink, error) {
+	return &model.ChatInviteLink{Token: "tok"}, nil
+}
+func (f *fakeRepository) RevokeInviteLink(_ context.Context, _, _, _ string) error { return nil }
+func (f *fakeRepository) JoinByInviteToken(_ context.Context, _, _ string) (string, error) {
+	return testChat, nil
+}
+func (f *fakeRepository) AddMembers(_ context.Context, _, _ string, _ []string) error {
+	return nil
+}
+func (f *fakeRepository) RemoveMember(_ context.Context, _, _, _ string) error { return nil }
+func (f *fakeRepository) LeaveChat(_ context.Context, _, _ string) error       { return nil }
+func (f *fakeRepository) UpdateChat(
+	_ context.Context, _, _ string, _ *string, _ *string, _ *bool, _ *bool,
+) error {
+	return nil
+}
+func (f *fakeRepository) EnsureSavedMessagesChat(_ context.Context, _ string) (*model.Chat, error) {
+	return f.chat, nil
+}
+func (f *fakeRepository) ListMessages(
+	_ context.Context, _, _ string, _ model.ListParams,
+) ([]*model.Message, string, error) {
+	return nil, "", nil
+}
+func (f *fakeRepository) SearchMessages(
+	_ context.Context, _, _, _ string, _ model.ListParams,
+) ([]*model.Message, string, error) {
+	return nil, "", nil
+}
+func (f *fakeRepository) DeleteMessage(_ context.Context, _, _ string) error { return nil }
+func (f *fakeRepository) ToggleReaction(
+	_ context.Context, _, _, _ string,
+) (*model.ReactionResult, error) {
+	return &model.ReactionResult{}, nil
+}
+
 func TestCreateDirectChatRejectsSelf(t *testing.T) {
 	repo := &fakeRepository{}
 	svc := NewChatService(repo)
@@ -172,11 +238,12 @@ func TestCreateDirectChatRejectsSelf(t *testing.T) {
 	_, err := svc.CreateChat(
 		context.Background(),
 		testActor,
+		"reader",
 		testIdempotencyKey,
 		testReceivedAt,
 		&model.CreateChatRequest{
-		Type:      model.ChatTypeDirect,
-		MemberIDs: []string{testActor},
+			Type:      model.ChatTypeDirect,
+			MemberIDs: []string{testActor},
 		},
 	)
 
@@ -186,7 +253,7 @@ func TestCreateDirectChatRejectsSelf(t *testing.T) {
 	}
 }
 
-func TestCreateGroupRequiresTwoOtherMembers(t *testing.T) {
+func TestCreateGroupRequiresOneOtherMember(t *testing.T) {
 	repo := &fakeRepository{}
 	svc := NewChatService(repo)
 	name := "team"
@@ -194,18 +261,43 @@ func TestCreateGroupRequiresTwoOtherMembers(t *testing.T) {
 	_, err := svc.CreateChat(
 		context.Background(),
 		testActor,
+		"author",
 		testIdempotencyKey,
 		testReceivedAt,
 		&model.CreateChatRequest{
-		Type:      model.ChatTypeGroup,
-		Name:      &name,
-		MemberIDs: []string{testOther},
+			Type:      model.ChatTypeGroup,
+			Name:      &name,
+			MemberIDs: []string{},
 		},
 	)
 
 	assertServiceCode(t, err, CodeValidation)
 	if repo.createChatCalled {
 		t.Fatal("repository must not be called for an undersized group")
+	}
+}
+
+func TestCreateGroupRejectsReader(t *testing.T) {
+	repo := &fakeRepository{}
+	svc := NewChatService(repo)
+	name := "team"
+
+	_, err := svc.CreateChat(
+		context.Background(),
+		testActor,
+		"reader",
+		testIdempotencyKey,
+		testReceivedAt,
+		&model.CreateChatRequest{
+			Type:      model.ChatTypeGroup,
+			Name:      &name,
+			MemberIDs: []string{testOther},
+		},
+	)
+
+	assertServiceCode(t, err, CodeForbidden)
+	if repo.createChatCalled {
+		t.Fatal("repository must not be called for reader group create")
 	}
 }
 
@@ -228,7 +320,7 @@ func TestCreateChatRequiresValidIdempotencyKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &fakeRepository{}
 			svc := NewChatService(repo)
-			_, err := svc.CreateChat(context.Background(), testActor, tt.key, testReceivedAt, &model.CreateChatRequest{
+			_, err := svc.CreateChat(context.Background(), testActor, "reader", tt.key, testReceivedAt, &model.CreateChatRequest{
 				Type:      model.ChatTypeDirect,
 				MemberIDs: []string{testOther},
 			})
@@ -245,7 +337,7 @@ func TestCanonicalChatHashIgnoresMemberOrder(t *testing.T) {
 	svc := NewChatService(repo)
 	name := "team"
 
-	_, err := svc.CreateChat(context.Background(), testActor, testIdempotencyKey, testReceivedAt, &model.CreateChatRequest{
+	_, err := svc.CreateChat(context.Background(), testActor, "author", testIdempotencyKey, testReceivedAt, &model.CreateChatRequest{
 		Type:      model.ChatTypeGroup,
 		Name:      &name,
 		MemberIDs: []string{testThird, testOther},
@@ -255,7 +347,7 @@ func TestCanonicalChatHashIgnoresMemberOrder(t *testing.T) {
 	}
 	firstHash := repo.idempotency.RequestHash
 
-	_, err = svc.CreateChat(context.Background(), testActor, testIdempotencyKey, testReceivedAt, &model.CreateChatRequest{
+	_, err = svc.CreateChat(context.Background(), testActor, "author", testIdempotencyKey, testReceivedAt, &model.CreateChatRequest{
 		Type:      model.ChatTypeGroup,
 		Name:      &name,
 		MemberIDs: []string{testOther, testThird},
@@ -275,7 +367,7 @@ func TestIdempotencyPayloadConflictMapsToStableCode(t *testing.T) {
 	repo := &fakeRepository{createChatErr: pkgidempotency.ErrPayloadConflict}
 	svc := NewChatService(repo)
 
-	_, err := svc.CreateChat(context.Background(), testActor, testIdempotencyKey, testReceivedAt, &model.CreateChatRequest{
+	_, err := svc.CreateChat(context.Background(), testActor, "reader", testIdempotencyKey, testReceivedAt, &model.CreateChatRequest{
 		Type:      model.ChatTypeDirect,
 		MemberIDs: []string{testOther},
 	})

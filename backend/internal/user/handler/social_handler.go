@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
@@ -366,6 +367,99 @@ func (h *SocialHandler) repostCount(postID string) int {
 	var count int
 	_ = h.db.Get(&count, `SELECT COUNT(*)::int FROM reposts WHERE post_id = $1`, postID)
 	return count
+}
+
+// @Summary      Toggle repost on a comment (Author+)
+// @Tags         social
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path string true "Comment ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      404  {object}  map[string]string
+// @Router       /comments/{id}/repost [post]
+// @Router       /comments/{id}/repost [delete]
+func (h *SocialHandler) ToggleCommentRepost(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+	commentID := c.Params("id")
+
+	var authorID string
+	if err := h.db.Get(&authorID, `
+		SELECT author_id FROM comments
+		WHERE id = $1 AND deleted_at IS NULL
+	`, commentID); err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "comment not found"})
+	}
+
+	method := c.Method()
+	if method == "DELETE" {
+		if _, err := h.db.Exec(`
+			DELETE FROM comment_reposts WHERE user_id = $1 AND comment_id = $2
+		`, userID, commentID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed"})
+		}
+		count := h.refreshCommentRepostCount(commentID)
+		return c.JSON(fiber.Map{
+			"reposted":     false,
+			"repost_count": count,
+		})
+	}
+
+	if _, err := h.db.Exec(`
+		INSERT INTO comment_reposts (user_id, comment_id) VALUES ($1, $2)
+		ON CONFLICT (user_id, comment_id) DO NOTHING
+	`, userID, commentID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed"})
+	}
+	count := h.refreshCommentRepostCount(commentID)
+	if h.notif != nil && authorID != "" && authorID != userID {
+		h.notifyCommentReposted(c.Context(), authorID, userID, commentID)
+	}
+	return c.JSON(fiber.Map{
+		"reposted":     true,
+		"repost_count": count,
+	})
+}
+
+func (h *SocialHandler) refreshCommentRepostCount(commentID string) int {
+	var count int
+	_ = h.db.Get(&count, `SELECT COUNT(*)::int FROM comment_reposts WHERE comment_id = $1`, commentID)
+	_, _ = h.db.Exec(`UPDATE comments SET repost_count = $2 WHERE id = $1`, commentID, count)
+	return count
+}
+
+func (h *SocialHandler) notifyCommentReposted(ctx context.Context, recipientID, actorID, commentID string) {
+	if h.notif == nil {
+		return
+	}
+	data := map[string]any{
+		"comment_id": commentID,
+		"type":       "comment_reposted",
+	}
+	var post struct {
+		PostID   string `db:"post_id"`
+		Slug     string `db:"slug"`
+		Username string `db:"username"`
+	}
+	if err := h.db.Get(&post, `
+		SELECT c.post_id, p.slug, u.username
+		FROM comments c
+		JOIN posts p ON p.id = c.post_id
+		JOIN users u ON u.id = p.author_id
+		WHERE c.id = $1
+	`, commentID); err == nil {
+		data["post_id"] = post.PostID
+		data["slug"] = post.Slug
+		data["post_slug"] = post.Slug
+		data["post_author_username"] = post.Username
+	}
+	_, _ = h.notif.Notify(ctx, notifsvc.NotifyRequest{
+		RecipientID: recipientID,
+		ActorID:     actorID,
+		Type:        notifsvc.TypeCommentReposted,
+		Title:       "Your comment was amplified",
+		Body:        "An author reposted your comment",
+		Data:        data,
+	})
 }
 
 // @Summary      Toggle follow a user

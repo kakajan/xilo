@@ -150,6 +150,10 @@ func TestCreateMessageAdvancesLastMessageAtMonotonically(t *testing.T) {
 			nil,
 			nil,
 		))
+	mock.ExpectQuery(`SELECT COALESCE\(NULLIF\(TRIM\(display_name\), ''\), username\) AS sender_name`).
+		WithArgs(repoTestActor).
+		WillReturnRows(sqlmock.NewRows([]string{"sender_name", "sender_avatar"}).
+			AddRow("Actor", nil))
 	mock.ExpectExec(
 		`UPDATE chats.+last_message_at = GREATEST\(COALESCE\(last_message_at, \$2\), \$2\)`,
 	).

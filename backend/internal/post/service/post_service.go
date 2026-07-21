@@ -27,6 +27,8 @@ type PostRepository interface {
 	List(ctx context.Context, params model.PostListParams) ([]*model.Post, string, error)
 	EnrichPosts(ctx context.Context, posts []*model.Post, viewerID string) error
 	RecordRepost(ctx context.Context, userID, postID string) error
+	RecordCommentRepost(ctx context.Context, userID, commentID string) error
+	GetCommentQuoteTarget(ctx context.Context, commentID string) (*model.QuotedCommentSummary, string, error)
 	RecordView(ctx context.Context, postID, userID, sessionID string) (*model.RecordViewResult, error)
 	SuggestTags(ctx context.Context, query string, limit int) ([]model.TagSuggestion, error)
 	TrendingTags(ctx context.Context, limit int) ([]model.TagSuggestion, error)
@@ -49,6 +51,13 @@ func (s *PostService) SetNotifier(n *notifsvc.NotificationService) {
 
 func (s *PostService) Create(ctx context.Context, authorID string, req *model.CreatePostRequest) (*model.Post, error) {
 	quotedID := ""
+	quotedCommentID := ""
+	var quotedCommentAuthorID string
+
+	if strings.TrimSpace(req.QuotedPostID) != "" && strings.TrimSpace(req.QuotedCommentID) != "" {
+		return nil, fmt.Errorf("cannot quote both a post and a comment")
+	}
+
 	if req.QuotedPostID != "" {
 		quotedID = req.QuotedPostID
 		quoted, err := s.repo.GetByID(ctx, quotedID)
@@ -59,20 +68,18 @@ func (s *PostService) Create(ctx context.Context, authorID string, req *model.Cr
 			return nil, fmt.Errorf("quoted post not found")
 		}
 		req.QuotedPostID = quoted.ID
-		if req.Status == "" {
-			req.Status = "published"
+		applyQuoteDefaults(req)
+	}
+
+	if req.QuotedCommentID != "" {
+		quotedCommentID = strings.TrimSpace(req.QuotedCommentID)
+		summary, commentAuthorID, err := s.repo.GetCommentQuoteTarget(ctx, quotedCommentID)
+		if err != nil || summary == nil {
+			return nil, fmt.Errorf("quoted comment not found")
 		}
-		if req.Title == "" {
-			req.Title = quoteTitleFromContent(req.ContentMD)
-		}
-		if req.Excerpt == "" && req.ContentMD != "" {
-			runes := []rune(req.ContentMD)
-			if len(runes) > 200 {
-				req.Excerpt = string(runes[:200])
-			} else {
-				req.Excerpt = req.ContentMD
-			}
-		}
+		req.QuotedCommentID = summary.ID
+		quotedCommentAuthorID = commentAuthorID
+		applyQuoteDefaults(req)
 	}
 
 	if verr := validator.ValidateTitle(req.Title); verr != nil {
@@ -102,11 +109,66 @@ func (s *PostService) Create(ctx context.Context, authorID string, req *model.Cr
 			slog.Warn("failed to record quote repost", "quoted_post_id", quotedID, "error", err)
 		}
 	}
+	if quotedCommentID != "" && post.Status == "published" {
+		if err := s.repo.RecordCommentRepost(ctx, authorID, quotedCommentID); err != nil {
+			slog.Warn("failed to record comment quote repost", "quoted_comment_id", quotedCommentID, "error", err)
+		}
+		s.notifyCommentQuoted(ctx, post, authorID, quotedCommentID, quotedCommentAuthorID)
+	}
 	if post.Status == "published" {
 		s.notifyFollowersPublished(post)
 	}
 	_ = s.repo.EnrichPosts(ctx, []*model.Post{post}, authorID)
 	return post, nil
+}
+
+func applyQuoteDefaults(req *model.CreatePostRequest) {
+	if req.Status == "" {
+		req.Status = "published"
+	}
+	if req.Title == "" {
+		req.Title = quoteTitleFromContent(req.ContentMD)
+	}
+	if req.Excerpt == "" && req.ContentMD != "" {
+		runes := []rune(req.ContentMD)
+		if len(runes) > 200 {
+			req.Excerpt = string(runes[:200])
+		} else {
+			req.Excerpt = req.ContentMD
+		}
+	}
+}
+
+func (s *PostService) notifyCommentQuoted(ctx context.Context, post *model.Post, actorID, commentID, commentAuthorID string) {
+	if s.notif == nil || post == nil || commentAuthorID == "" || commentAuthorID == actorID {
+		return
+	}
+	excerpt := truncateRunes(post.ContentMD, 120)
+	data := map[string]any{
+		"comment_id": commentID,
+		"post_id":    post.ID,
+		"slug":       post.Slug,
+		"post_slug":  post.Slug,
+		"type":       notifsvc.TypeCommentQuoted,
+	}
+	if _, err := s.notif.Notify(ctx, notifsvc.NotifyRequest{
+		RecipientID: commentAuthorID,
+		ActorID:     actorID,
+		Type:        notifsvc.TypeCommentQuoted,
+		Title:       "Your comment was quoted",
+		Body:        excerpt,
+		Data:        data,
+	}); err != nil {
+		slog.Warn("comment quoted notification failed", "comment_id", commentID, "error", err)
+	}
+}
+
+func truncateRunes(s string, max int) string {
+	runes := []rune(strings.TrimSpace(s))
+	if len(runes) <= max {
+		return string(runes)
+	}
+	return string(runes[:max]) + "…"
 }
 
 func quoteTitleFromContent(contentMD string) string {

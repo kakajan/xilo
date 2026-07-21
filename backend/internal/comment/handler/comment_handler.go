@@ -46,6 +46,21 @@ func (h *CommentHandler) List(c *fiber.Ctx) error {
 	})
 }
 
+// @Summary      Get a comment by ID
+// @Tags         comments
+// @Produce      json
+// @Param        id path string true "Comment ID"
+// @Success      200  {object}  model.Comment
+// @Failure      404  {object}  map[string]string
+// @Router       /comments/{id} [get]
+func (h *CommentHandler) GetByID(c *fiber.Ctx) error {
+	comment, err := h.svc.GetByID(c.UserContext(), c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "comment not found"})
+	}
+	return c.JSON(comment)
+}
+
 // @Summary      Create a comment
 // @Tags         comments
 // @Accept       json

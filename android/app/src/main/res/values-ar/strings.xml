@@ -83,6 +83,9 @@
     <string name="feed_category_tech">تقنية</string>
     <string name="feed_category_ai">ذكاء اصطناعي</string>
     <string name="feed_category_design">تصميم</string>
+    <string name="discover_comment_on_post">على المنشور: %1$s</string>
+    <string name="discover_comment_reply_to">رداً على @%1$s</string>
+    <string name="discover_comment_reply_to_with_preview">رداً على @%1$s — %2$s</string>
     <string name="discover_action_reply">رد</string>
     <string name="discover_action_like">إعجاب</string>
     <string name="discover_action_dislike">عدم إعجاب</string>

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strings"
 
 	"github.com/xilo-platform/xilo/internal/comment/model"
 	"github.com/xilo-platform/xilo/internal/comment/repository"
@@ -11,6 +13,8 @@ import (
 	notifsvc "github.com/xilo-platform/xilo/internal/notification/service"
 	"github.com/xilo-platform/xilo/pkg/validator"
 )
+
+var mentionRe = regexp.MustCompile(`(?:^|[^A-Za-z0-9_])@([A-Za-z0-9_]{2,32})`)
 
 // CommentNotifier is the subset of notification service used after comment create.
 type CommentNotifier interface {
@@ -44,6 +48,7 @@ func (s *CommentService) Create(ctx context.Context, postID, authorID string, re
 		return nil, err
 	}
 	s.notifyAfterCreate(ctx, comment, authorID)
+	s.notifyMentions(ctx, comment, authorID)
 	return comment, nil
 }
 
@@ -56,6 +61,77 @@ func (s *CommentService) notifyAfterCreate(ctx context.Context, comment *model.C
 		return
 	}
 	s.notifyPostComment(ctx, comment, actorID)
+}
+
+func (s *CommentService) notifyMentions(ctx context.Context, comment *model.Comment, actorID string) {
+	if s.notif == nil || comment == nil {
+		return
+	}
+	usernames := extractMentionUsernames(comment.Content)
+	if len(usernames) == 0 {
+		return
+	}
+	recipients, err := s.repo.LookupUserIDsByUsername(ctx, usernames)
+	if err != nil {
+		slog.Warn("mention lookup failed", "comment_id", comment.ID, "error", err)
+		return
+	}
+	excerpt := truncateExcerpt(comment.Content)
+	data := map[string]any{
+		"comment_id": comment.ID,
+		"post_id":    comment.PostID,
+		"author_id":  actorID,
+		"type":       notifsvc.TypeCommentMention,
+	}
+	s.attachActorLabel(ctx, data, actorID)
+	if _, username, slug, err := s.repo.GetPostNotifyTarget(ctx, comment.PostID); err == nil {
+		if slug != "" {
+			data["slug"] = slug
+			data["post_slug"] = slug
+		}
+		if username != "" {
+			data["post_author_username"] = username
+		}
+	}
+	for uid := range recipients {
+		if uid == actorID {
+			continue
+		}
+		if _, err := s.notif.Notify(ctx, notifsvc.NotifyRequest{
+			RecipientID: uid,
+			ActorID:     actorID,
+			Type:        notifsvc.TypeCommentMention,
+			Title:       "You were mentioned in a comment",
+			Body:        excerpt,
+			Data:        data,
+		}); err != nil {
+			slog.Warn("comment mention notification failed", "comment_id", comment.ID, "error", err)
+		}
+	}
+}
+
+func extractMentionUsernames(content string) []string {
+	matches := mentionRe.FindAllStringSubmatch(content, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(matches))
+	out := make([]string, 0, len(matches))
+	for _, m := range matches {
+		if len(m) < 2 {
+			continue
+		}
+		u := strings.ToLower(strings.TrimSpace(m[1]))
+		if u == "" {
+			continue
+		}
+		if _, ok := seen[u]; ok {
+			continue
+		}
+		seen[u] = struct{}{}
+		out = append(out, u)
+	}
+	return out
 }
 
 func (s *CommentService) notifyReply(ctx context.Context, comment *model.Comment, actorID string) {
@@ -74,6 +150,7 @@ func (s *CommentService) notifyReply(ctx context.Context, comment *model.Comment
 		"author_id":  actorID,
 		"type":       notifsvc.TypeCommentReply,
 	}
+	s.attachActorLabel(ctx, data, actorID)
 	if _, username, slug, err := s.repo.GetPostNotifyTarget(ctx, comment.PostID); err == nil {
 		if slug != "" {
 			data["slug"] = slug
@@ -111,6 +188,7 @@ func (s *CommentService) notifyPostComment(ctx context.Context, comment *model.C
 		"author_id":  actorID,
 		"type":       notifsvc.TypePostComment,
 	}
+	s.attachActorLabel(ctx, data, actorID)
 	if slug != "" {
 		data["slug"] = slug
 		data["post_slug"] = slug
@@ -130,6 +208,20 @@ func (s *CommentService) notifyPostComment(ctx context.Context, comment *model.C
 	}
 }
 
+func (s *CommentService) attachActorLabel(ctx context.Context, data map[string]any, actorID string) {
+	displayName, username, err := s.repo.LookupUserLabel(ctx, actorID)
+	if err != nil {
+		slog.Warn("comment actor label lookup failed", "actor_id", actorID, "error", err)
+		return
+	}
+	if displayName != "" {
+		data["author_display_name"] = displayName
+	}
+	if username != "" {
+		data["author_username"] = username
+	}
+}
+
 func truncateExcerpt(content string) string {
 	if len(content) > 120 {
 		return content[:120] + "…"
@@ -139,6 +231,10 @@ func truncateExcerpt(content string) string {
 
 func (s *CommentService) List(ctx context.Context, postID string, cursor string, limit int, sort string, viewerID string) ([]*model.Comment, string, error) {
 	return s.repo.ListByPost(ctx, postID, cursor, limit, sort, viewerID)
+}
+
+func (s *CommentService) GetByID(ctx context.Context, id string) (*model.Comment, error) {
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *CommentService) Update(ctx context.Context, commentID, userID, content string) (*model.Comment, error) {

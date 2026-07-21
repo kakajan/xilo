@@ -234,6 +234,33 @@ object XiloMigrations {
         }
     }
 
+    val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE comments ADD COLUMN repostCount INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                "ALTER TABLE comments ADD COLUMN isReposted INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCommentId TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCommentContent TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCommentAuthorName TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCommentAuthorUsername TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCommentAuthorAvatar TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCommentPostTitle TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCommentPostSlug TEXT")
+            db.execSQL("ALTER TABLE posts ADD COLUMN quotedCommentPostAuthorUsername TEXT")
+        }
+    }
+
+    val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE comments ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0"
+            )
+        }
+    }
+
     val ALL = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
@@ -248,5 +275,7 @@ object XiloMigrations {
         MIGRATION_11_12,
         MIGRATION_12_13,
         MIGRATION_13_14,
+        MIGRATION_14_15,
+        MIGRATION_15_16,
     )
 }

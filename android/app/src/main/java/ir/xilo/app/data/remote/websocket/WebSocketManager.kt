@@ -111,6 +111,14 @@ class WebSocketManager @Inject constructor(
         )
     }
 
+    fun sendMessageRead(messageId: String) {
+        if (messageId.isBlank() || messageId.startsWith("local-")) return
+        sendEnvelope(
+            event = RealtimeEvents.MESSAGE_READ,
+            data = buildJsonObject { put("message_id", messageId) },
+        )
+    }
+
     /**
      * Optional WS send path. Prefer the REST/outbox path for durable delivery;
      * when used, [operationKey] MUST match the local outbox/optimistic key.

@@ -30,6 +30,19 @@ import java.util.Locale
 import java.util.TimeZone
 import javax.inject.Inject
 
+data class DiscoverPostRef(
+    val title: String? = null,
+    val slug: String? = null,
+    val authorUsername: String? = null,
+)
+
+data class DiscoverReplyParentRef(
+    val id: String,
+    val authorUsername: String,
+    val authorDisplayName: String = "",
+    val contentPreview: String = "",
+)
+
 @HiltViewModel
 class DiscoverViewModel @Inject constructor(
     private val apiService: XiloApiService,
@@ -46,6 +59,13 @@ class DiscoverViewModel @Inject constructor(
 
     private val _apiComments = MutableStateFlow<List<CommentEntity>?>(null)
     private val postSlugById = mutableMapOf<String, String>()
+    private val _postRefByPostId = MutableStateFlow<Map<String, DiscoverPostRef>>(emptyMap())
+    val postRefByPostId: StateFlow<Map<String, DiscoverPostRef>> = _postRefByPostId.asStateFlow()
+    private val _postTitleByPostId = MutableStateFlow<Map<String, String>>(emptyMap())
+    val postTitleByPostId: StateFlow<Map<String, String>> = _postTitleByPostId.asStateFlow()
+    private val _replyParentByCommentId = MutableStateFlow<Map<String, DiscoverReplyParentRef>>(emptyMap())
+    val replyParentByCommentId: StateFlow<Map<String, DiscoverReplyParentRef>> =
+        _replyParentByCommentId.asStateFlow()
     private val _selectedInterestSlug = MutableStateFlow<String?>(null)
     val selectedInterestSlug: StateFlow<String?> = _selectedInterestSlug.asStateFlow()
 
@@ -113,10 +133,33 @@ class DiscoverViewModel @Inject constructor(
                     limit = 50,
                     interest = _selectedInterestSlug.value,
                 )
+                val titles = mutableMapOf<String, String>()
+                val refs = mutableMapOf<String, DiscoverPostRef>()
+                val replyParents = mutableMapOf<String, DiscoverReplyParentRef>()
                 response.data.forEach { dto ->
                     val slug = dto.post?.slug?.takeIf { it.isNotBlank() }
                     if (slug != null) postSlugById[dto.postId] = slug
+                    val title = dto.post?.title?.takeIf { it.isNotBlank() }
+                    if (title != null) titles[dto.postId] = title
+                    refs[dto.postId] = DiscoverPostRef(
+                        title = title,
+                        slug = slug,
+                        authorUsername = dto.post?.authorUsername?.takeIf { it.isNotBlank() },
+                    )
+                    val parent = dto.parent
+                    val parentUsername = parent?.authorUsername?.takeIf { it.isNotBlank() }
+                    if (parent != null && parentUsername != null) {
+                        replyParents[dto.id] = DiscoverReplyParentRef(
+                            id = parent.id,
+                            authorUsername = parentUsername,
+                            authorDisplayName = parent.authorDisplayName,
+                            contentPreview = parent.contentPreview,
+                        )
+                    }
                 }
+                _postTitleByPostId.value = titles
+                _postRefByPostId.value = refs
+                _replyParentByCommentId.value = replyParents
                 _apiComments.value = response.data.map { it.toEntity() }
             } catch (_: Exception) {
                 // Offline / API unavailable — fall back to cached recent comments path.
@@ -219,6 +262,35 @@ class DiscoverViewModel @Inject constructor(
                     else c.copy(isBookmarked = !comment.isBookmarked)
                 }
             }
+        }
+    }
+
+    fun toggleCommentRepost(comment: CommentEntity) {
+        if (!_canRepost.value) return
+        viewModelScope.launch {
+            val previous = comment.isReposted
+            _apiComments.update { list ->
+                list?.map { c ->
+                    if (c.id != comment.id) c
+                    else {
+                        val reposted = !previous
+                        c.copy(
+                            isReposted = reposted,
+                            repostCount = (c.repostCount + if (reposted) 1 else -1).coerceAtLeast(0),
+                        )
+                    }
+                }
+            }
+            commentRepository.toggleCommentRepost(comment.id, previous)
+                .onFailure {
+                    _apiComments.update { list ->
+                        list?.map { c ->
+                            if (c.id != comment.id) c else comment
+                        }
+                    }
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+                }
         }
     }
 
@@ -409,9 +481,11 @@ class DiscoverViewModel @Inject constructor(
         likeCount = resolvedLikeCount(),
         dislikeCount = resolvedDislikeCount(),
         replyCount = replyCount,
+        repostCount = repostCount,
         isLiked = resolvedIsLiked(),
         isDisliked = resolvedIsDisliked(),
         isBookmarked = isBookmarked,
+        isReposted = isReposted,
         isPinned = isPinned,
         createdAt = parseDateToEpoch(createdAt)
     )

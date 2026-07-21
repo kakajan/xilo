@@ -287,7 +287,7 @@ fun NotificationInboxScreen(
                             items(uiState.notifications, key = { it.id }) { item ->
                                 NotificationRow(
                                     item = item,
-                                    timeLabel = DateFormatter.getRelativeTimeSpan(context, item.createdAtMs),
+                                    timeLabel = DateFormatter.formatDateTime(item.createdAtMs),
                                     onClick = { viewModel.onNotificationClick(item) },
                                 )
                             }

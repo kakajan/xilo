@@ -1,7 +1,9 @@
 package ir.xilo.app.ui.chat
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,6 +40,8 @@ import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.XiloTopAppBar
 import ir.xilo.app.core.util.DateFormatter
 
+private const val ChatEditWindowMs = 48L * 60L * 60L * 1000L
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatConversationScreen(
@@ -54,8 +58,21 @@ fun ChatConversationScreen(
     val peerOnline by viewModel.peerOnline.collectAsState()
     val listState = rememberLazyListState()
     var textInput by remember { mutableStateOf("") }
+    val editingMessage by viewModel.editingMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val sendFailureMessage = stringResource(R.string.chat_send_failed)
+
+    var wasEditing by remember { mutableStateOf(false) }
+    LaunchedEffect(editingMessage) {
+        val editing = editingMessage
+        if (editing != null) {
+            textInput = editing.content.orEmpty()
+            wasEditing = true
+        } else if (wasEditing) {
+            textInput = ""
+            wasEditing = false
+        }
+    }
 
     val showAsSavedMessages = isSavedMessages ||
         currentChat?.type == "saved" ||
@@ -157,26 +174,69 @@ fun ChatConversationScreen(
             )
         },
         bottomBar = {
-            ChatInput(
-                value = textInput,
-                onValueChange = {
-                    textInput = it
-                    viewModel.onComposerTextChanged(it)
-                },
-                onSend = {
-                    if (textInput.isNotBlank()) {
-                        viewModel.sendMessage(textInput)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (editingMessage != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f))
+                            .padding(horizontal = XiloSpacing.horizontal, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        XiloIcon(
+                            icon = XiloIcons.Edit,
+                            contentDescription = null,
+                            tint = XiloBlue,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.chat_editing_banner),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        TextButton(
+                            onClick = {
+                                viewModel.cancelEditMessage()
+                                textInput = ""
+                                viewModel.onComposerTextChanged("")
+                            },
+                        ) {
+                            Text(stringResource(R.string.chat_edit_cancel))
+                        }
+                    }
+                }
+                ChatInput(
+                    value = textInput,
+                    onValueChange = {
+                        textInput = it
+                        if (editingMessage == null) {
+                            viewModel.onComposerTextChanged(it)
+                        }
+                    },
+                    onSend = {
+                        if (textInput.isBlank()) return@ChatInput
+                        if (editingMessage != null) {
+                            viewModel.commitEditMessage(textInput)
+                        } else {
+                            viewModel.sendMessage(textInput)
+                            textInput = ""
+                            viewModel.onComposerTextChanged("")
+                        }
+                    },
+                    onSendImage = { uri, caption ->
+                        if (editingMessage != null) return@ChatInput
+                        viewModel.sendImageMessage(uri, caption)
                         textInput = ""
                         viewModel.onComposerTextChanged("")
-                    }
-                },
-                onSendImage = { uri, caption ->
-                    viewModel.sendImageMessage(uri, caption)
-                    textInput = ""
-                    viewModel.onComposerTextChanged("")
-                },
-                placeholder = stringResource(R.string.chat_message_placeholder),
-            )
+                    },
+                    showAttach = editingMessage == null,
+                    placeholder = stringResource(R.string.chat_message_placeholder),
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.White,
@@ -194,15 +254,28 @@ fun ChatConversationScreen(
                 contentPadding = PaddingValues(XiloSpacing.horizontal)
             ) {
                 items(messages, key = { it.id }) { msg ->
+                    val isMe = msg.senderId == "me" || msg.senderId == viewModel.currentUserId
                     MessageBubble(
                         message = msg,
-                        isMe = msg.senderId == "me" || msg.senderId == viewModel.currentUserId,
+                        isMe = isMe,
                         onRetry = {
                             msg.clientOperationKey?.let(viewModel::retryMessage)
                         },
-                        onDelete = {
+                        onDeleteFailed = {
                             msg.clientOperationKey?.let(viewModel::deleteFailedMessage)
-                        }
+                        },
+                        onEdit = if (isMe) {
+                            {
+                                viewModel.beginEditMessage(msg)
+                            }
+                        } else {
+                            null
+                        },
+                        onDeleteDelivered = if (isMe) {
+                            { viewModel.deleteDeliveredMessage(msg.id) }
+                        } else {
+                            null
+                        },
                     )
                 }
             }
@@ -210,17 +283,31 @@ fun ChatConversationScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
     message: MessageEntity,
     isMe: Boolean,
     onRetry: () -> Unit = {},
-    onDelete: () -> Unit = {}
+    onDeleteFailed: () -> Unit = {},
+    onEdit: (() -> Unit)? = null,
+    onDeleteDelivered: (() -> Unit)? = null,
 ) {
-    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // Chat sides follow Telegram physical alignment (own = right), independent of app RTL.
+    val contentLayoutDirection = LocalLayoutDirection.current
     val isDeleted = message.isDeleted
     val isPending = !isDeleted && message.deliveryState == MessageDeliveryState.PENDING
     val isFailed = !isDeleted && message.deliveryState == MessageDeliveryState.PERMANENT_FAILURE
+    val isDelivered = !isDeleted &&
+        !isPending &&
+        !isFailed &&
+        message.deliveryState == MessageDeliveryState.DELIVERED &&
+        !message.id.startsWith("local-")
+    val withinEditWindow = System.currentTimeMillis() - message.createdAt < ChatEditWindowMs
+    val canEdit = isMe && isDelivered && withinEditWindow && onEdit != null &&
+        !message.content.isNullOrBlank()
+    val canDeleteDelivered = isMe && isDelivered && onDeleteDelivered != null
+    var menuExpanded by remember(message.id) { mutableStateOf(false) }
     val deletedLabel = stringResource(R.string.chat_message_deleted)
     val deliveryStateDescription = when {
         isDeleted -> stringResource(R.string.chat_message_deleted_accessibility)
@@ -228,38 +315,21 @@ fun MessageBubble(
         isFailed -> stringResource(R.string.chat_message_state_failed_accessibility)
         else -> stringResource(R.string.chat_message_state_sent_accessibility)
     }
+    // LTR corner tails: own bubble points bottom-end (physical right), peer bottom-start.
     val bubbleShape = if (isMe) {
-        if (isRtl) {
-            RoundedCornerShape(
-                topStart = XiloSpacing.bubbleRadius,
-                topEnd = XiloSpacing.bubbleRadius,
-                bottomEnd = XiloSpacing.bubbleRadius,
-                bottomStart = 0.dp
-            )
-        } else {
-            RoundedCornerShape(
-                topStart = XiloSpacing.bubbleRadius,
-                topEnd = XiloSpacing.bubbleRadius,
-                bottomEnd = 0.dp,
-                bottomStart = XiloSpacing.bubbleRadius
-            )
-        }
+        RoundedCornerShape(
+            topStart = XiloSpacing.bubbleRadius,
+            topEnd = XiloSpacing.bubbleRadius,
+            bottomEnd = 0.dp,
+            bottomStart = XiloSpacing.bubbleRadius
+        )
     } else {
-        if (isRtl) {
-            RoundedCornerShape(
-                topStart = XiloSpacing.bubbleRadius,
-                topEnd = XiloSpacing.bubbleRadius,
-                bottomEnd = 0.dp,
-                bottomStart = XiloSpacing.bubbleRadius
-            )
-        } else {
-            RoundedCornerShape(
-                topStart = XiloSpacing.bubbleRadius,
-                topEnd = XiloSpacing.bubbleRadius,
-                bottomEnd = XiloSpacing.bubbleRadius,
-                bottomStart = 0.dp
-            )
-        }
+        RoundedCornerShape(
+            topStart = XiloSpacing.bubbleRadius,
+            topEnd = XiloSpacing.bubbleRadius,
+            bottomEnd = XiloSpacing.bubbleRadius,
+            bottomStart = 0.dp
+        )
     }
 
     val bubbleColors = XiloTheme.bubbleColors
@@ -282,18 +352,31 @@ fun MessageBubble(
         else -> MaterialTheme.colorScheme.secondary
     }
 
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         contentAlignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
     ) {
+    CompositionLocalProvider(LocalLayoutDirection provides contentLayoutDirection) {
+        Box {
         Column(
             modifier = Modifier
                 .widthIn(max = 280.dp)
                 .clip(bubbleShape)
                 .background(bubbleBg)
                 .animateContentSize()
+                .then(
+                    if (canEdit || canDeleteDelivered) {
+                        Modifier.combinedClickable(
+                            onClick = {},
+                            onLongClick = { menuExpanded = true },
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
                 .semantics {
                     if (isMe) {
                         stateDescription = deliveryStateDescription
@@ -301,6 +384,17 @@ fun MessageBubble(
                 }
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
+            val senderLabel = message.senderName?.trim()?.takeIf { it.isNotEmpty() }
+            if (!isMe && !isDeleted && senderLabel != null) {
+                Text(
+                    text = senderLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = XiloBlue,
+                    maxLines = 1,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
             Text(
                 text = if (isDeleted) deletedLabel else (message.content ?: ""),
                 style = if (isDeleted) {
@@ -317,6 +411,20 @@ fun MessageBubble(
                 modifier = Modifier.align(Alignment.End),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (!isDeleted && message.isEdited) {
+                    Text(
+                        text = stringResource(R.string.chat_message_edited),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = timeColor,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "·",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = timeColor,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
                 val timeFormatted = DateFormatter.formatTime(message.createdAt)
                 Text(
                     text = timeFormatted,
@@ -396,7 +504,7 @@ fun MessageBubble(
                     val deleteDescription =
                         stringResource(R.string.chat_message_delete_accessibility)
                     TextButton(
-                        onClick = onDelete,
+                        onClick = onDeleteFailed,
                         modifier = Modifier
                             .heightIn(min = 48.dp)
                             .semantics {
@@ -414,5 +522,45 @@ fun MessageBubble(
                 }
             }
         }
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            if (canEdit) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_message_edit)) },
+                    onClick = {
+                        menuExpanded = false
+                        onEdit?.invoke()
+                    },
+                    leadingIcon = {
+                        XiloIcon(
+                            icon = XiloIcons.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                )
+            }
+            if (canDeleteDelivered) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.chat_message_delete)) },
+                    onClick = {
+                        menuExpanded = false
+                        onDeleteDelivered?.invoke()
+                    },
+                    leadingIcon = {
+                        XiloIcon(
+                            icon = XiloIcons.Trash,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                )
+            }
+        }
+        }
+    }
+    }
     }
 }

@@ -21,12 +21,17 @@ type Comment struct {
 	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
 	DeletedAt   *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	// IsDeleted is true when DeletedAt is set (tombstone or soft-deleted row).
+	IsDeleted bool `json:"is_deleted" db:"-"`
+
+	RepostCount int `json:"repost_count" db:"repost_count"`
 
 	Author          *authmodel.User  `json:"author,omitempty" db:"-"`
 	Replies         []*Comment       `json:"replies,omitempty" db:"-"`
 	Reactions       map[string]int   `json:"reactions,omitempty" db:"-"`
 	ViewerReactions []string         `json:"viewer_reactions,omitempty" db:"-"`
 	IsBookmarked    bool             `json:"is_bookmarked" db:"-"`
+	IsReposted      bool             `json:"is_reposted" db:"-"`
 	Post            *PostRef         `json:"post,omitempty" db:"-"`
 }
 

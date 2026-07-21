@@ -83,6 +83,9 @@
     <string name="feed_category_tech">Teknoloji</string>
     <string name="feed_category_ai">Yapay zekâ</string>
     <string name="feed_category_design">Tasarım</string>
+    <string name="discover_comment_on_post">Gönderi: %1$s</string>
+    <string name="discover_comment_reply_to">@%1$s yanıtı</string>
+    <string name="discover_comment_reply_to_with_preview">@%1$s yanıtı — %2$s</string>
     <string name="discover_action_reply">Yanıtla</string>
     <string name="discover_action_like">Beğen</string>
     <string name="discover_action_dislike">Beğenme</string>

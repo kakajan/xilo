@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -142,8 +144,89 @@ func (r *CommentRepo) ListByAuthor(ctx context.Context, username, cursor string,
 	if err := r.attachBookmarks(ctx, comments, ids, viewerID); err != nil {
 		return nil, "", err
 	}
+	if err := r.attachReposts(ctx, comments, ids, viewerID); err != nil {
+		return nil, "", err
+	}
 
 	return comments, nextCursor, nil
+}
+
+func (r *CommentRepo) attachReposts(ctx context.Context, comments []*model.Comment, ids []string, viewerID string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	if viewerID == "" {
+		return nil
+	}
+	var reposted []string
+	err := r.db.SelectContext(ctx, &reposted, `
+		SELECT comment_id FROM comment_reposts
+		WHERE user_id = $1 AND comment_id = ANY($2)
+	`, viewerID, pq.Array(ids))
+	if err != nil {
+		slog.Warn("attach comment reposts failed", "error", err)
+		return nil
+	}
+	set := make(map[string]bool, len(reposted))
+	for _, id := range reposted {
+		set[id] = true
+	}
+	for _, c := range comments {
+		c.IsReposted = set[c.ID]
+	}
+	return nil
+}
+
+func sortCommentRoots(roots []*model.Comment, sortMode string) {
+	switch strings.ToLower(strings.TrimSpace(sortMode)) {
+	case "oldest":
+		sort.SliceStable(roots, func(i, j int) bool {
+			if roots[i].IsPinned != roots[j].IsPinned {
+				return roots[i].IsPinned
+			}
+			return roots[i].CreatedAt.Before(roots[j].CreatedAt)
+		})
+	case "most_reacted":
+		sort.SliceStable(roots, func(i, j int) bool {
+			if roots[i].IsPinned != roots[j].IsPinned {
+				return roots[i].IsPinned
+			}
+			li, lj := reactionTotal(roots[i]), reactionTotal(roots[j])
+			if li != lj {
+				return li > lj
+			}
+			return roots[i].CreatedAt.After(roots[j].CreatedAt)
+		})
+	case "most_replied":
+		sort.SliceStable(roots, func(i, j int) bool {
+			if roots[i].IsPinned != roots[j].IsPinned {
+				return roots[i].IsPinned
+			}
+			ri, rj := len(roots[i].Replies), len(roots[j].Replies)
+			if ri != rj {
+				return ri > rj
+			}
+			return roots[i].CreatedAt.After(roots[j].CreatedAt)
+		})
+	default: // newest
+		sort.SliceStable(roots, func(i, j int) bool {
+			if roots[i].IsPinned != roots[j].IsPinned {
+				return roots[i].IsPinned
+			}
+			return roots[i].CreatedAt.After(roots[j].CreatedAt)
+		})
+	}
+}
+
+func reactionTotal(c *model.Comment) int {
+	if c == nil || c.Reactions == nil {
+		return 0
+	}
+	total := 0
+	for _, n := range c.Reactions {
+		total += n
+	}
+	return total
 }
 
 func (r *CommentRepo) attachReactionCounts(ctx context.Context, comments []*model.Comment, ids []string) error {

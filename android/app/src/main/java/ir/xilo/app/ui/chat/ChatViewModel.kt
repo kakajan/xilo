@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.ChatEntity
 import ir.xilo.app.data.local.entity.ChatFolderEntity
+import ir.xilo.app.data.local.entity.MessageDeliveryState
 import ir.xilo.app.data.local.entity.MessageEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.remote.api.XiloApiService
@@ -250,6 +251,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             _currentChat.value = chatRepository.getChatById(chatId) ?: _currentChat.value
             chatRepository.refreshMessages(chatId)
+            chatRepository.markChatAsRead(chatId)
         }
     }
 
@@ -409,6 +411,54 @@ class ChatViewModel @Inject constructor(
     fun deleteFailedMessage(operationKey: String) {
         runMessageAction(operationKey) {
             chatRepository.deletePermanentOutboxOperation(operationKey)
+        }
+    }
+
+    private val _editingMessage = MutableStateFlow<MessageEntity?>(null)
+    val editingMessage: StateFlow<MessageEntity?> = _editingMessage.asStateFlow()
+
+    fun beginEditMessage(message: MessageEntity) {
+        if (message.isDeleted ||
+            message.deliveryState != MessageDeliveryState.DELIVERED ||
+            message.id.startsWith("local-") ||
+            message.senderId != currentUserId
+        ) {
+            return
+        }
+        _editingMessage.value = message
+    }
+
+    fun cancelEditMessage() {
+        _editingMessage.value = null
+    }
+
+    fun commitEditMessage(content: String) {
+        val target = _editingMessage.value ?: return
+        val trimmed = content.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            chatRepository.editMessage(target.id, trimmed)
+                .onSuccess {
+                    _editingMessage.value = null
+                    stopLocalTyping(target.chatId)
+                }
+                .onFailure {
+                    _composerError.tryEmit(
+                        errorMessageResolver.fromThrowable(it, R.string.chat_edit_failed)
+                    )
+                }
+        }
+    }
+
+    fun deleteDeliveredMessage(messageId: String) {
+        if (messageId.startsWith("local-")) return
+        viewModelScope.launch {
+            chatRepository.deleteMessage(messageId)
+                .onFailure {
+                    _composerError.tryEmit(
+                        errorMessageResolver.fromThrowable(it, R.string.chat_delete_failed)
+                    )
+                }
         }
     }
 

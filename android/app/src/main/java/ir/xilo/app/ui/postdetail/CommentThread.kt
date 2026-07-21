@@ -83,6 +83,38 @@ internal fun buildVisibleCommentThread(
 internal fun buildCommentThreadDisplayList(comments: List<CommentEntity>): List<CommentThreadDisplay> =
     buildVisibleCommentThread(comments, focusCommentId = null)
 
+/**
+ * Ancestor ids from a top-known root to [targetId] (inclusive), using flat [parentId] links.
+ * Empty if [targetId] is missing. Used to seed [focusStack] from Discover / deep-links.
+ */
+internal fun pathToComment(
+    comments: List<CommentEntity>,
+    targetId: String,
+): List<String> {
+    if (targetId.isBlank() || comments.isEmpty()) return emptyList()
+    val byId = comments.associateBy { it.id }
+    if (targetId !in byId) return emptyList()
+    val chain = ArrayDeque<String>()
+    var current: String? = targetId
+    val seen = mutableSetOf<String>()
+    while (current != null && current !in seen) {
+        seen += current
+        chain.addFirst(current)
+        current = byId[current]?.parentId?.takeIf { it in byId }
+    }
+    return chain.toList()
+}
+
+/** Focus ancestors so [targetId] appears in the 2-level window (path without the target). */
+internal fun focusStackForTarget(
+    comments: List<CommentEntity>,
+    targetId: String,
+): List<String> {
+    val path = pathToComment(comments, targetId)
+    if (path.size <= 1) return emptyList()
+    return path.dropLast(1)
+}
+
 @Composable
 fun CommentThreadItem(
     display: CommentThreadDisplay,
@@ -91,7 +123,13 @@ fun CommentThreadItem(
     onDislikeClick: () -> Unit,
     onReportClick: () -> Unit,
     onBookmarkClick: () -> Unit = {},
+    onDeleteClick: (() -> Unit)? = null,
     onAuthorClick: () -> Unit = {},
+    onRepostClick: (() -> Unit)? = null,
+    onQuoteClick: (() -> Unit)? = null,
+    onPinClick: (() -> Unit)? = null,
+    postAuthorUsername: String? = null,
+    postSlug: String? = null,
     onDrillDownClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -104,13 +142,21 @@ fun CommentThreadItem(
             comment = comment.copy(replyCount = replyCount),
             onClick = {},
             onReplyClick = {
-                onReplyClick(comment.id, comment.authorUsername, comment.authorAvatar)
+                if (!comment.isDeleted) {
+                    onReplyClick(comment.id, comment.authorUsername, comment.authorAvatar)
+                }
             },
             onLikeClick = onLikeClick,
             onDislikeClick = onDislikeClick,
             onReportClick = onReportClick,
             onBookmarkClick = onBookmarkClick,
+            onDeleteClick = onDeleteClick?.takeUnless { comment.isDeleted },
             onAuthorClick = onAuthorClick,
+            onRepostClick = onRepostClick?.takeUnless { comment.isDeleted },
+            onQuoteClick = onQuoteClick?.takeUnless { comment.isDeleted },
+            onPinClick = onPinClick?.takeUnless { comment.isDeleted },
+            postAuthorUsername = postAuthorUsername,
+            postSlug = postSlug,
             contentMaxLines = Int.MAX_VALUE,
             startIndent = 0.dp,
             showThreadLineAbove = display.showLineAbove,

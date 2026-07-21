@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, Search, Trash2 } from "lucide-react";
+import { Bookmark, Search, Trash2, Users } from "lucide-react";
 import {
   listChats,
   getSavedMessagesChat,
@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials } from "@/lib/utils";
 import { TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
+import { canCreateGroup } from "@/lib/auth/permissions";
 import type { Chat } from "@/types/chat";
 
 export default function ChatListPage() {
@@ -100,13 +101,24 @@ export default function ChatListPage() {
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">پیام‌ها</h1>
-        <Link
-          href="/saved"
-          className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm text-primary hover:bg-accent"
-        >
-          <Bookmark className="h-4 w-4 shrink-0" />
-          <span className="min-w-0">ذخیره‌ها</span>
-        </Link>
+        <div className="flex items-center gap-1">
+          {canCreateGroup(user?.role) ? (
+            <Link
+              href="/chat/new-group"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm text-primary hover:bg-accent"
+            >
+              <Users className="h-4 w-4 shrink-0" />
+              <span className="min-w-0">گروه جدید</span>
+            </Link>
+          ) : null}
+          <Link
+            href="/saved"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm text-primary hover:bg-accent"
+          >
+            <Bookmark className="h-4 w-4 shrink-0" />
+            <span className="min-w-0">ذخیره‌ها</span>
+          </Link>
+        </div>
       </div>
 
       {error ? (
@@ -182,7 +194,7 @@ export default function ChatListPage() {
                       <p className="truncate font-semibold">{title}</p>
                       {chat.last_message_at && (
                         <TimeLabel className="shrink-0 text-xs text-muted-foreground">
-                          {formatDate(chat.last_message_at)}
+                          {formatDate(chat.last_message_at, { withTime: true })}
                         </TimeLabel>
                       )}
                     </div>

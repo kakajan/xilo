@@ -194,7 +194,7 @@
   - Acceptance: Telegram-style bubbles; swipe to reply/like; long-press menu; matches spec (§8.6, §10.1)
 - [ ] **T2.8.9** Implement read receipts and typing indicators
   - Acceptance: ✓/✓✓/blue indicators work; typing shows/hides correctly
-- [ ] **T2.8.10** Implement group chat functionality
+- [x] **T2.8.10** Implement group chat functionality
   - Acceptance: Create group, add/remove members, admin controls
 - [ ] **T2.8.11** Implement message composer with emoji picker and attachments
   - Acceptance: Text input, emoji picker, file attachment, send button; auto-expand to 120px

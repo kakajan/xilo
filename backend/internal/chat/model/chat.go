@@ -12,10 +12,11 @@ const (
 	MemberRoleAdmin  = "admin"
 	MemberRoleMember = "member"
 
-	MessageTypeText  = "text"
-	MessageTypeImage = "image"
-	MessageTypeVideo = "video"
-	MessageTypeFile  = "file"
+	MessageTypeText   = "text"
+	MessageTypeImage  = "image"
+	MessageTypeVideo  = "video"
+	MessageTypeFile   = "file"
+	MessageTypeSystem = "system"
 )
 
 type Chat struct {
@@ -49,22 +50,24 @@ type ChatMember struct {
 }
 
 type Message struct {
-	ID        string     `json:"id" db:"id"`
-	ChatID    string     `json:"chat_id" db:"chat_id"`
-	SenderID  string     `json:"sender_id" db:"sender_id"`
-	Type      string     `json:"type" db:"type"`
-	Content   *string    `json:"content,omitempty" db:"content"`
-	MediaID   *string    `json:"media_id,omitempty" db:"media_id"`
-	MediaURL  *string    `json:"media_url,omitempty" db:"media_url"`
-	ReplyToID *string    `json:"reply_to_id,omitempty" db:"reply_to_id"`
-	IsEdited  bool       `json:"is_edited" db:"is_edited"`
-	IsDeleted bool       `json:"is_deleted" db:"is_deleted"`
-	CreatedAt time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
-	EditedAt  *time.Time `json:"edited_at,omitempty" db:"edited_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
-	Reactions []Reaction `json:"reactions"`
-	ReadBy    []Read     `json:"read_by"`
+	ID           string     `json:"id" db:"id"`
+	ChatID       string     `json:"chat_id" db:"chat_id"`
+	SenderID     string     `json:"sender_id" db:"sender_id"`
+	SenderName   string     `json:"sender_name,omitempty" db:"sender_name"`
+	SenderAvatar *string    `json:"sender_avatar,omitempty" db:"sender_avatar"`
+	Type         string     `json:"type" db:"type"`
+	Content      *string    `json:"content,omitempty" db:"content"`
+	MediaID      *string    `json:"media_id,omitempty" db:"media_id"`
+	MediaURL     *string    `json:"media_url,omitempty" db:"media_url"`
+	ReplyToID    *string    `json:"reply_to_id,omitempty" db:"reply_to_id"`
+	IsEdited     bool       `json:"is_edited" db:"is_edited"`
+	IsDeleted    bool       `json:"is_deleted" db:"is_deleted"`
+	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
+	EditedAt     *time.Time `json:"edited_at,omitempty" db:"edited_at"`
+	DeletedAt    *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	Reactions    []Reaction `json:"reactions"`
+	ReadBy       []Read     `json:"read_by"`
 }
 
 type Reaction struct {
@@ -94,6 +97,37 @@ type UpdateChatRequest struct {
 
 type AddMembersRequest struct {
 	UserIDs []string `json:"user_ids"`
+}
+
+type UpdateMemberRoleRequest struct {
+	Role string `json:"role"`
+}
+
+type PinMessageRequest struct {
+	MessageID string `json:"message_id"`
+}
+
+type JoinChatRequest struct {
+	Token string `json:"token"`
+}
+
+type ChatPin struct {
+	ChatID    string    `json:"chat_id" db:"chat_id"`
+	MessageID string    `json:"message_id" db:"message_id"`
+	PinnedBy  string    `json:"pinned_by" db:"pinned_by"`
+	PinnedAt  time.Time `json:"pinned_at" db:"pinned_at"`
+	Content   *string   `json:"content,omitempty" db:"content"`
+	Type      string    `json:"type,omitempty" db:"type"`
+}
+
+type ChatInviteLink struct {
+	ID        string     `json:"id" db:"id"`
+	ChatID    string     `json:"chat_id" db:"chat_id"`
+	Token     string     `json:"token" db:"token"`
+	CreatedBy string     `json:"created_by" db:"created_by"`
+	CreatedAt time.Time  `json:"created_at" db:"created_at"`
+	RevokedAt *time.Time `json:"revoked_at,omitempty" db:"revoked_at"`
+	UseCount  int        `json:"use_count" db:"use_count"`
 }
 
 type CreateMessageRequest struct {

@@ -99,8 +99,15 @@ object DateFormatter {
 
     fun formatTime(timestampMs: Long): String {
         return toPersianDigits(
-            SimpleDateFormat("h:mm a", Locale.forLanguageTag("fa")).format(Date(timestampMs))
+            SimpleDateFormat("H:mm", Locale.forLanguageTag("fa")).format(Date(timestampMs))
         )
+    }
+
+    /** Absolute date with hour:minute, e.g. «۳۰ تیر ۱۴۰۵، ۱۴:۳۰». */
+    fun formatDateTime(timestampMs: Long): String {
+        val datePart = formatAbsolute(timestampMs, "d MMMM yyyy")
+        val timePart = formatTime(timestampMs)
+        return "$datePart، $timePart"
     }
 
     fun getRelativeTimeSpan(
@@ -146,7 +153,7 @@ object DateFormatter {
             minutes < 60 -> minutesAgo(count(minutes))
             hours < 24 -> hoursAgo(count(hours))
             days < 7 -> daysAgo(count(days))
-            else -> formatAbsolute(timestampMs, "d MMMM")
+            else -> formatDateTime(timestampMs)
         }
     }
 

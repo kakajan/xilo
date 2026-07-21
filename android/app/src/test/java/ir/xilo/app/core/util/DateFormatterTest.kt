@@ -90,4 +90,16 @@ class DateFormatterTest {
         assertEquals(2, jm) // Ordibehesht
         assertEquals(28, jd)
     }
+
+    @Test
+    fun formatDateTime_includesHourAndMinute() {
+        DateFormatter.setUserPreference(CalendarPreference.JALALI)
+        val cal = Calendar.getInstance(TimeZone.getDefault()).apply {
+            set(2026, Calendar.JULY, 21, 14, 30, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val formatted = DateFormatter.formatDateTime(cal.timeInMillis)
+        assertTrue("expected time in: $formatted", formatted.contains("۱۴:۳۰") || formatted.contains("14:30"))
+        assertTrue("expected Jalali month in: $formatted", formatted.contains("تیر"))
+    }
 }
