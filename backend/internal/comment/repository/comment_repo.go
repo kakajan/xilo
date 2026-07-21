@@ -133,6 +133,9 @@ func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor stri
 	if err := r.attachReactionCounts(ctx, allComments, flatIDs); err != nil {
 		return nil, "", err
 	}
+	if err := r.attachViewerReactions(ctx, allComments, flatIDs, viewerID); err != nil {
+		return nil, "", err
+	}
 	if err := r.attachBookmarks(ctx, allComments, flatIDs, viewerID); err != nil {
 		return nil, "", err
 	}

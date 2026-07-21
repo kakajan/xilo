@@ -26,15 +26,17 @@ type PostContext struct {
 
 // Comment is a Discover feed item (shape aligned with Android DiscoverCommentDto).
 type Comment struct {
-	ID         string      `json:"id"`
-	PostID     string      `json:"post_id"`
-	AuthorID   string      `json:"author_id"`
-	Content    string      `json:"content"`
-	CreatedAt  time.Time   `json:"created_at"`
-	LikeCount  int         `json:"like_count"`
-	ReplyCount int         `json:"reply_count"`
-	Author     Author      `json:"author"`
-	Post       PostContext `json:"post"`
+	ID              string         `json:"id"`
+	PostID          string         `json:"post_id"`
+	AuthorID        string         `json:"author_id"`
+	Content         string         `json:"content"`
+	CreatedAt       time.Time      `json:"created_at"`
+	LikeCount       int            `json:"like_count"`
+	ReplyCount      int            `json:"reply_count"`
+	Reactions       map[string]int `json:"reactions,omitempty"`
+	ViewerReactions []string       `json:"viewer_reactions,omitempty"`
+	Author          Author         `json:"author"`
+	Post            PostContext    `json:"post"`
 }
 
 // CommentsResponse is the JSON body for GET /api/discover/comments.

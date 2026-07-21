@@ -185,8 +185,9 @@ func (h *ProfileHandler) ListUserReplies(c *fiber.Ctx) error {
 	username := c.Params("username")
 	cursor := c.Query("cursor")
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+	viewerID, _ := c.Locals("userID").(string)
 
-	comments, nextCursor, err := h.commentRepo.ListByAuthor(c.UserContext(), username, cursor, limit)
+	comments, nextCursor, err := h.commentRepo.ListByAuthor(c.UserContext(), username, cursor, limit, viewerID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to list replies"})
 	}

@@ -38,7 +38,7 @@ type authorCommentRow struct {
 }
 
 // ListByAuthor returns flat comments by username for profile Replies tab.
-func (r *CommentRepo) ListByAuthor(ctx context.Context, username, cursor string, limit int) ([]*model.Comment, string, error) {
+func (r *CommentRepo) ListByAuthor(ctx context.Context, username, cursor string, limit int, viewerID string) ([]*model.Comment, string, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
@@ -136,6 +136,12 @@ func (r *CommentRepo) ListByAuthor(ctx context.Context, username, cursor string,
 	if err := r.attachReactionCounts(ctx, comments, ids); err != nil {
 		return nil, "", err
 	}
+	if err := r.attachViewerReactions(ctx, comments, ids, viewerID); err != nil {
+		return nil, "", err
+	}
+	if err := r.attachBookmarks(ctx, comments, ids, viewerID); err != nil {
+		return nil, "", err
+	}
 
 	return comments, nextCursor, nil
 }
@@ -201,6 +207,36 @@ func (r *CommentRepo) attachBookmarks(ctx context.Context, comments []*model.Com
 	}
 	for _, c := range comments {
 		c.IsBookmarked = bookmarkSet[c.ID]
+	}
+	return nil
+}
+
+func (r *CommentRepo) attachViewerReactions(ctx context.Context, comments []*model.Comment, ids []string, viewerID string) error {
+	if len(ids) == 0 || viewerID == "" {
+		return nil
+	}
+
+	type viewerRow struct {
+		TargetID string `db:"target_id"`
+		Reaction string `db:"reaction"`
+	}
+	var rows []viewerRow
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT target_id, reaction FROM reactions
+		WHERE target_type = 'comment' AND user_id = $1 AND target_id = ANY($2)
+	`, viewerID, pq.Array(ids))
+	if err != nil {
+		return err
+	}
+
+	viewerMap := make(map[string][]string, len(rows))
+	for _, row := range rows {
+		viewerMap[row.TargetID] = append(viewerMap[row.TargetID], row.Reaction)
+	}
+	for _, c := range comments {
+		if reactions, ok := viewerMap[c.ID]; ok {
+			c.ViewerReactions = reactions
+		}
 	}
 	return nil
 }

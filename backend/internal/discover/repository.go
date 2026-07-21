@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 const (
@@ -132,7 +133,80 @@ func (r *Repository) ListComments(ctx context.Context, userID, interestFilter st
 	for i, s := range scoredRows {
 		out[i] = s.comment
 	}
+	if err := r.attachEngagement(ctx, out, userID); err != nil {
+		return nil, err
+	}
 	return out, nil
+}
+
+func (r *Repository) attachEngagement(ctx context.Context, comments []Comment, viewerID string) error {
+	if len(comments) == 0 {
+		return nil
+	}
+
+	ids := make([]string, len(comments))
+	for i, c := range comments {
+		ids[i] = c.ID
+		comments[i].Reactions = map[string]int{}
+	}
+
+	type reactionRow struct {
+		TargetID string `db:"target_id"`
+		Reaction string `db:"reaction"`
+		Count    int    `db:"count"`
+	}
+	var rows []reactionRow
+	if err := r.db.SelectContext(ctx, &rows, `
+		SELECT target_id, reaction, COUNT(*)::int as count
+		FROM reactions
+		WHERE target_type = 'comment' AND target_id = ANY($1)
+		GROUP BY target_id, reaction
+	`, pq.Array(ids)); err != nil {
+		return fmt.Errorf("discover reaction counts: %w", err)
+	}
+
+	reactionMap := make(map[string]map[string]int, len(ids))
+	for _, row := range rows {
+		if reactionMap[row.TargetID] == nil {
+			reactionMap[row.TargetID] = make(map[string]int)
+		}
+		reactionMap[row.TargetID][row.Reaction] = row.Count
+	}
+	for i := range comments {
+		if reactions, ok := reactionMap[comments[i].ID]; ok {
+			comments[i].Reactions = reactions
+			like := reactions["like"] + reactions["heart"]
+			if like > 0 {
+				comments[i].LikeCount = like
+			}
+		}
+	}
+
+	if viewerID == "" {
+		return nil
+	}
+
+	type viewerRow struct {
+		TargetID string `db:"target_id"`
+		Reaction string `db:"reaction"`
+	}
+	var viewerRows []viewerRow
+	if err := r.db.SelectContext(ctx, &viewerRows, `
+		SELECT target_id, reaction FROM reactions
+		WHERE target_type = 'comment' AND user_id = $1 AND target_id = ANY($2)
+	`, viewerID, pq.Array(ids)); err != nil {
+		return fmt.Errorf("discover viewer reactions: %w", err)
+	}
+	viewerMap := make(map[string][]string, len(viewerRows))
+	for _, row := range viewerRows {
+		viewerMap[row.TargetID] = append(viewerMap[row.TargetID], row.Reaction)
+	}
+	for i := range comments {
+		if reactions, ok := viewerMap[comments[i].ID]; ok {
+			comments[i].ViewerReactions = reactions
+		}
+	}
+	return nil
 }
 
 func (r *Repository) fetchCandidates(ctx context.Context, interestFilter string, pool int) ([]commentRow, error) {
