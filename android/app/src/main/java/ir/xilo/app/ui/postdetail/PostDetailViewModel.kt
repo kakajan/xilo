@@ -184,6 +184,56 @@ class PostDetailViewModel @Inject constructor(
         _infoMessage.value = R.string.discover_report_submitted
     }
 
+    fun toggleLike(postId: String, currentState: Boolean) {
+        viewModelScope.launch {
+            val snapshot = _post.value?.takeIf { it.id == postId }
+            if (snapshot != null) {
+                val liked = !currentState
+                _post.value = snapshot.copy(
+                    isLiked = liked,
+                    likeCount = (snapshot.likeCount + if (liked) 1 else -1).coerceAtLeast(0),
+                )
+            }
+            postRepository.toggleLike(postId, currentState)
+                .onSuccess {
+                    postRepository.getPostById(postId)?.let { fresh ->
+                        _post.value = _post.value?.copy(
+                            isLiked = fresh.isLiked,
+                            likeCount = fresh.likeCount,
+                        )
+                    }
+                }
+                .onFailure {
+                    if (snapshot != null) {
+                        _post.value = snapshot
+                    }
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+                }
+        }
+    }
+
+    fun toggleBookmark(postId: String, currentState: Boolean) {
+        viewModelScope.launch {
+            val snapshot = _post.value?.takeIf { it.id == postId }
+            if (snapshot != null) {
+                _post.value = snapshot.copy(isBookmarked = !currentState)
+            }
+            postRepository.toggleBookmark(postId, currentState)
+                .onSuccess { bookmarked ->
+                    _post.value = _post.value?.copy(isBookmarked = bookmarked)
+                        ?: postRepository.getPostById(postId)
+                }
+                .onFailure {
+                    if (snapshot != null) {
+                        _post.value = snapshot
+                    }
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+                }
+        }
+    }
+
     fun toggleRepost(postId: String, currentState: Boolean) {
         if (!_canRepost.value) return
         viewModelScope.launch {

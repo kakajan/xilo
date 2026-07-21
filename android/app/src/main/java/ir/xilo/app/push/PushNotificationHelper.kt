@@ -43,7 +43,7 @@ class PushNotificationHelper @Inject constructor(
         ensureChannelCreated()
         val type = data["type"].orEmpty()
         val localizedTitle = NotificationCopy.title(context, type, title)
-        val localizedBody = NotificationCopy.body(context, type, body)
+        val localizedBody = NotificationCopy.body(context, type, body, data)
         val displayTitle = localizedTitle.ifBlank { AppLocale.string(context, R.string.app_name) }
         val displayBody = localizedBody.ifBlank {
             AppLocale.string(context, R.string.notifications_inbox_title)

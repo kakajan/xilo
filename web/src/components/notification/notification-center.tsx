@@ -34,14 +34,32 @@ function titleForType(
   }
 }
 
+function notificationData(n: Notification): Record<string, unknown> {
+  if (n.data && typeof n.data === "object" && !Array.isArray(n.data)) {
+    return n.data as Record<string, unknown>;
+  }
+  return {};
+}
+
+function asDataString(data: Record<string, unknown>, key: string): string | undefined {
+  const value = data[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
 /** Template bodies only — user content (comments, messages, post titles) stays as API text. */
 function bodyForType(
   n: Notification,
-  t: (key: "bodies.newFollower") => string
+  t: (key: "bodies.newFollower" | "bodies.newFollowerAnonymous", values?: { name: string }) => string
 ): string {
   switch (n.type) {
-    case "new_follower":
-      return t("bodies.newFollower");
+    case "new_follower": {
+      const data = notificationData(n);
+      const displayName = asDataString(data, "follower_display_name");
+      const username = asDataString(data, "follower_username") ?? asDataString(data, "username");
+      const name = displayName || (username ? `@${username}` : "");
+      if (name) return t("bodies.newFollower", { name });
+      return t("bodies.newFollowerAnonymous");
+    }
     default:
       return n.body;
   }

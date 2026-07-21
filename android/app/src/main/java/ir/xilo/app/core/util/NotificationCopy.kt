@@ -29,8 +29,29 @@ object NotificationCopy {
         return AppLocale.string(context, resId)
     }
 
-    fun body(context: Context, type: String, fallback: String): String {
-        val resId = bodyResId(type) ?: return fallback
-        return AppLocale.string(context, resId)
+    fun body(
+        context: Context,
+        type: String,
+        fallback: String,
+        data: Map<String, String> = emptyMap(),
+    ): String {
+        if (type.trim().lowercase() != "new_follower") {
+            val resId = bodyResId(type) ?: return fallback
+            return AppLocale.string(context, resId)
+        }
+        val name = followerLabel(data)
+        return if (name != null) {
+            AppLocale.string(context, R.string.notif_body_new_follower, name)
+        } else {
+            AppLocale.string(context, R.string.notif_body_new_follower_anonymous)
+        }
+    }
+
+    /** Prefer display name, else `@username` — null when actor info is missing (legacy rows). */
+    fun followerLabel(data: Map<String, String>): String? {
+        data["follower_display_name"]?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+        val username = data["follower_username"]?.trim()?.takeIf { it.isNotEmpty() }
+            ?: data["username"]?.trim()?.takeIf { it.isNotEmpty() }
+        return username?.let { "@$it" }
     }
 }

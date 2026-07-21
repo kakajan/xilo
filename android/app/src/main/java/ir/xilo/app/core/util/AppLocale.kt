@@ -40,4 +40,7 @@ object AppLocale {
 
     fun string(context: Context, resId: Int): String =
         wrap(context).getString(resId)
+
+    fun string(context: Context, resId: Int, vararg formatArgs: Any): String =
+        wrap(context).getString(resId, *formatArgs)
 }

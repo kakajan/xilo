@@ -325,7 +325,8 @@
     <string name="notif_title_new_follower">Новый подписчик</string>
     <string name="notif_title_post_published">Новый пост</string>
     <string name="notif_title_new_message">Новое сообщение</string>
-    <string name="notif_body_new_follower">Кто-то начал на вас подписаться</string>
+    <string name="notif_body_new_follower">%1$s начал(а) на вас подписаться</string>
+    <string name="notif_body_new_follower_anonymous">Кто-то начал на вас подписаться</string>
     <string name="devices_unknown">Неизвестное устройство</string>
     <string name="devices_this_device">Это устройство</string>
     <string name="devices_sign_out">Выйти</string>

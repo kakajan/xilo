@@ -340,7 +340,8 @@
     <string name="notif_title_new_follower">New follower</string>
     <string name="notif_title_post_published">New post</string>
     <string name="notif_title_new_message">New message</string>
-    <string name="notif_body_new_follower">Someone started following you</string>
+    <string name="notif_body_new_follower">%1$s started following you</string>
+    <string name="notif_body_new_follower_anonymous">Someone started following you</string>
     <string name="notifications_prefs_title">Notification settings</string>
     <string name="notifications_prefs_empty">Preferences unavailable</string>
     <string name="notif_pref_group_comments">Comments</string>

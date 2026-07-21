@@ -307,7 +307,7 @@ private fun NotificationRow(
 ) {
     val context = LocalContext.current
     val title = NotificationCopy.title(context, item.type, item.title)
-    val body = NotificationCopy.body(context, item.type, item.body)
+    val body = NotificationCopy.body(context, item.type, item.body, item.data)
     val background = if (item.isRead) {
         MaterialTheme.colorScheme.background
     } else {

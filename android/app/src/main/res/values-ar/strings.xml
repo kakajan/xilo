@@ -325,7 +325,8 @@
     <string name="notif_title_new_follower">متابع جديد</string>
     <string name="notif_title_post_published">منشور جديد</string>
     <string name="notif_title_new_message">رسالة جديدة</string>
-    <string name="notif_body_new_follower">بدأ شخص ما بمتابعتك</string>
+    <string name="notif_body_new_follower">بدأ %1$s بمتابعتك</string>
+    <string name="notif_body_new_follower_anonymous">بدأ شخص ما بمتابعتك</string>
     <string name="devices_unknown">جهاز غير معروف</string>
     <string name="devices_this_device">هذا الجهاز</string>
     <string name="devices_sign_out">خروج</string>

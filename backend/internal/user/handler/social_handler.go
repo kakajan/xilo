@@ -407,15 +407,40 @@ func (h *SocialHandler) ToggleFollow(c *fiber.Ctx) error {
 	}
 	if h.notif != nil {
 		if n, _ := res.RowsAffected(); n > 0 {
+			var follower struct {
+				Username    string `db:"username"`
+				DisplayName string `db:"display_name"`
+			}
+			if err := h.db.Get(&follower, `
+				SELECT username,
+				       COALESCE(NULLIF(TRIM(display_name), ''), username) AS display_name
+				FROM users WHERE id = $1
+			`, followerID); err != nil {
+				if username, ok := c.Locals("username").(string); ok {
+					follower.Username = username
+					follower.DisplayName = username
+				}
+			}
+			body := "Someone started following you"
+			if follower.DisplayName != "" {
+				body = follower.DisplayName + " started following you"
+			}
+			data := map[string]any{
+				"follower_id": followerID,
+			}
+			if follower.Username != "" {
+				data["follower_username"] = follower.Username
+			}
+			if follower.DisplayName != "" {
+				data["follower_display_name"] = follower.DisplayName
+			}
 			if _, err := h.notif.Notify(c.UserContext(), notifsvc.NotifyRequest{
 				RecipientID: followingID,
 				ActorID:     followerID,
 				Type:        notifsvc.TypeNewFollower,
 				Title:       "New follower",
-				Body:        "Someone started following you",
-				Data: map[string]any{
-					"follower_id": followerID,
-				},
+				Body:        body,
+				Data:        data,
 			}); err != nil {
 				slog.Warn("new follower notification failed", "error", err)
 			}

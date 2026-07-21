@@ -13,7 +13,8 @@
     "newMessage": "پیام جدید"
   },
   "bodies": {
-    "newFollower": "کسی شما را دنبال کرد"
+    "newFollower": "{name} شما را دنبال کرد",
+    "newFollowerAnonymous": "کسی شما را دنبال کرد"
   },
   "prefs": {
     "commentReply": "پاسخ به نظر",

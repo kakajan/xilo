@@ -340,7 +340,8 @@
     <string name="notif_title_new_follower">دنبال‌کننده جدید</string>
     <string name="notif_title_post_published">پست جدید</string>
     <string name="notif_title_new_message">پیام جدید</string>
-    <string name="notif_body_new_follower">کسی شما را دنبال کرد</string>
+    <string name="notif_body_new_follower">%1$s شما را دنبال کرد</string>
+    <string name="notif_body_new_follower_anonymous">کسی شما را دنبال کرد</string>
     <string name="notifications_prefs_title">تنظیمات اعلان</string>
     <string name="notifications_prefs_empty">تنظیمات در دسترس نیست</string>
     <string name="notif_pref_group_comments">نظرات</string>

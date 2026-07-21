@@ -29,4 +29,35 @@ class NotificationCopyTest {
         assertNull(NotificationCopy.bodyResId("new_message"))
         assertNull(NotificationCopy.bodyResId("post_published"))
     }
+
+    @Test
+    fun followerLabel_prefersDisplayName() {
+        assertEquals(
+            "Mohammad",
+            NotificationCopy.followerLabel(
+                mapOf(
+                    "follower_display_name" to "Mohammad",
+                    "follower_username" to "mohammad",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun followerLabel_fallsBackToAtUsername() {
+        assertEquals(
+            "@mohammad",
+            NotificationCopy.followerLabel(mapOf("follower_username" to "mohammad")),
+        )
+        assertEquals(
+            "@alice",
+            NotificationCopy.followerLabel(mapOf("username" to "alice")),
+        )
+    }
+
+    @Test
+    fun followerLabel_nullWhenMissing() {
+        assertNull(NotificationCopy.followerLabel(emptyMap()))
+        assertNull(NotificationCopy.followerLabel(mapOf("follower_id" to "uuid")))
+    }
 }

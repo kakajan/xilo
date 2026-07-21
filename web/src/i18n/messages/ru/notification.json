@@ -13,7 +13,8 @@
     "newMessage": "Новое сообщение"
   },
   "bodies": {
-    "newFollower": "Кто-то начал на вас подписаться"
+    "newFollower": "{name} начал(а) на вас подписаться",
+    "newFollowerAnonymous": "Кто-то начал на вас подписаться"
   },
   "prefs": {
     "commentReply": "Ответы на комментарии",

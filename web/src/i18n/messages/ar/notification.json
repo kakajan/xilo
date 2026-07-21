@@ -13,7 +13,8 @@
     "newMessage": "رسالة جديدة"
   },
   "bodies": {
-    "newFollower": "بدأ شخص ما بمتابعتك"
+    "newFollower": "بدأ {name} بمتابعتك",
+    "newFollowerAnonymous": "بدأ شخص ما بمتابعتك"
   },
   "prefs": {
     "commentReply": "الردود على التعليقات",

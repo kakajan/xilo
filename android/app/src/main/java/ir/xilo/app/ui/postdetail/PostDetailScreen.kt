@@ -1,5 +1,9 @@
 package ir.xilo.app.ui.postdetail
 
+import android.content.Intent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -275,6 +280,12 @@ fun PostDetailScreen(
                                     replyingToAuthor = null
                                     isReplyingToPost = true
                                 },
+                                onLikeClick = {
+                                    viewModel.toggleLike(detailPost.id, detailPost.isLiked)
+                                },
+                                onBookmarkClick = {
+                                    viewModel.toggleBookmark(detailPost.id, detailPost.isBookmarked)
+                                },
                                 onRepostClick = if (canRepost) {
                                     { viewModel.toggleRepost(detailPost.id, detailPost.isReposted) }
                                 } else {
@@ -426,6 +437,9 @@ fun PostDetailScreen(
 fun PostDetailHeader(
     post: PostEntity,
     onReplyClick: () -> Unit = {},
+    onLikeClick: () -> Unit = {},
+    onBookmarkClick: () -> Unit = {},
+    onShareClick: (() -> Unit)? = null,
     /** Null hides the repost control (readers / non-authors). */
     onRepostClick: (() -> Unit)? = null,
     onQuoteClick: (() -> Unit)? = null,
@@ -437,6 +451,19 @@ fun PostDetailHeader(
     onArchiveClick: (() -> Unit)? = null,
     onDeleteClick: (() -> Unit)? = null,
 ) {
+    val context = LocalContext.current
+    val sharePost = onShareClick ?: {
+        val text = buildString {
+            if (post.title.isNotBlank()) append(post.title).append('\n')
+            append(post.excerpt?.takeIf { it.isNotBlank() } ?: extractPlainText(post.content).take(160))
+            append("\n/p/").append(post.slug)
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text.trim())
+        }
+        context.startActivity(Intent.createChooser(intent, null))
+    }
     val openAuthor = onAuthorClick?.takeIf { post.authorUsername.isNotBlank() }
     Column(
         modifier = Modifier
@@ -551,7 +578,8 @@ fun PostDetailHeader(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             DetailAction(
                 icon = XiloIcons.Message,
@@ -576,22 +604,39 @@ fun PostDetailHeader(
                     onClick = onRepostClick,
                 )
             }
+            val likeScale by animateFloatAsState(
+                targetValue = if (post.isLiked) 1.15f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium,
+                ),
+                label = "detailLikeScale",
+            )
             DetailAction(
                 icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
                 count = post.likeCount.toString(),
                 description = stringResource(R.string.cd_like),
                 tint = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
+                onClick = onLikeClick,
+                modifier = Modifier.scale(likeScale),
             )
             DetailAction(
-                XiloIcons.Chart,
-                formatDetailViewCount(post.viewCount),
-                stringResource(R.string.cd_views),
+                icon = if (post.isBookmarked) XiloIcons.BookmarkFilled else XiloIcons.Bookmark,
+                count = null,
+                description = stringResource(R.string.cd_bookmark),
+                tint = if (post.isBookmarked) XiloBlue else MaterialTheme.colorScheme.secondary,
+                onClick = onBookmarkClick,
             )
-            XiloIcon(
+            DetailAction(
+                icon = XiloIcons.Chart,
+                count = formatDetailViewCount(post.viewCount),
+                description = stringResource(R.string.cd_views),
+            )
+            DetailAction(
                 icon = XiloIcons.Share,
-                contentDescription = stringResource(R.string.cd_share),
-                tint = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(XiloSpacing.iconInline)
+                count = null,
+                description = stringResource(R.string.cd_share),
+                onClick = sharePost,
             )
         }
     }
@@ -600,21 +645,24 @@ fun PostDetailHeader(
 @Composable
 private fun DetailAction(
     @androidx.annotation.DrawableRes icon: Int,
-    count: String,
+    count: String?,
     description: String,
     tint: Color = MaterialTheme.colorScheme.secondary,
     onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val rowModifier = if (onClick != null) {
         Modifier
             .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
     } else {
         Modifier
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = rowModifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier = modifier
+            .then(rowModifier)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
     ) {
         XiloIcon(
             icon = icon,
@@ -622,12 +670,14 @@ private fun DetailAction(
             tint = tint,
             modifier = Modifier.size(XiloSpacing.iconInline)
         )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = count,
-            style = MaterialTheme.typography.labelMedium,
-            color = tint,
-        )
+        if (count != null) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = count,
+                style = MaterialTheme.typography.labelMedium,
+                color = tint,
+            )
+        }
     }
 }
 

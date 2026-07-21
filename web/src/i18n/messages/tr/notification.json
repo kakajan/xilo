@@ -13,7 +13,8 @@
     "newMessage": "Yeni mesaj"
   },
   "bodies": {
-    "newFollower": "Biri sizi takip etmeye başladı"
+    "newFollower": "{name} sizi takip etmeye başladı",
+    "newFollowerAnonymous": "Biri sizi takip etmeye başladı"
   },
   "prefs": {
     "commentReply": "Yorum yanıtları",

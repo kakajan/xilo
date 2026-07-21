@@ -60,13 +60,16 @@ export function FollowListPage({ mode }: { mode: "followers" | "following" }) {
                   </AvatarFallback>
                 </Avatar>
               </Link>
-              <div className="min-w-0 flex-1">
-                <Link href={`/${u.username}`} className="font-semibold hover:underline">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <Link
+                  href={`/${u.username}`}
+                  className="block truncate font-semibold hover:underline"
+                >
                   {u.display_name || u.username}
                 </Link>
                 <UsernameHandle
                   username={u.username}
-                  className="truncate text-sm text-muted-foreground"
+                  className="block truncate text-sm text-muted-foreground"
                 />
               </div>
               <FollowButton username={u.username} initialFollowing={u.is_following} />
