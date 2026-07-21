@@ -272,6 +272,7 @@
     <string name="cd_like">Нравится</string>
     <string name="cd_bookmark">Закладка</string>
     <string name="cd_views">Просмотры</string>
+    <string name="post_cover_untitled">Пост</string>
     <string name="cd_share">Поделиться</string>
     <string name="cd_emoji">Эмодзи</string>
     <string name="cd_attach">Вложение</string>

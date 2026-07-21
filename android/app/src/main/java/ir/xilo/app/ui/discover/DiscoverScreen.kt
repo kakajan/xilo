@@ -2,11 +2,12 @@ package ir.xilo.app.ui.discover
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.core.util.AppLocale
@@ -116,11 +118,20 @@ fun DiscoverScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { _ ->
+    val chromeVisible = chromeState?.isVisible != false
+    val showTopicChips = topicInterests.isNotEmpty() &&
+        !isSearchActive &&
+        searchQuery.isBlank() &&
+        searchResults.isEmpty()
+
     Column(modifier = Modifier.fillMaxSize()) {
+        // Match ChatListScreen: top bar owns status-bar padding while visible; when chrome
+        // hides, only the sticky chips pad below the status bar. A shared parent
+        // statusBarsPadding + collapsing top bar left a blank toolbar-sized gap above chips.
         AnimatedVisibility(
-            visible = chromeState?.isVisible != false,
-            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+            visible = chromeVisible,
+            enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+            exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
         ) {
             if (isSearchActive) {
                 XiloTopAppBar(
@@ -145,7 +156,7 @@ fun DiscoverScreen(
                         }) {
                             XiloIcon(icon = XiloIcons.Close, contentDescription = stringResource(R.string.discover_close_search))
                         }
-                    }
+                    },
                 )
             } else {
                 XiloTopAppBar(
@@ -157,6 +168,40 @@ fun DiscoverScreen(
                         }
                     }
                 )
+            }
+        }
+
+        if (showTopicChips) {
+            val chipsBelowStatusBar = !chromeVisible
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(1f)
+                    .background(MaterialTheme.colorScheme.background)
+                    .then(
+                        if (chipsBelowStatusBar) {
+                            Modifier.statusBarsPadding()
+                        } else {
+                            Modifier
+                        }
+                    ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item(key = "all") {
+                    FilterChip(
+                        selected = selectedInterestSlug == null,
+                        onClick = { viewModel.selectInterest(null) },
+                        label = { Text(stringResource(R.string.discover_topic_all)) },
+                    )
+                }
+                items(topicInterests, key = { it.id }) { interest ->
+                    FilterChip(
+                        selected = selectedInterestSlug == interest.slug,
+                        onClick = { viewModel.selectInterest(interest.slug) },
+                        label = { Text(interest.labelFor(languageCode)) },
+                    )
+                }
             }
         }
 
@@ -231,91 +276,67 @@ fun DiscoverScreen(
                         }
                     }
                     "discover" -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            if (topicInterests.isNotEmpty()) {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    item(key = "all") {
-                                        FilterChip(
-                                            selected = selectedInterestSlug == null,
-                                            onClick = { viewModel.selectInterest(null) },
-                                            label = { Text(stringResource(R.string.discover_topic_all)) },
-                                        )
-                                    }
-                                    items(topicInterests, key = { it.id }) { interest ->
-                                        FilterChip(
-                                            selected = selectedInterestSlug == interest.slug,
-                                            onClick = { viewModel.selectInterest(interest.slug) },
-                                            label = { Text(interest.labelFor(languageCode)) },
-                                        )
-                                    }
-                                }
-                            }
-
-                            val discoverPullState = rememberPullToRefreshState()
-                            PullToRefreshBox(
-                                isRefreshing = isRefreshing,
-                                onRefresh = { viewModel.refreshDiscoverComments() },
-                                modifier = Modifier.fillMaxSize(),
-                                state = discoverPullState,
+                        val discoverPullState = rememberPullToRefreshState()
+                        PullToRefreshBox(
+                            isRefreshing = isRefreshing,
+                            onRefresh = { viewModel.refreshDiscoverComments() },
+                            modifier = Modifier.fillMaxSize(),
+                            state = discoverPullState,
+                        ) {
+                            // Always use LazyColumn so PTR nested-scroll works in the empty state too.
+                            LazyColumn(
+                                state = discoverListState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(
+                                        if (chromeState != null) {
+                                            Modifier.trackChromeVisibility(chromeState, discoverListState)
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
+                                contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                             ) {
-                                // Always use LazyColumn so PTR nested-scroll works in the empty state too.
-                                LazyColumn(
-                                    state = discoverListState,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .then(
-                                            if (chromeState != null) {
-                                                Modifier.trackChromeVisibility(chromeState, discoverListState)
-                                            } else {
-                                                Modifier
-                                            }
-                                        ),
-                                    contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
-                                ) {
-                                    if (discoverComments.isEmpty()) {
-                                        item(key = "discover_empty") {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillParentMaxSize(),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    Text(
-                                                        stringResource(R.string.discover_prompt_search),
-                                                        color = MaterialTheme.colorScheme.secondary
-                                                    )
-                                                    Spacer(modifier = Modifier.height(12.dp))
-                                                    TextButton(onClick = { viewModel.refreshDiscoverComments() }) {
-                                                        Text(stringResource(R.string.common_refresh))
-                                                    }
+                                if (discoverComments.isEmpty()) {
+                                    item(key = "discover_empty") {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillParentMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                Text(
+                                                    stringResource(R.string.discover_prompt_search),
+                                                    color = MaterialTheme.colorScheme.secondary
+                                                )
+                                                Spacer(modifier = Modifier.height(12.dp))
+                                                TextButton(onClick = { viewModel.refreshDiscoverComments() }) {
+                                                    Text(stringResource(R.string.common_refresh))
                                                 }
                                             }
                                         }
-                                    } else {
-                                        items(discoverComments, key = { it.id }) { comment ->
-                                            CommentCard(
-                                                comment = comment,
-                                                onClick = {
-                                                    viewModel.openCommentPost(comment.postId, onCommentClick)
-                                                },
-                                                onReplyClick = {
-                                                    viewModel.openCommentReply(
-                                                        postId = comment.postId,
-                                                        commentId = comment.id,
-                                                        authorUsername = comment.authorUsername,
-                                                        onNavigate = onReplyToComment,
-                                                    )
-                                                },
-                                                onLikeClick = { viewModel.toggleCommentLike(comment) },
-                                                onDislikeClick = { viewModel.toggleCommentDislike(comment) },
-                                                onReportClick = { reportTargetId = comment.id },
-                                                onBookmarkClick = { viewModel.toggleCommentBookmark(comment) },
-                                                onAuthorClick = { onAuthorClick(comment.authorUsername) },
-                                            )
-                                        }
+                                    }
+                                } else {
+                                    items(discoverComments, key = { it.id }) { comment ->
+                                        CommentCard(
+                                            comment = comment,
+                                            onClick = {
+                                                viewModel.openCommentPost(comment.postId, onCommentClick)
+                                            },
+                                            onReplyClick = {
+                                                viewModel.openCommentReply(
+                                                    postId = comment.postId,
+                                                    commentId = comment.id,
+                                                    authorUsername = comment.authorUsername,
+                                                    onNavigate = onReplyToComment,
+                                                )
+                                            },
+                                            onLikeClick = { viewModel.toggleCommentLike(comment) },
+                                            onDislikeClick = { viewModel.toggleCommentDislike(comment) },
+                                            onReportClick = { reportTargetId = comment.id },
+                                            onBookmarkClick = { viewModel.toggleCommentBookmark(comment) },
+                                            onAuthorClick = { onAuthorClick(comment.authorUsername) },
+                                        )
                                     }
                                 }
                             }

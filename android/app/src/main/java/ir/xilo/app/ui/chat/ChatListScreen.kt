@@ -94,10 +94,12 @@ fun ChatListScreen(
                 .zIndex(2f),
         )
         Column(modifier = Modifier.fillMaxSize()) {
+            // expand/shrink so the top-bar slot collapses with the chrome — slide-only
+            // exit leaves a blank gap above sticky folder chips until the exit finishes.
             AnimatedVisibility(
                 visible = chromeState?.isVisible != false,
-                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
             ) {
                 XiloTopAppBar(
                     title = stringResource(if (showArchived) R.string.chat_list_archived_title else R.string.chat_list_title),
@@ -133,34 +135,51 @@ fun ChatListScreen(
             }
 
             if (!showArchived) {
-                LazyRow(
+                // When top chrome hides on scroll, chips stick below the status bar
+                // (not under system icons). Opaque bg covers edge-to-edge scroll bleed.
+                val chipsBelowStatusBar = chromeState?.isVisible == false
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(filterChips.size) { index ->
-                        val chip = filterChips[index]
-                        val isSelected = when (chip) {
-                            is FilterChipItem.All ->
-                                listMode == ChatListMode.Chats && selectedFolderId == null
-                            is FilterChipItem.Saved -> listMode == ChatListMode.Saved
-                            is FilterChipItem.Folder ->
-                                listMode == ChatListMode.Chats && selectedFolderId == chip.id
-                        }
-                        FilterChipPill(
-                            label = chip.label,
-                            selected = isSelected,
-                            onClick = {
-                                showArchived = false
-                                when (chip) {
-                                    is FilterChipItem.All -> viewModel.selectFolder(null)
-                                    is FilterChipItem.Saved -> viewModel.openSavedMessagesFilter()
-                                    is FilterChipItem.Folder -> viewModel.selectFolder(chip.id)
-                                }
+                        .zIndex(1f)
+                        .background(MaterialTheme.colorScheme.background)
+                        .then(
+                            if (chipsBelowStatusBar) {
+                                Modifier.statusBarsPadding()
+                            } else {
+                                Modifier
                             }
                         )
+                ) {
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filterChips.size) { index ->
+                            val chip = filterChips[index]
+                            val isSelected = when (chip) {
+                                is FilterChipItem.All ->
+                                    listMode == ChatListMode.Chats && selectedFolderId == null
+                                is FilterChipItem.Saved -> listMode == ChatListMode.Saved
+                                is FilterChipItem.Folder ->
+                                    listMode == ChatListMode.Chats && selectedFolderId == chip.id
+                            }
+                            FilterChipPill(
+                                label = chip.label,
+                                selected = isSelected,
+                                onClick = {
+                                    showArchived = false
+                                    when (chip) {
+                                        is FilterChipItem.All -> viewModel.selectFolder(null)
+                                        is FilterChipItem.Saved -> viewModel.openSavedMessagesFilter()
+                                        is FilterChipItem.Folder -> viewModel.selectFolder(chip.id)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }

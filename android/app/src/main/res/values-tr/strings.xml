@@ -272,6 +272,7 @@
     <string name="cd_like">Beğen</string>
     <string name="cd_bookmark">Kaydet</string>
     <string name="cd_views">Görüntülenme</string>
+    <string name="post_cover_untitled">Gönderi</string>
     <string name="cd_share">Paylaş</string>
     <string name="cd_emoji">Emoji</string>
     <string name="cd_attach">Ekle</string>

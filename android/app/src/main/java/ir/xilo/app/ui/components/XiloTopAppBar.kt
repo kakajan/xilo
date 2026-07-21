@@ -39,6 +39,7 @@ fun XiloTopAppBar(
     centered: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.background,
     windowInsets: WindowInsets = xiloTopAppBarWindowInsets(),
+    applyStatusBarsPadding: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     XiloTopAppBar(
@@ -66,6 +67,7 @@ fun XiloTopAppBar(
         containerColor = containerColor,
         centerAligned = centered,
         windowInsets = windowInsets,
+        applyStatusBarsPadding = applyStatusBarsPadding,
     )
 }
 
@@ -79,11 +81,17 @@ fun XiloTopAppBar(
     containerColor: Color = MaterialTheme.colorScheme.background,
     centerAligned: Boolean = false,
     windowInsets: WindowInsets = xiloTopAppBarWindowInsets(),
+    applyStatusBarsPadding: Boolean = true,
 ) {
     val colors = TopAppBarDefaults.topAppBarColors(containerColor = containerColor)
     // Pad below the status bar outside TopAppBar so the bar's fixed 64dp row is not
-    // squeezed into the system chrome.
-    val barModifier = modifier.statusBarsPadding()
+    // squeezed into the system chrome. Parent sticky headers may already clear the
+    // status bar — pass applyStatusBarsPadding = false to avoid a double gap.
+    val barModifier = if (applyStatusBarsPadding) {
+        modifier.statusBarsPadding()
+    } else {
+        modifier
+    }
 
     if (centerAligned) {
         CenterAlignedTopAppBar(

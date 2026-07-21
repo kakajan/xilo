@@ -96,6 +96,7 @@ import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.theme.YekanBakhFontFamily
 import ir.xilo.app.ui.components.LocalChromeVisibility
+import ir.xilo.app.ui.components.PostCoverPlaceholder
 import ir.xilo.app.ui.components.ProfileSkeleton
 import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
@@ -1143,15 +1144,25 @@ private fun ProfileMediaCell(
             .aspectRatio(1f)
             .clickable(onClick = onClick)
     ) {
-        val image = post.coverImageUrl?.takeIf { it.isNotBlank() } ?: post.authorAvatar
-        AsyncImage(
-            model = image,
-            contentDescription = post.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
+        val coverUrl = post.coverImageUrl?.takeIf { it.isNotBlank() }
+        if (coverUrl != null) {
+            AsyncImage(
+                model = coverUrl,
+                contentDescription = post.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            )
+        } else {
+            PostCoverPlaceholder(
+                title = post.title,
+                excerpt = post.excerpt,
+                content = post.content,
+                seed = post.slug.ifBlank { post.id },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -1164,12 +1175,12 @@ private fun ProfileMediaCell(
         ) {
             XiloIcon(
                 icon = XiloIcons.Eye,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_views),
                 tint = Color.White,
                 modifier = Modifier.size(12.dp)
             )
             Text(
-                text = formatCount(post.likeCount.coerceAtLeast(post.commentCount)),
+                text = formatCount(post.viewCount),
                 color = Color.White,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
@@ -1292,11 +1303,13 @@ private fun ProfileReplyRow(
     }
 }
 
-private fun formatCount(n: Int): String = when {
+private fun formatCount(n: Long): String = when {
     n >= 1_000_000 -> "${n / 1_000_000}M"
     n >= 1_000 -> "${n / 1_000}K"
     else -> n.toString()
 }
+
+private fun formatCount(n: Int): String = formatCount(n.toLong())
 
 private fun lerpColor(start: Color, end: Color, t: Float): Color {
     val f = t.coerceIn(0f, 1f)
