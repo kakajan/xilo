@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Music2, Pause, Play } from "lucide-react";
 
+/** Playback speed options for the sticky post audio player. */
 const RATES = [1, 1.25, 1.5] as const;
 
 function formatTime(seconds: number): string {
