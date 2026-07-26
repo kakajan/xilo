@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-client";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface ReactionBarProps {
   targetType: "post" | "comment";
@@ -32,11 +34,17 @@ export function ReactionBar({
   viewerReactions,
   className,
 }: ReactionBarProps) {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const [count, setCount] = useState(likeCountOf(reactions));
   const [liked, setLiked] = useState(isLiked(viewerReactions));
   const [animating, setAnimating] = useState(false);
 
   const toggleLike = useCallback(async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     const prevLiked = liked;
     const prevCount = count;
     setLiked(!prevLiked);
@@ -54,7 +62,7 @@ export function ReactionBar({
     }
 
     setTimeout(() => setAnimating(false), 300);
-  }, [liked, count, targetType, targetId]);
+  }, [liked, count, targetType, targetId, user, router]);
 
   return (
     <div className={cn("flex items-center gap-1", className)}>

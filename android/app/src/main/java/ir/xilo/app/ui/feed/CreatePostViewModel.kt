@@ -227,6 +227,11 @@ class CreatePostViewModel @Inject constructor(
             _isUploadingAudio.value = true
             _error.value = null
             try {
+                val size = audioByteSize(uri)
+                if (size != null && size > MAX_AUDIO_BYTES) {
+                    _error.value = errorMessageResolver.string(R.string.error_audio_too_large)
+                    return@launch
+                }
                 val part = uriToAudioMultipart(uri)
                     ?: throw IllegalStateException("audio")
                 val url = apiService.uploadMedia(part).url
@@ -234,8 +239,9 @@ class CreatePostViewModel @Inject constructor(
                 scheduleDraftSave()
             } catch (e: Exception) {
                 _error.value = errorMessageResolver.fromThrowable(e, R.string.error_audio_upload)
+            } finally {
+                _isUploadingAudio.value = false
             }
-            _isUploadingAudio.value = false
         }
     }
 
@@ -438,10 +444,34 @@ class CreatePostViewModel @Inject constructor(
         _audioUrl.value = ""
     }
 
+    private fun audioByteSize(uri: Uri): Long? {
+        val resolver = context.contentResolver
+        resolver.query(uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)
+            ?.use { cursor ->
+                val idx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                if (idx >= 0 && cursor.moveToFirst() && !cursor.isNull(idx)) {
+                    return cursor.getLong(idx)
+                }
+            }
+        return resolver.openInputStream(uri)?.use { stream ->
+            var total = 0L
+            val buf = ByteArray(8192)
+            while (true) {
+                val n = stream.read(buf)
+                if (n < 0) break
+                total += n
+            }
+            total
+        }
+    }
+
     private fun uriToAudioMultipart(uri: Uri): MultipartBody.Part? {
         val resolver = context.contentResolver
         val mime = resolver.getType(uri) ?: "audio/mpeg"
         val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        if (bytes.size > MAX_AUDIO_BYTES) {
+            throw IllegalArgumentException("file too large")
+        }
         val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
         val filename = when {
             mime.contains("mpeg") || mime.contains("mp3") -> "post.mp3"
@@ -457,5 +487,6 @@ class CreatePostViewModel @Inject constructor(
 
     private companion object {
         const val DRAFT_DEBOUNCE_MS = 800L
+        const val MAX_AUDIO_BYTES = 50L * 1024L * 1024L
     }
 }

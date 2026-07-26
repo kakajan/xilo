@@ -300,19 +300,48 @@ class DiscoverViewModel @Inject constructor(
 
     fun toggleLike(postId: String, currentState: Boolean) {
         viewModelScope.launch {
+            val seed = _searchResults.value.firstOrNull { it.id == postId } ?: return@launch
+            val previousLiked = seed.isLiked
+            val previousCount = seed.likeCount
+            val optimisticLiked = !currentState
             _searchResults.update { posts ->
                 posts.map { post ->
                     if (post.id != postId) post
                     else {
-                        val liked = !currentState
                         post.copy(
-                            isLiked = liked,
-                            likeCount = (post.likeCount + if (liked) 1 else -1).coerceAtLeast(0)
+                            isLiked = optimisticLiked,
+                            likeCount = (post.likeCount + if (optimisticLiked) 1 else -1).coerceAtLeast(0)
                         )
                     }
                 }
             }
-            postRepository.toggleLike(postId, currentState)
+            postRepository.toggleLike(seed)
+                .onSuccess { liked ->
+                    _searchResults.update { posts ->
+                        posts.map { post ->
+                            if (post.id != postId) post
+                            else {
+                                val delta = when {
+                                    liked && !previousLiked -> 1
+                                    !liked && previousLiked -> -1
+                                    else -> 0
+                                }
+                                post.copy(
+                                    isLiked = liked,
+                                    likeCount = (previousCount + delta).coerceAtLeast(0),
+                                )
+                            }
+                        }
+                    }
+                }
+                .onFailure {
+                    _searchResults.update { posts ->
+                        posts.map { post ->
+                            if (post.id != postId) post
+                            else post.copy(isLiked = previousLiked, likeCount = previousCount)
+                        }
+                    }
+                }
         }
     }
 

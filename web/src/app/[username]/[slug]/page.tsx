@@ -107,6 +107,17 @@ export default async function PostPage({
             ))}
           </div>
         )}
+
+        {post.cover_image_url ? (
+          <div className="mt-6 overflow-hidden rounded-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={post.cover_image_url}
+              alt=""
+              className="max-h-[28rem] w-full object-cover"
+            />
+          </div>
+        ) : null}
       </header>
 
       <PostBody

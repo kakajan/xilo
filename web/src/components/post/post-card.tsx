@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Bookmark, Eye, Heart, MessageCircle, Share2 } from "lucide-react";
 import { cn, getInitials } from "@/lib/utils";
@@ -17,8 +18,16 @@ import { apiFetch } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Post } from "@/types/post";
 
+function isViewerLiked(viewerReactions?: string[]) {
+  return (
+    viewerReactions?.includes("like") === true ||
+    viewerReactions?.includes("heart") === true
+  );
+}
+
 export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => void }) {
   const formatDate = useFormatDate();
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const isOwner =
     !!user &&
@@ -26,7 +35,7 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
       (!!post.author?.username && user.username === post.author.username));
   const authorName = post.author?.display_name || post.author?.username || "ناشناس";
   const likeCount = post.reactions?.like ?? post.reactions?.heart ?? 0;
-  const [liked, setLiked] = useState(post.viewer_reactions?.includes("like") ?? false);
+  const [liked, setLiked] = useState(isViewerLiked(post.viewer_reactions));
   const [likes, setLikes] = useState(likeCount);
   const [bookmarked, setBookmarked] = useState(post.is_bookmarked ?? false);
   const [hidden, setHidden] = useState(false);
@@ -40,17 +49,22 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
   const toggleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const prev = liked;
-    setLiked(!prev);
-    setLikes((n) => (prev ? Math.max(0, n - 1) : n + 1));
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    const prevLiked = liked;
+    const prevCount = likes;
+    setLiked(!prevLiked);
+    setLikes((n) => (prevLiked ? Math.max(0, n - 1) : n + 1));
     try {
       await apiFetch(`/api/post/${post.id}/reactions`, {
         method: "POST",
         body: JSON.stringify({ reaction: "like" }),
       });
     } catch {
-      setLiked(prev);
-      setLikes(likeCount);
+      setLiked(prevLiked);
+      setLikes(prevCount);
     }
   };
 
@@ -127,6 +141,16 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
           {post.title}
         </h2>
       </Link>
+      {post.cover_image_url ? (
+        <Link href={href} className="mb-3 block overflow-hidden rounded-xl">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={post.cover_image_url}
+            alt=""
+            className="max-h-72 w-full object-cover"
+          />
+        </Link>
+      ) : null}
       {post.excerpt && (
         <p className="mb-3 line-clamp-2 text-muted-foreground">
           <HashtagText text={post.excerpt} />

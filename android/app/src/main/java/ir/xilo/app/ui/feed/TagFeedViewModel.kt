@@ -90,7 +90,16 @@ class TagFeedViewModel @Inject constructor(
     fun toggleLike(post: PostEntity) {
         viewModelScope.launch {
             val previous = post.isLiked
-            postRepository.toggleLike(post.id, post.isLiked)
+            val previousCount = post.likeCount
+            val optimisticLiked = !previous
+            _posts.value = _posts.value.map {
+                if (it.id != post.id) it
+                else it.copy(
+                    isLiked = optimisticLiked,
+                    likeCount = (previousCount + if (optimisticLiked) 1 else -1).coerceAtLeast(0),
+                )
+            }
+            postRepository.toggleLike(post)
                 .onSuccess { liked ->
                     _posts.value = _posts.value.map {
                         if (it.id != post.id) it else {
@@ -99,8 +108,14 @@ class TagFeedViewModel @Inject constructor(
                                 !liked && previous -> -1
                                 else -> 0
                             }
-                            it.copy(isLiked = liked, likeCount = (it.likeCount + delta).coerceAtLeast(0))
+                            it.copy(isLiked = liked, likeCount = (previousCount + delta).coerceAtLeast(0))
                         }
+                    }
+                }
+                .onFailure {
+                    _posts.value = _posts.value.map {
+                        if (it.id != post.id) it
+                        else it.copy(isLiked = previous, likeCount = previousCount)
                     }
                 }
         }

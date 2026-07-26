@@ -33,6 +33,11 @@ export function MetadataSidebar() {
   const [tagInput, setTagInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+
+  const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+  const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
 
   const handleTitleChange = (value: string) => {
     setTitle(value);
@@ -50,26 +55,53 @@ export function MetadataSidebar() {
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCoverError(null);
+    if (file.size > MAX_IMAGE_BYTES) {
+      setCoverError("حجم تصویر نباید بیشتر از ۱۰ مگابایت باشد");
+      e.target.value = "";
+      return;
+    }
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
     try {
       const res = await apiUpload<{ url: string }>("/api/media/upload", formData);
       setCoverImageUrl(res.url);
-    } catch {}
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setCoverError(
+        msg.toLowerCase().includes("too large")
+          ? "حجم تصویر بیش از حد مجاز است"
+          : "آپلود تصویر ناموفق بود"
+      );
+    }
     setUploading(false);
+    e.target.value = "";
   };
 
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAudioError(null);
+    if (file.size > MAX_AUDIO_BYTES) {
+      setAudioError("حجم فایل صوتی نباید بیشتر از ۵۰ مگابایت باشد");
+      e.target.value = "";
+      return;
+    }
     setUploadingAudio(true);
     const formData = new FormData();
     formData.append("file", file);
     try {
       const res = await apiUpload<{ url: string }>("/api/media/upload", formData);
       setAudioUrl(res.url);
-    } catch {}
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setAudioError(
+        msg.toLowerCase().includes("too large")
+          ? "حجم فایل صوتی بیش از حد مجاز است (حداکثر ۵۰ مگابایت)"
+          : "آپلود فایل صوتی ناموفق بود"
+      );
+    }
     setUploadingAudio(false);
     e.target.value = "";
   };
@@ -186,6 +218,11 @@ export function MetadataSidebar() {
             <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
           </label>
         )}
+        {coverError ? (
+          <p className="mt-1 text-xs text-destructive" role="alert">
+            {coverError}
+          </p>
+        ) : null}
       </div>
 
       <div>
@@ -198,7 +235,10 @@ export function MetadataSidebar() {
             </span>
             <button
               type="button"
-              onClick={() => setAudioUrl("")}
+              onClick={() => {
+                setAudioUrl("");
+                setAudioError(null);
+              }}
               className="shrink-0 rounded-full p-1 hover:bg-background/80"
               aria-label="حذف فایل صوتی"
             >
@@ -209,7 +249,7 @@ export function MetadataSidebar() {
           <label className="flex h-14 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed text-sm text-muted-foreground hover:bg-accent/50">
             <Music2 className="h-4 w-4 shrink-0" aria-hidden />
             <span className="min-w-0">
-              {uploadingAudio ? "در حال آپلود صوت..." : "آپلود فایل صوتی (اختیاری)"}
+              {uploadingAudio ? "در حال آپلود صوت..." : "آپلود فایل صوتی (اختیاری، تا ۵۰ مگابایت)"}
             </span>
             <input
               type="file"
@@ -219,6 +259,11 @@ export function MetadataSidebar() {
             />
           </label>
         )}
+        {audioError ? (
+          <p className="mt-1 text-xs text-destructive" role="alert">
+            {audioError}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex items-center justify-between">

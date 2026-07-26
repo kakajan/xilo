@@ -101,6 +101,12 @@ class ErrorMessageResolver @Inject constructor(
         VALIDATION_MAP[normalized]?.let { return it }
         VALIDATION_MAP[fieldMessage]?.let { return it }
 
+        if (normalized.contains("file too large") ||
+            normalized.contains("media exceeds the size limit")
+        ) {
+            return R.string.error_audio_too_large
+        }
+
         if (normalized.contains("unsupported mime type") ||
             normalized.contains("process avatar") ||
             normalized.contains("decode image") ||

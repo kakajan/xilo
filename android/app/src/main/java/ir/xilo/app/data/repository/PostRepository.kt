@@ -137,6 +137,18 @@ class PostRepository @Inject constructor(
         }
     }
 
+    /**
+     * Ensure [seed] is in Room so like toggles from tag/discover/profile work,
+     * then toggle. Prefer Room as source of truth when a row already exists.
+     */
+    suspend fun toggleLike(seed: PostEntity): Result<Boolean> {
+        val existing = postDao.getPostById(seed.id)
+        if (existing == null) {
+            postDao.insertPost(seed.copy(feedRank = Int.MAX_VALUE))
+        }
+        return toggleLike(seed.id, existing?.isLiked ?: seed.isLiked)
+    }
+
     suspend fun toggleLike(postId: String, currentLikeState: Boolean): Result<Boolean> {
         val mutex = likeMutexes.getOrPut(postId) { Mutex() }
         // Drop rapid double-taps that would toggle the server twice and bring the like back.
@@ -146,13 +158,14 @@ class PostRepository @Inject constructor(
         }
         return try {
             val snapshot = postDao.getPostById(postId)
-                ?: return Result.failure(IllegalStateException("Post not found: $postId"))
             // Prefer Room as source of truth — UI `currentLikeState` can be stale on fast taps.
-            val previousLiked = snapshot.isLiked
-            val previousCount = snapshot.likeCount
+            val previousLiked = snapshot?.isLiked ?: currentLikeState
+            val previousCount = snapshot?.likeCount ?: 0
             val wantLiked = !previousLiked
             val optimisticCount = (previousCount + if (wantLiked) 1 else -1).coerceAtLeast(0)
-            postDao.updateLikeState(postId, wantLiked, optimisticCount)
+            if (snapshot != null) {
+                postDao.updateLikeState(postId, wantLiked, optimisticCount)
+            }
 
             try {
                 apiService.toggleReaction(
@@ -161,21 +174,33 @@ class PostRepository @Inject constructor(
                     request = ToggleReactionRequest(reaction = "like"),
                 )
 
-                // Production may still have legacy "heart" rows. When unliking, clear any
-                // remaining like/heart viewer reactions so the heart cannot stick.
-                if (!wantLiked) {
-                    clearRemainingLikeReactions(postId = postId, slug = snapshot.slug)
+                // Backend like/heart is one family. If unlike left a legacy heart, clear once
+                // with "like" only — never toggle leftover keys in a loop (that can re-like).
+                val slug = snapshot?.slug.orEmpty()
+                if (!wantLiked && slug.isNotBlank()) {
+                    clearRemainingLikeReactionOnce(postId = postId, slug = slug)
                 }
 
-                val confirmed = runCatching {
-                    apiService.getPostBySlug(snapshot.slug.ifBlank { postId })
-                }.getOrNull()
+                val confirmed = if (slug.isNotBlank()) {
+                    runCatching { apiService.getPostBySlug(slug) }.getOrNull()
+                } else {
+                    null
+                }
                 val liked = confirmed?.resolvedIsLiked() ?: wantLiked
                 val count = confirmed?.resolvedLikeCount() ?: optimisticCount
-                postDao.updateLikeState(postId, liked, count.coerceAtLeast(0))
+                if (snapshot != null || confirmed != null) {
+                    if (confirmed != null) {
+                        val rank = snapshot?.feedRank ?: Int.MAX_VALUE
+                        postDao.insertPost(confirmed.toEntity(feedRank = rank))
+                    } else if (snapshot != null) {
+                        postDao.updateLikeState(postId, liked, count.coerceAtLeast(0))
+                    }
+                }
                 Result.success(liked)
             } catch (e: Exception) {
-                postDao.updateLikeState(postId, previousLiked, previousCount)
+                if (snapshot != null) {
+                    postDao.updateLikeState(postId, previousLiked, previousCount)
+                }
                 Result.failure(e)
             }
         } finally {
@@ -183,21 +208,17 @@ class PostRepository @Inject constructor(
         }
     }
 
-    private suspend fun clearRemainingLikeReactions(postId: String, slug: String) {
+    private suspend fun clearRemainingLikeReactionOnce(postId: String, slug: String) {
         val remote = runCatching {
             apiService.getPostBySlug(slug.ifBlank { postId })
         }.getOrNull() ?: return
-        val leftovers = remote.viewerReactions.filter {
-            it.equals("like", ignoreCase = true) || it.equals("heart", ignoreCase = true)
-        }
-        for (reaction in leftovers.distinctBy { it.lowercase() }) {
-            runCatching {
-                apiService.toggleReaction(
-                    type = "post",
-                    id = postId,
-                    request = ToggleReactionRequest(reaction = reaction),
-                )
-            }
+        if (!remote.resolvedIsLiked()) return
+        runCatching {
+            apiService.toggleReaction(
+                type = "post",
+                id = postId,
+                request = ToggleReactionRequest(reaction = "like"),
+            )
         }
     }
 

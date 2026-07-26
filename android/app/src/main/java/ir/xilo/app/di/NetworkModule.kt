@@ -69,7 +69,8 @@ object NetworkModule {
 
         return OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(5, TimeUnit.MINUTES)
             .addInterceptor(DeviceHeadersInterceptor())
             .addInterceptor(
                 BearerTokenInterceptor(

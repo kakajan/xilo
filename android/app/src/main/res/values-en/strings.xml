@@ -65,6 +65,8 @@
     <string name="post_audio_play">Play</string>
     <string name="post_audio_pause">Pause</string>
     <string name="error_audio_upload">Audio upload failed</string>
+    <string name="error_audio_too_large">Audio file must be 50 MB or smaller</string>
+    <string name="post_audio_load_error">Unable to play audio. The file is unavailable.</string>
     <string name="tag_feed_label">Posts with this tag</string>
     <string name="tag_feed_empty">No posts with this hashtag yet</string>
     <string name="post_edit_title">Edit post</string>

@@ -201,8 +201,10 @@ func main() {
 	platformSettingsH := platformhandler.NewSettingsHandler(db)
 
 	app := fiber.New(fiber.Config{
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		// Above media-service max audio (50 MiB) so multipart is not rejected early.
+		BodyLimit:    55 * 1024 * 1024,
+		ReadTimeout:  5 * time.Minute,
+		WriteTimeout: 2 * time.Minute,
 		IdleTimeout:  60 * time.Second,
 		// Nginx sets X-Forwarded-For; without this, c.IP() is the proxy and all
 		// clients share one rate-limit bucket → widespread 429s.

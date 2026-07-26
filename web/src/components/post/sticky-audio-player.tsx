@@ -24,23 +24,51 @@ export function StickyAudioPlayer({
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [rateIndex, setRateIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!src?.trim()) {
+      setError("آدرس فایل صوتی نامعتبر است");
+      setReady(false);
+      return;
+    }
+
     const audio = new Audio(src);
     audio.preload = "metadata";
     audioRef.current = audio;
+    setError(null);
+    setReady(false);
+    setPlaying(false);
+    setCurrent(0);
+    setDuration(0);
 
     const onTime = () => setCurrent(audio.currentTime);
-    const onMeta = () => setDuration(audio.duration || 0);
+    const onMeta = () => {
+      setDuration(audio.duration || 0);
+      setReady(true);
+      setError(null);
+    };
     const onEnded = () => setPlaying(false);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onError = () => {
+      setPlaying(false);
+      setReady(false);
+      setError("پخش صوت ممکن نیست. فایل در دسترس نیست.");
+    };
+    const onStalled = () => {
+      if (!audio.error) return;
+      setError("بارگذاری صوت متوقف شد");
+    };
 
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
+    audio.addEventListener("error", onError);
+    audio.addEventListener("stalled", onStalled);
 
     return () => {
       audio.pause();
@@ -49,6 +77,8 @@ export function StickyAudioPlayer({
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("error", onError);
+      audio.removeEventListener("stalled", onStalled);
       audioRef.current = null;
     };
   }, [src]);
@@ -61,17 +91,20 @@ export function StickyAudioPlayer({
 
   const toggle = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || error) return;
     if (audio.paused) {
-      void audio.play();
+      void audio.play().catch(() => {
+        setError("پخش صوت ممکن نیست");
+        setPlaying(false);
+      });
     } else {
       audio.pause();
     }
-  }, []);
+  }, [error]);
 
   const onSeek = (value: number) => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !ready) return;
     audio.currentTime = value;
     setCurrent(value);
   };
@@ -96,7 +129,8 @@ export function StickyAudioPlayer({
         <button
           type="button"
           onClick={toggle}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+          disabled={!!error}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
           aria-label={playing ? "توقف" : "پخش"}
         >
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ms-0.5" />}
@@ -104,34 +138,42 @@ export function StickyAudioPlayer({
         <button
           type="button"
           onClick={cycleRate}
-          className="shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium tabular-nums text-muted-foreground hover:bg-accent"
+          disabled={!!error || !ready}
+          className="shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium tabular-nums text-muted-foreground hover:bg-accent disabled:opacity-50"
           aria-label="سرعت پخش"
           dir="ltr"
         >
           {RATES[rateIndex]}×
         </button>
       </div>
-      <div className="mt-1.5 flex items-center gap-2">
-        <span className="w-9 shrink-0 text-start text-[10px] tabular-nums text-muted-foreground" dir="ltr">
-          {formatTime(current)}
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.1}
-          value={current}
-          onChange={(e) => onSeek(Number(e.target.value))}
-          className="h-1.5 min-w-0 flex-1 cursor-pointer accent-primary"
-          aria-label="جابجایی در صوت"
-          style={{
-            background: `linear-gradient(to right, var(--primary) ${progress}%, var(--muted) ${progress}%)`,
-          }}
-        />
-        <span className="w-9 shrink-0 text-end text-[10px] tabular-nums text-muted-foreground" dir="ltr">
-          {formatTime(duration)}
-        </span>
-      </div>
+      {error ? (
+        <p className="mt-1.5 text-[11px] text-destructive" role="alert">
+          {error}
+        </p>
+      ) : (
+        <div className="mt-1.5 flex items-center gap-2">
+          <span className="w-9 shrink-0 text-start text-[10px] tabular-nums text-muted-foreground" dir="ltr">
+            {formatTime(current)}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={current}
+            onChange={(e) => onSeek(Number(e.target.value))}
+            disabled={!ready}
+            className="h-1.5 min-w-0 flex-1 cursor-pointer accent-primary disabled:opacity-50"
+            aria-label="جابجایی در صوت"
+            style={{
+              background: `linear-gradient(to right, var(--primary) ${progress}%, var(--muted) ${progress}%)`,
+            }}
+          />
+          <span className="w-9 shrink-0 text-end text-[10px] tabular-nums text-muted-foreground" dir="ltr">
+            {formatTime(duration)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

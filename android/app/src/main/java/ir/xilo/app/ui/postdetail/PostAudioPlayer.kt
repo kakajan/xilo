@@ -54,35 +54,44 @@ fun PostAudioPlayer(
     var rateIndex by remember(audioUrl) { mutableIntStateOf(0) }
     var userSeeking by remember(audioUrl) { mutableStateOf(false) }
     var ready by remember(audioUrl) { mutableStateOf(false) }
+    var loadError by remember(audioUrl) { mutableStateOf(false) }
 
     val player = remember(audioUrl) { MediaPlayer() }
 
     DisposableEffect(audioUrl, player) {
-        player.setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build(),
-        )
-        player.setOnPreparedListener {
-            ready = true
-            durationMs = it.duration.coerceAtLeast(0).toFloat()
-        }
-        player.setOnCompletionListener {
-            playing = false
-            positionMs = 0f
-            it.seekTo(0)
-        }
-        player.setOnErrorListener { _, _, _ ->
-            playing = false
+        if (audioUrl.isBlank()) {
+            loadError = true
             ready = false
-            true
-        }
-        runCatching {
-            player.setDataSource(audioUrl)
-            player.prepareAsync()
-        }.onFailure {
-            ready = false
+        } else {
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build(),
+            )
+            player.setOnPreparedListener {
+                ready = true
+                loadError = false
+                durationMs = it.duration.coerceAtLeast(0).toFloat()
+            }
+            player.setOnCompletionListener {
+                playing = false
+                positionMs = 0f
+                it.seekTo(0)
+            }
+            player.setOnErrorListener { _, _, _ ->
+                playing = false
+                ready = false
+                loadError = true
+                true
+            }
+            runCatching {
+                player.setDataSource(audioUrl)
+                player.prepareAsync()
+            }.onFailure {
+                ready = false
+                loadError = true
+            }
         }
         onDispose {
             runCatching {
@@ -145,7 +154,7 @@ fun PostAudioPlayer(
                 )
                 IconButton(
                     onClick = {
-                        if (!ready) return@IconButton
+                        if (!ready || loadError) return@IconButton
                         if (player.isPlaying) {
                             player.pause()
                             playing = false
@@ -154,7 +163,7 @@ fun PostAudioPlayer(
                             playing = true
                         }
                     },
-                    enabled = ready,
+                    enabled = ready && !loadError,
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
@@ -171,7 +180,7 @@ fun PostAudioPlayer(
                 }
                 TextButton(
                     onClick = { rateIndex = (rateIndex + 1) % PlaybackRates.size },
-                    enabled = ready,
+                    enabled = ready && !loadError,
                 ) {
                     Text(
                         text = "${PlaybackRates[rateIndex]}×",
@@ -180,44 +189,53 @@ fun PostAudioPlayer(
                     )
                 }
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            if (loadError) {
                 Text(
-                    text = formatMs(positionMs.toLong()),
+                    text = stringResource(R.string.post_audio_load_error),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(end = 6.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
-                Slider(
-                    value = positionMs.coerceIn(0f, durationMs.coerceAtLeast(1f)),
-                    onValueChange = {
-                        userSeeking = true
-                        positionMs = it
-                    },
-                    onValueChangeFinished = {
-                        if (ready) {
-                            runCatching { player.seekTo(positionMs.toInt()) }
-                        }
-                        userSeeking = false
-                    },
-                    valueRange = 0f..(durationMs.coerceAtLeast(1f)),
-                    enabled = ready,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(24.dp),
-                    colors = SliderDefaults.colors(
-                        thumbColor = XiloBlue,
-                        activeTrackColor = XiloBlue,
-                    ),
-                )
-                Text(
-                    text = formatMs(durationMs.toLong()),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(start = 6.dp),
-                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = formatMs(positionMs.toLong()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(end = 6.dp),
+                    )
+                    Slider(
+                        value = positionMs.coerceIn(0f, durationMs.coerceAtLeast(1f)),
+                        onValueChange = {
+                            userSeeking = true
+                            positionMs = it
+                        },
+                        onValueChangeFinished = {
+                            if (ready) {
+                                runCatching { player.seekTo(positionMs.toInt()) }
+                            }
+                            userSeeking = false
+                        },
+                        valueRange = 0f..(durationMs.coerceAtLeast(1f)),
+                        enabled = ready,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(24.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = XiloBlue,
+                            activeTrackColor = XiloBlue,
+                        ),
+                    )
+                    Text(
+                        text = formatMs(durationMs.toLong()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
             }
         }
     }
