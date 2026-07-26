@@ -1,0 +1,19 @@
+[Unit]
+Description=Xilo production compose stack (aile.ir)
+Documentation=file:///opt/xilo/infra/server/xilo-boot.sh
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=REMOTE_DIR=/opt/xilo
+ExecStart=/opt/xilo/infra/server/xilo-boot.sh
+# Clean stop so Postgres/Redis flush before host reboot/shutdown.
+ExecStop=/bin/bash -c 'cd /opt/xilo/infra && set -a && . ./.compose.secrets.env && set +a && docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env stop'
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

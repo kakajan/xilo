@@ -17,6 +17,7 @@ systemctl enable docker
 systemctl start docker
 
 bash "$REMOTE_DIR/infra/server/disk-hygiene-iran.sh"
+bash "$REMOTE_DIR/infra/server/install-xilo-systemd.sh"
 
 echo "== Secrets =="
 mkdir -p "$REMOTE_DIR/infra/secrets/jwt" "$REMOTE_DIR/infra/env" "$REMOTE_DIR/logs"

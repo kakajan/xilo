@@ -1005,11 +1005,14 @@ cd ${remoteDir}/infra
 set -a
 . ./.compose.secrets.env
 set +a
-export XILO_IMAGE_TAG=${tag}
-
-# Ensure tag aliases after docker load
+# Pin running containers to :latest so reboot/systemd recovery never depends on a
+# pruned deploy-* tag. Keep ${tag} as an alias for rollback/diagnostics.
 ${services.includes("web") ? `docker tag xilo/web:${tag} xilo/web:latest 2>/dev/null || true` : ""}
 ${services.includes("api") ? `docker tag xilo/api-gateway:${tag} xilo/api-gateway:latest 2>/dev/null || true` : ""}
+export XILO_IMAGE_TAG=latest
+sed -i 's/^XILO_IMAGE_TAG=.*/XILO_IMAGE_TAG=latest/' .compose.secrets.env 2>/dev/null || true
+grep -q '^XILO_IMAGE_TAG=' .compose.secrets.env || echo 'XILO_IMAGE_TAG=latest' >> .compose.secrets.env
+cp -f .compose.secrets.env .env
 
 # App only — never rebuild/pull deps
 docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env up -d --no-build --pull never --no-deps ${svc}

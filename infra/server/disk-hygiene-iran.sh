@@ -19,6 +19,14 @@ cat >/etc/docker/daemon.json <<'EOF'
   "log-opts": {
     "max-size": "10m",
     "max-file": "3"
+  },
+  "live-restore": true,
+  "default-ulimits": {
+    "nofile": {
+      "Name": "nofile",
+      "Hard": 64000,
+      "Soft": 64000
+    }
   }
 }
 EOF
