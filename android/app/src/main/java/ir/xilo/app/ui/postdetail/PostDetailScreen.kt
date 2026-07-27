@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -245,22 +246,28 @@ fun PostDetailScreen(
                 }
             )
         },
-        bottomBar = {
-            val audio = post?.audioUrl
-            if (!audio.isNullOrBlank()) {
-                PostAudioPlayer(
-                    audioUrl = audio,
-                    title = post?.title.orEmpty(),
-                )
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
     ) { innerPadding ->
+        val audioUrl = post?.audioUrl?.takeIf { it.isNotBlank() }
+        val layoutDirection = LocalLayoutDirection.current
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(
+                    if (audioUrl != null) {
+                        // Let content draw under the floating player so its bottom fade is visible.
+                        PaddingValues(
+                            top = innerPadding.calculateTopPadding(),
+                            start = innerPadding.calculateStartPadding(layoutDirection),
+                            end = innerPadding.calculateEndPadding(layoutDirection),
+                            bottom = 0.dp,
+                        )
+                    } else {
+                        innerPadding
+                    },
+                ),
         ) {
             when {
                 post == null && isLoading -> {
@@ -292,6 +299,11 @@ fun PostDetailScreen(
                     ) {
                     LazyColumn(
                         state = listState,
+                        contentPadding = if (audioUrl != null) {
+                            PaddingValues(bottom = 48.dp + navBottom)
+                        } else {
+                            PaddingValues()
+                        },
                         modifier = Modifier.fillMaxSize()
                     ) {
                         item {
@@ -466,6 +478,14 @@ fun PostDetailScreen(
                     }
                     }
                 }
+            }
+
+            if (audioUrl != null) {
+                PostAudioPlayer(
+                    audioUrl = audioUrl,
+                    title = post?.title.orEmpty(),
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
         }
     }

@@ -1,7 +1,6 @@
 package ir.xilo.app.ui.feed
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -61,6 +59,7 @@ import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
+import ir.xilo.app.ui.components.CategoryTabChip
 import ir.xilo.app.ui.components.FeedSkeletonList
 import ir.xilo.app.ui.components.LocalChromeVisibility
 import ir.xilo.app.ui.components.VerifiedBadge
@@ -400,32 +399,11 @@ private fun FeedCategoryTabs(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(categories.size) { index ->
-            val isSelected = selectedCategory == index
-            val scale by animateFloatAsState(
-                targetValue = if (isSelected) 1.05f else 1f,
-                label = "tabScale"
+            CategoryTabChip(
+                label = categories[index],
+                selected = selectedCategory == index,
+                onClick = { onCategorySelected(index) },
             )
-            Box(
-                modifier = Modifier
-                    .scale(scale)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        if (isSelected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        }
-                    )
-                    .clickable { onCategorySelected(index) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = categories[index],
-                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
         }
     }
 }

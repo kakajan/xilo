@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import ir.xilo.app.R
 
 /**
@@ -40,6 +41,7 @@ fun XiloTopAppBar(
     containerColor: Color = MaterialTheme.colorScheme.background,
     windowInsets: WindowInsets = xiloTopAppBarWindowInsets(),
     applyStatusBarsPadding: Boolean = true,
+    expandedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     XiloTopAppBar(
@@ -68,6 +70,7 @@ fun XiloTopAppBar(
         centerAligned = centered,
         windowInsets = windowInsets,
         applyStatusBarsPadding = applyStatusBarsPadding,
+        expandedHeight = expandedHeight,
     )
 }
 
@@ -82,9 +85,10 @@ fun XiloTopAppBar(
     centerAligned: Boolean = false,
     windowInsets: WindowInsets = xiloTopAppBarWindowInsets(),
     applyStatusBarsPadding: Boolean = true,
+    expandedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
 ) {
     val colors = TopAppBarDefaults.topAppBarColors(containerColor = containerColor)
-    // Pad below the status bar outside TopAppBar so the bar's fixed 64dp row is not
+    // Pad below the status bar outside TopAppBar so the bar's fixed row is not
     // squeezed into the system chrome. Parent sticky headers may already clear the
     // status bar — pass applyStatusBarsPadding = false to avoid a double gap.
     val barModifier = if (applyStatusBarsPadding) {
@@ -100,6 +104,7 @@ fun XiloTopAppBar(
             actions = actions,
             colors = colors,
             windowInsets = windowInsets,
+            expandedHeight = expandedHeight,
             modifier = barModifier
         )
     } else {
@@ -109,6 +114,7 @@ fun XiloTopAppBar(
             actions = actions,
             colors = colors,
             windowInsets = windowInsets,
+            expandedHeight = expandedHeight,
             modifier = barModifier
         )
     }

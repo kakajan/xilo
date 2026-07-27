@@ -29,6 +29,7 @@ import ir.xilo.app.R
 import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
+import ir.xilo.app.ui.components.CategoryTabChip
 import ir.xilo.app.ui.components.CommentCard
 import ir.xilo.app.ui.components.LocalChromeVisibility
 import ir.xilo.app.ui.components.XiloIcon
@@ -171,6 +172,7 @@ fun DiscoverScreen(
                 XiloTopAppBar(
                     title = stringResource(R.string.discover_title),
                     centered = true,
+                    expandedHeight = 44.dp,
                     actions = {
                         IconButton(onClick = { isSearchActive = true }) {
                             XiloIcon(icon = XiloIcons.Search, contentDescription = stringResource(R.string.common_search))
@@ -193,22 +195,28 @@ fun DiscoverScreen(
                         } else {
                             Modifier
                         }
-                    ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    .offset(y = (-4).dp),
+                contentPadding = PaddingValues(
+                    start = XiloSpacing.horizontal,
+                    end = XiloSpacing.horizontal,
+                    top = 0.dp,
+                    bottom = 4.dp,
+                ),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item(key = "all") {
-                    FilterChip(
+                    CategoryTabChip(
+                        label = stringResource(R.string.discover_topic_all),
                         selected = selectedInterestSlug == null,
                         onClick = { viewModel.selectInterest(null) },
-                        label = { Text(stringResource(R.string.discover_topic_all)) },
                     )
                 }
                 items(topicInterests, key = { it.id }) { interest ->
-                    FilterChip(
+                    CategoryTabChip(
+                        label = interest.labelFor(languageCode),
                         selected = selectedInterestSlug == interest.slug,
                         onClick = { viewModel.selectInterest(interest.slug) },
-                        label = { Text(interest.labelFor(languageCode)) },
                     )
                 }
             }
@@ -383,3 +391,4 @@ fun DiscoverScreen(
     }
     }
 }
+

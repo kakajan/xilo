@@ -3,6 +3,7 @@ package ir.xilo.app.ui.postdetail
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -33,7 +34,6 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -51,7 +51,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -171,10 +173,29 @@ fun PostAudioPlayer(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2400, easing = LinearEasing),
+            animation = tween(durationMillis = 2200, easing = LinearEasing),
             repeatMode = RepeatMode.Restart,
         ),
         label = "progressShimmerShift",
+    )
+    // Tip of the progress gently breathes between green and theme blue.
+    val edgeBlueMix by shimmer.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.95f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "progressEdgeBlueMix",
+    )
+    val edgeGlow by shimmer.animateFloat(
+        initialValue = 0.0f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "progressEdgeGlow",
     )
     val playingPulse by shimmer.animateFloat(
         initialValue = 0.92f,
@@ -209,21 +230,38 @@ fun PostAudioPlayer(
         label = "playTint",
     )
 
+    val surface = MaterialTheme.colorScheme.surface
+
+    // Compact chrome: no elevation; opaque at top of the bar, fades to transparent at its bottom.
     Column(modifier = modifier.fillMaxWidth()) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            tonalElevation = 1.dp,
-            shadowElevation = 2.dp,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        ) {
-            // Media chrome is always LTR so progress, seek, and trailing play stay consistent.
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        // Media chrome is always LTR so progress, seek, and trailing play stay consistent.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to surface.copy(alpha = 0.96f),
+                                0.50f to surface.copy(alpha = 0.82f),
+                                0.82f to surface.copy(alpha = 0.28f),
+                                1.0f to Color.Transparent,
+                            ),
+                        ),
+                    ),
+            ) {
+                // Thin progress track along the top edge (green → theme blue at the tip).
+                val tipColor = lerp(ColorSuccess, XiloBlue, edgeBlueMix)
+                val midColor = lerp(ColorSuccess, XiloBlue, edgeBlueMix * 0.45f)
+                val tipAlpha = (0.78f + edgeGlow * 0.18f).coerceIn(0.75f, 0.98f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .height(2.5.dp)
+                        .align(Alignment.TopCenter)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
                 ) {
-                    // Progress: left → right; richer green at the leading (front) edge.
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
@@ -232,48 +270,30 @@ fun PostAudioPlayer(
                             .background(
                                 brush = Brush.horizontalGradient(
                                     colorStops = arrayOf(
-                                        0f to ColorSuccess.copy(alpha = 0.05f),
-                                        0.4f to ColorSuccess.copy(
-                                            alpha = 0.10f + shimmerShift * 0.04f,
+                                        0.0f to ColorSuccess.copy(alpha = 0.35f),
+                                        0.40f to ColorSuccess.copy(
+                                            alpha = 0.55f + shimmerShift * 0.12f,
                                         ),
-                                        0.82f to ColorSuccess.copy(alpha = 0.20f),
-                                        1f to ColorSuccess.copy(alpha = 0.34f),
+                                        0.72f to midColor.copy(alpha = 0.78f + edgeGlow * 0.10f),
+                                        0.90f to tipColor.copy(alpha = tipAlpha * 0.92f),
+                                        1.0f to tipColor.copy(alpha = tipAlpha),
                                     ),
                                 ),
                             ),
                     )
-                    if (animatedProgress > 0.01f) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
-                                .align(AbsoluteAlignment.CenterLeft),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .fillMaxHeight()
-                                    .padding(vertical = 8.dp)
-                                    .size(width = 2.dp, height = 36.dp)
-                                    .background(
-                                        color = ColorSuccess.copy(alpha = 0.55f),
-                                        shape = RoundedCornerShape(1.dp),
-                                    ),
-                            )
-                        }
-                    }
+                }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-                    ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 12.dp, end = 8.dp, top = 4.dp, bottom = 2.dp),
+                ) {
                         // Seekable content cluster (title + time).
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -314,7 +334,7 @@ fun PostAudioPlayer(
                                 icon = XiloIcons.Music,
                                 contentDescription = null,
                                 tint = if (playing) ColorSuccess else XiloBlue,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                             Text(
                                 text = if (loadError) {
@@ -326,7 +346,7 @@ fun PostAudioPlayer(
                                     fontFamily = IranSansXFontFamily,
                                     fontWeight = FontWeight.Medium,
                                     fontSize = 13.sp,
-                                    lineHeight = 18.sp,
+                                    lineHeight = 16.sp,
                                 ),
                                 color = if (loadError) {
                                     MaterialTheme.colorScheme.error
@@ -343,8 +363,8 @@ fun PostAudioPlayer(
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         fontFamily = IranSansXFontFamily,
                                         fontWeight = FontWeight.Medium,
-                                        fontSize = 12.sp,
-                                        lineHeight = 16.sp,
+                                        fontSize = 11.sp,
+                                        lineHeight = 14.sp,
                                         fontFeatureSettings = "tnum",
                                     ),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -360,8 +380,8 @@ fun PostAudioPlayer(
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontFamily = IranSansXFontFamily,
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
+                                fontSize = 11.sp,
+                                lineHeight = 14.sp,
                                 fontFeatureSettings = "tnum",
                             ),
                             color = if (speedEnabled) {
@@ -384,14 +404,14 @@ fun PostAudioPlayer(
                                 ) {
                                     rateIndex = (rateIndex + 1) % PlaybackRates.size
                                 }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
                         )
 
                         // Primary play/pause — always trailing edge (LTR end).
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(32.dp)
                                 .graphicsLayer {
                                     val scale = if (playing) playingPulse else 1f
                                     scaleX = scale
@@ -433,13 +453,12 @@ fun PostAudioPlayer(
                                 },
                                 contentDescription = null,
                                 tint = playTint,
-                                modifier = Modifier.size(26.dp),
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }
                 }
             }
-        }
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
