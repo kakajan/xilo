@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -230,26 +231,26 @@ fun PostAudioPlayer(
         label = "playTint",
     )
 
-    val surface = MaterialTheme.colorScheme.surface
+    // Frosted chrome on the post screen: slight translucency, strong enough that
+    // content behind stays soft / not clearly readable. Same fill covers the
+    // system navigation-bar inset so player + nav read as one continuous strip.
+    val frosted = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+        Color.White.copy(alpha = 0.95f)
+    } else {
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+    }
 
-    // Compact chrome: no elevation; opaque at top of the bar, fades to transparent at its bottom.
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(frosted),
+    ) {
         // Media chrome is always LTR so progress, seek, and trailing play stay consistent.
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(38.dp)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colorStops = arrayOf(
-                                0.0f to surface.copy(alpha = 0.96f),
-                                0.50f to surface.copy(alpha = 0.82f),
-                                0.82f to surface.copy(alpha = 0.28f),
-                                1.0f to Color.Transparent,
-                            ),
-                        ),
-                    ),
+                    .height(38.dp),
             ) {
                 // Thin progress track along the top edge (green → theme blue at the tip).
                 val tipColor = lerp(ColorSuccess, XiloBlue, edgeBlueMix)

@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -27,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import androidx.compose.ui.graphics.Color
 import ir.xilo.app.R
 import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.data.local.entity.PostEntity
@@ -485,6 +487,20 @@ fun PostDetailScreen(
                     audioUrl = audioUrl,
                     title = post?.title.orEmpty(),
                     modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            } else {
+                // Match player frosted fill over the system navigation inset.
+                val frosted = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+                    Color.White.copy(alpha = 0.95f)
+                } else {
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .windowInsetsBottomHeight(WindowInsets.navigationBars)
+                        .background(frosted),
                 )
             }
         }
