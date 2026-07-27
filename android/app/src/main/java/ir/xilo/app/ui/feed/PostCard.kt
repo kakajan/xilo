@@ -176,35 +176,6 @@ fun PostCard(
                         )
                     }
                 }
-
-                if (!post.coverImageUrl.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    AsyncImage(
-                        model = post.coverImageUrl,
-                        contentDescription = stringResource(R.string.cd_post_image),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
-                    )
-                }
-
-                if (post.hasQuotedPost()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    QuotedPostEmbed(
-                        post = post,
-                        onClick = post.quotedSlug?.let { slug -> { onPostClick(slug) } },
-                    )
-                }
-
-                if (post.hasQuotedComment()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    QuotedCommentEmbed(
-                        post = post,
-                        onClick = post.quotedCommentPostSlug?.let { slug -> { onPostClick(slug) } },
-                    )
-                }
             }
 
             if (isOwner && onEditClick != null && onArchiveClick != null && onDeleteClick != null) {
@@ -214,6 +185,49 @@ fun PostCard(
                     onDelete = onDeleteClick,
                 )
             }
+        }
+
+        // Full-bleed cover with small equal side margins (not indented under avatar).
+        if (!post.coverImageUrl.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            AsyncImage(
+                model = post.coverImageUrl,
+                contentDescription = stringResource(R.string.cd_post_image),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = XiloSpacing.horizontal)
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
+                    .clickable(
+                        role = Role.Button,
+                        onClick = { onPostClick(post.slug) },
+                    ),
+            )
+        }
+
+        if (post.hasQuotedPost()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            QuotedPostEmbed(
+                post = post,
+                onClick = post.quotedSlug?.let { slug -> { onPostClick(slug) } },
+                modifier = Modifier.padding(
+                    start = XiloSpacing.horizontal + 52.dp,
+                    end = XiloSpacing.horizontal,
+                ),
+            )
+        }
+
+        if (post.hasQuotedComment()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            QuotedCommentEmbed(
+                post = post,
+                onClick = post.quotedCommentPostSlug?.let { slug -> { onPostClick(slug) } },
+                modifier = Modifier.padding(
+                    start = XiloSpacing.horizontal + 52.dp,
+                    end = XiloSpacing.horizontal,
+                ),
+            )
         }
 
         Row(

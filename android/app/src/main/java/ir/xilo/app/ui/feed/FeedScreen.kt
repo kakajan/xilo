@@ -89,6 +89,7 @@ fun FeedScreen(
     val posts by viewModel.posts.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val isLoading by viewModel.isInitialLoading.collectAsState()
+    val isContentLoading by viewModel.isContentLoading.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
     val selectedCategory by viewModel.selectedCategoryIndex.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -99,6 +100,7 @@ fun FeedScreen(
     val chromeState = LocalChromeVisibility.current
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val showFeedSkeleton = (isLoading && posts.isEmpty()) || isContentLoading
 
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
@@ -148,9 +150,16 @@ fun FeedScreen(
                 modifier = listModifier,
                 contentPadding = PaddingValues(top = topContentPadding, bottom = XiloSpacing.feedBottomChromePadding)
             ) {
-                if (isLoading && posts.isEmpty()) {
+                if (showFeedSkeleton) {
                     item(key = "feed_skeleton") {
-                        FeedSkeletonList(modifier = Modifier.fillMaxWidth())
+                        Box(
+                            modifier = Modifier
+                                .fillParentMaxWidth()
+                                .fillParentMaxHeight(),
+                            contentAlignment = Alignment.TopCenter,
+                        ) {
+                            FeedSkeletonList(modifier = Modifier.fillMaxWidth())
+                        }
                     }
                 } else if (posts.isEmpty() && !isRefreshing) {
                     item(key = "feed_empty") {

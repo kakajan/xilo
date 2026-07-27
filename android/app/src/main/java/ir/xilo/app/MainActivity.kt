@@ -2,14 +2,21 @@ package ir.xilo.app
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -21,6 +28,7 @@ import ir.xilo.app.data.repository.ThemeRepository
 import ir.xilo.app.push.PushNavigationCoordinator
 import ir.xilo.app.push.extractPushNotificationData
 import ir.xilo.app.theme.XiloTheme
+import ir.xilo.app.ui.components.SystemNavigationBarScrim
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -40,7 +48,19 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(
+                lightScrim = Color.TRANSPARENT,
+                darkScrim = Color.TRANSPARENT,
+            ),
+            navigationBarStyle = SystemBarStyle.auto(
+                lightScrim = Color.TRANSPARENT,
+                darkScrim = Color.TRANSPARENT,
+            ),
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         // Keep the system navigation bar visible; bottom chrome uses navigationBarsPadding().
         WindowCompat.getInsetsController(window, window.decorView)
             .show(WindowInsetsCompat.Type.navigationBars())
@@ -57,8 +77,16 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
             }
             XiloTheme(darkTheme = darkTheme, platformTheme = platformTheme) {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    MainNavigation()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        MainNavigation()
+                    }
+                    SystemNavigationBarScrim(
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
                 }
             }
         }

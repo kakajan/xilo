@@ -2,23 +2,41 @@ package ir.xilo.app.ui.postdetail
 
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,15 +44,29 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ir.xilo.app.R
+import ir.xilo.app.theme.ColorSuccess
+import ir.xilo.app.theme.IranSansXFontFamily
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
@@ -106,6 +138,7 @@ fun PostAudioPlayer(
         while (ready) {
             if (!userSeeking) {
                 runCatching {
+                    playing = player.isPlaying
                     positionMs = player.currentPosition.toFloat()
                     durationMs = player.duration.coerceAtLeast(0).toFloat()
                 }
@@ -122,122 +155,292 @@ fun PostAudioPlayer(
         }
     }
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        tonalElevation = 2.dp,
-        shadowElevation = 4.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+    val progressFraction = if (durationMs > 0f) {
+        (positionMs / durationMs).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressFraction,
+        animationSpec = tween(durationMillis = if (userSeeking) 0 else 220),
+        label = "audioProgress",
+    )
+
+    val shimmer = rememberInfiniteTransition(label = "progressShimmer")
+    val shimmerShift by shimmer.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "progressShimmerShift",
+    )
+    val playingPulse by shimmer.animateFloat(
+        initialValue = 0.92f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "playingPulse",
+    )
+
+    val seekEnabled = ready && !loadError && durationMs > 0f
+    val latestDuration by rememberUpdatedState(durationMs)
+    val latestSeekEnabled by rememberUpdatedState(seekEnabled)
+    val latestPlayer by rememberUpdatedState(player)
+
+    fun applySeekFraction(fraction: Float) {
+        if (!latestSeekEnabled) return
+        val duration = latestDuration
+        if (duration <= 0f) return
+        val clamped = fraction.coerceIn(0f, 1f)
+        positionMs = clamped * duration
+        runCatching { latestPlayer.seekTo(positionMs.toInt()) }
+    }
+
+    val playPauseLabel = stringResource(
+        if (playing) R.string.post_audio_pause else R.string.post_audio_play,
+    )
+    val playTint by animateColorAsState(
+        targetValue = if (playing) ColorSuccess else XiloBlue,
+        animationSpec = tween(180),
+        label = "playTint",
+    )
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            tonalElevation = 1.dp,
+            shadowElevation = 2.dp,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                XiloIcon(
-                    icon = XiloIcons.Music,
-                    contentDescription = null,
-                    tint = XiloBlue,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    text = title.ifBlank { stringResource(R.string.post_audio_title) },
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(
-                    onClick = {
-                        if (!ready || loadError) return@IconButton
-                        if (player.isPlaying) {
-                            player.pause()
-                            playing = false
-                        } else {
-                            player.start()
-                            playing = true
-                        }
-                    },
-                    enabled = ready && !loadError,
+            // Media chrome is always LTR so progress, seek, and trailing play stay consistent.
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(XiloBlue),
+                        .fillMaxWidth()
+                        .height(52.dp),
                 ) {
-                    XiloIcon(
-                        icon = if (playing) XiloIcons.Pause else XiloIcons.Play,
-                        contentDescription = stringResource(
-                            if (playing) R.string.post_audio_pause else R.string.post_audio_play,
-                        ),
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                TextButton(
-                    onClick = { rateIndex = (rateIndex + 1) % PlaybackRates.size },
-                    enabled = ready && !loadError,
-                ) {
-                    Text(
-                        text = "${PlaybackRates[rateIndex]}×",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
-            }
-            if (loadError) {
-                Text(
-                    text = stringResource(R.string.post_audio_load_error),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = formatMs(positionMs.toLong()),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(end = 6.dp),
-                    )
-                    Slider(
-                        value = positionMs.coerceIn(0f, durationMs.coerceAtLeast(1f)),
-                        onValueChange = {
-                            userSeeking = true
-                            positionMs = it
-                        },
-                        onValueChangeFinished = {
-                            if (ready) {
-                                runCatching { player.seekTo(positionMs.toInt()) }
-                            }
-                            userSeeking = false
-                        },
-                        valueRange = 0f..(durationMs.coerceAtLeast(1f)),
-                        enabled = ready,
+                    // Progress: left → right; richer green at the leading (front) edge.
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(24.dp),
-                        colors = SliderDefaults.colors(
-                            thumbColor = XiloBlue,
-                            activeTrackColor = XiloBlue,
-                        ),
+                            .fillMaxHeight()
+                            .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                            .align(AbsoluteAlignment.CenterLeft)
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colorStops = arrayOf(
+                                        0f to ColorSuccess.copy(alpha = 0.05f),
+                                        0.4f to ColorSuccess.copy(
+                                            alpha = 0.10f + shimmerShift * 0.04f,
+                                        ),
+                                        0.82f to ColorSuccess.copy(alpha = 0.20f),
+                                        1f to ColorSuccess.copy(alpha = 0.34f),
+                                    ),
+                                ),
+                            ),
                     )
-                    Text(
-                        text = formatMs(durationMs.toLong()),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
+                    if (animatedProgress > 0.01f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                                .align(AbsoluteAlignment.CenterLeft),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .fillMaxHeight()
+                                    .padding(vertical = 8.dp)
+                                    .size(width = 2.dp, height = 36.dp)
+                                    .background(
+                                        color = ColorSuccess.copy(alpha = 0.55f),
+                                        shape = RoundedCornerShape(1.dp),
+                                    ),
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                    ) {
+                        // Seekable content cluster (title + time).
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .pointerInput(seekEnabled) {
+                                    detectTapGestures { offset ->
+                                        if (!latestSeekEnabled || size.width <= 0) {
+                                            return@detectTapGestures
+                                        }
+                                        userSeeking = true
+                                        applySeekFraction(offset.x / size.width.toFloat())
+                                        userSeeking = false
+                                    }
+                                }
+                                .pointerInput(seekEnabled) {
+                                    detectHorizontalDragGestures(
+                                        onDragStart = { offset ->
+                                            if (!latestSeekEnabled || size.width <= 0) {
+                                                return@detectHorizontalDragGestures
+                                            }
+                                            userSeeking = true
+                                            applySeekFraction(offset.x / size.width.toFloat())
+                                        },
+                                        onDragEnd = { userSeeking = false },
+                                        onDragCancel = { userSeeking = false },
+                                        onHorizontalDrag = { change, _ ->
+                                            if (!latestSeekEnabled || size.width <= 0) {
+                                                return@detectHorizontalDragGestures
+                                            }
+                                            change.consume()
+                                            applySeekFraction(
+                                                change.position.x / size.width.toFloat(),
+                                            )
+                                        },
+                                    )
+                                },
+                        ) {
+                            XiloIcon(
+                                icon = XiloIcons.Music,
+                                contentDescription = null,
+                                tint = if (playing) ColorSuccess else XiloBlue,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                text = if (loadError) {
+                                    stringResource(R.string.post_audio_load_error)
+                                } else {
+                                    title.ifBlank { stringResource(R.string.post_audio_title) }
+                                },
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontFamily = IranSansXFontFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp,
+                                ),
+                                color = if (loadError) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (!loadError && durationMs > 0f) {
+                                Text(
+                                    text = "${formatMs(positionMs.toLong())} / ${formatMs(durationMs.toLong())}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = IranSansXFontFamily,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp,
+                                        fontFeatureSettings = "tnum",
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+
+                        // Speed chip — compact meta control before the primary action.
+                        val speedEnabled = ready && !loadError
+                        Text(
+                            text = formatRate(PlaybackRates[rateIndex]),
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontFamily = IranSansXFontFamily,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                fontFeatureSettings = "tnum",
+                            ),
+                            color = if (speedEnabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(
+                                    MaterialTheme.colorScheme.onSurface.copy(
+                                        alpha = if (speedEnabled) 0.06f else 0.03f,
+                                    ),
+                                )
+                                .clickable(
+                                    enabled = speedEnabled,
+                                    role = Role.Button,
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                ) {
+                                    rateIndex = (rateIndex + 1) % PlaybackRates.size
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+
+                        // Primary play/pause — always trailing edge (LTR end).
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .graphicsLayer {
+                                    val scale = if (playing) playingPulse else 1f
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                                .clip(CircleShape)
+                                .background(playTint.copy(alpha = if (playing) 0.14f else 0.12f))
+                                .border(
+                                    width = 1.5.dp,
+                                    color = playTint.copy(alpha = if (playing) 0.9f else 0.55f),
+                                    shape = CircleShape,
+                                )
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = playPauseLabel
+                                }
+                                .clickable(
+                                    enabled = ready && !loadError,
+                                    role = Role.Button,
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                ) {
+                                    runCatching {
+                                        if (player.isPlaying) {
+                                            player.pause()
+                                            playing = false
+                                        } else {
+                                            player.start()
+                                            playing = true
+                                        }
+                                    }
+                                },
+                        ) {
+                            XiloIcon(
+                                icon = if (playing) {
+                                    XiloIcons.PauseCircle
+                                } else {
+                                    XiloIcons.PlayCircle
+                                },
+                                contentDescription = null,
+                                tint = playTint,
+                                modifier = Modifier.size(26.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
+        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 
@@ -247,4 +450,12 @@ private fun formatMs(ms: Long): String {
     val m = totalSec / 60
     val s = totalSec % 60
     return "%d:%02d".format(m, s)
+}
+
+private fun formatRate(rate: Float): String {
+    return if (rate % 1f == 0f) {
+        "${rate.toInt()}×"
+    } else {
+        "${rate}×"
+    }
 }

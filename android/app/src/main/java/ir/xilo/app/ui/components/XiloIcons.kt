@@ -118,6 +118,8 @@ object XiloIcons {
     val Music = IconSax.Outline.Music
     val Play = IconSax.Bold.Play
     val Pause = IconSax.Bold.Pause
+    val PlayCircle = IconSax.Bold.PlayCircle
+    val PauseCircle = IconSax.Bold.PauseCircle
 }
 
 @Composable

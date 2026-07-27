@@ -53,6 +53,10 @@ class FeedViewModel @Inject constructor(
     private val _isInitialLoading = MutableStateFlow(true)
     val isInitialLoading: StateFlow<Boolean> = _isInitialLoading.asStateFlow()
 
+    /** In-content skeleton while switching category filters (not pull-to-refresh). */
+    private val _isContentLoading = MutableStateFlow(false)
+    val isContentLoading: StateFlow<Boolean> = _isContentLoading.asStateFlow()
+
     private val _selectedCategoryIndex = MutableStateFlow(0)
     val selectedCategoryIndex: StateFlow<Int> = _selectedCategoryIndex.asStateFlow()
 
@@ -73,19 +77,25 @@ class FeedViewModel @Inject constructor(
     }
 
     fun selectCategory(index: Int) {
+        if (_selectedCategoryIndex.value == index) return
         _selectedCategoryIndex.value = index
-        refreshFeed()
+        refreshFeed(asPullToRefresh = false)
     }
 
-    fun refreshFeed() {
+    fun refreshFeed(asPullToRefresh: Boolean = true) {
         viewModelScope.launch {
-            _isRefreshing.value = true
+            if (asPullToRefresh) {
+                _isRefreshing.value = true
+            } else {
+                _isContentLoading.value = true
+            }
             postRepository.refreshFeed()
                 .onFailure { e ->
                     Log.e("FeedViewModel", "refreshFeed failed: ${e.message}", e)
                     _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_load_feed)
                 }
             _isRefreshing.value = false
+            _isContentLoading.value = false
             _isInitialLoading.value = false
         }
     }
