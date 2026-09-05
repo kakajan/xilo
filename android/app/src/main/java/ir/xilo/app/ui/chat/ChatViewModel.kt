@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.source
 import javax.inject.Inject
 
 sealed interface ChatSendEvent {
@@ -318,7 +319,19 @@ class ChatViewModel @Inject constructor(
         val draft = caption.trim()
         stopLocalTyping(chat.id)
         viewModelScope.launch {
-            val part = uriToMultipart(uri)
+            val mime = context.contentResolver.getType(uri).orEmpty()
+            val isVideo = mime.startsWith("video")
+            val part = try {
+                uriToMultipart(uri, isVideo)
+            } catch (e: IllegalArgumentException) {
+                _composerError.tryEmit(
+                    errorMessageResolver.string(
+                        if (isVideo) R.string.error_video_too_large else R.string.error_image_too_large
+                    )
+                )
+                _sendEvents.emit(ChatSendEvent.Failed(draft.ifBlank { null }))
+                return@launch
+            }
             if (part == null) {
                 _sendEvents.emit(ChatSendEvent.Failed(draft.ifBlank { null }))
                 return@launch
@@ -341,7 +354,8 @@ class ChatViewModel @Inject constructor(
                 )
                 return@launch
             }
-            val draftIdentity = "${chat.id}\u0000image\u0000$mediaUrl\u0000$draft"
+            val messageType = if (isVideo) MessageType.VIDEO else MessageType.IMAGE
+            val draftIdentity = "${chat.id}\u0000${messageType.name}\u0000$mediaUrl\u0000$draft"
             val operationKey = synchronized(activeDraftKeys) {
                 if (activeDraftKeys.containsKey(draftIdentity)) {
                     return@launch
@@ -355,7 +369,7 @@ class ChatViewModel @Inject constructor(
                 chatRepository.sendMessage(
                     chatId = chat.id,
                     request = SendMessageRequest(
-                        type = MessageType.IMAGE,
+                        type = messageType,
                         content = draft.ifBlank { null },
                         mediaUrl = mediaUrl,
                     ),
@@ -381,15 +395,35 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun uriToMultipart(uri: Uri): MultipartBody.Part? {
+    private fun uriToMultipart(uri: Uri, isVideo: Boolean): MultipartBody.Part? {
         val resolver = context.contentResolver
-        val mime = resolver.getType(uri) ?: "image/jpeg"
-        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
-        val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
+        val mime = resolver.getType(uri) ?: if (isVideo) "video/mp4" else "image/jpeg"
+        val size = resolver.query(uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)
+            ?.use { cursor ->
+                val idx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                if (idx >= 0 && cursor.moveToFirst() && !cursor.isNull(idx)) cursor.getLong(idx) else null
+            }
+        val maxBytes = if (isVideo) MAX_VIDEO_BYTES else MAX_IMAGE_BYTES
+        if (size != null && size > maxBytes) {
+            throw IllegalArgumentException("file too large")
+        }
         val filename = when {
             mime.contains("png") -> "chat.png"
             mime.contains("webp") -> "chat.webp"
+            mime.contains("gif") -> "chat.gif"
+            mime.contains("mp4") -> "chat.mp4"
+            mime.contains("webm") -> "chat.webm"
+            isVideo -> "chat.mp4"
             else -> "chat.jpg"
+        }
+        val body = object : okhttp3.RequestBody() {
+            override fun contentType() = mime.toMediaTypeOrNull()
+            override fun contentLength(): Long = size ?: -1L
+            override fun writeTo(sink: okio.BufferedSink) {
+                resolver.openInputStream(uri)?.use { input ->
+                    sink.writeAll(input.source())
+                }
+            }
         }
         return MultipartBody.Part.createFormData("file", filename, body)
     }
@@ -457,6 +491,18 @@ class ChatViewModel @Inject constructor(
                 .onFailure {
                     _composerError.tryEmit(
                         errorMessageResolver.fromThrowable(it, R.string.chat_delete_failed)
+                    )
+                }
+        }
+    }
+
+    fun toggleMessageReaction(messageId: String, reaction: String) {
+        if (messageId.startsWith("local-")) return
+        viewModelScope.launch {
+            chatRepository.toggleMessageReaction(messageId, reaction)
+                .onFailure {
+                    _composerError.tryEmit(
+                        errorMessageResolver.fromThrowable(it, R.string.error_unknown)
                     )
                 }
         }
@@ -591,5 +637,7 @@ class ChatViewModel @Inject constructor(
         private const val LOCAL_TYPING_PULSE_MS = 3_000L
         private const val LOCAL_TYPING_IDLE_MS = 3_000L
         private const val PEER_TYPING_TIMEOUT_MS = 5_000L
+        private const val MAX_IMAGE_BYTES = 10L * 1024L * 1024L
+        private const val MAX_VIDEO_BYTES = 100L * 1024L * 1024L
     }
 }

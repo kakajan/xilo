@@ -21,7 +21,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,10 +46,10 @@ fun TagFeedScreen(
     modifier: Modifier = Modifier,
     viewModel: TagFeedViewModel = hiltViewModel(),
 ) {
-    val posts by viewModel.posts.collectAsState()
-    val loading by viewModel.loading.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val canRepost by viewModel.canRepost.collectAsState()
+    val posts by viewModel.posts.collectAsStateWithLifecycle()
+    val loading by viewModel.loading.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val canRepost by viewModel.canRepost.collectAsStateWithLifecycle()
 
     LaunchedEffect(tag) {
         viewModel.load(tag)
@@ -138,6 +138,7 @@ fun TagFeedScreen(
                             post = post,
                             onPostClick = onPostClick,
                             onLikeClick = { viewModel.toggleLike(post) },
+                            onReact = { emoji -> viewModel.react(post, emoji) },
                             onBookmarkClick = { viewModel.toggleBookmark(post) },
                             onCommentClick = { onPostClick(post.slug) },
                             onRepostClick = if (canRepost) {

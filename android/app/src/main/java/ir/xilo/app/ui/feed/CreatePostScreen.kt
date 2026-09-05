@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,7 +12,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import java.util.Calendar
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -34,9 +41,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,37 +73,55 @@ fun CreatePostScreen(
     editPostId: String? = null,
     quotedPostId: String? = null,
     quotedCommentId: String? = null,
+    composeKind: String = ComposeKind.ARTICLE,
     modifier: Modifier = Modifier,
     viewModel: CreatePostViewModel = hiltViewModel(
-        key = "create-post-${editPostId.orEmpty()}-${quotedPostId.orEmpty()}-${quotedCommentId.orEmpty()}",
+        key = "create-post-${editPostId.orEmpty()}-${quotedPostId.orEmpty()}-${quotedCommentId.orEmpty()}-$composeKind",
     ),
 ) {
-    val title by viewModel.title.collectAsState()
-    val content by viewModel.content.collectAsState()
-    val audioUrl by viewModel.audioUrl.collectAsState()
-    val isUploadingAudio by viewModel.isUploadingAudio.collectAsState()
-    val isSubmitting by viewModel.isSubmitting.collectAsState()
-    val isLoadingEdit by viewModel.isLoadingEdit.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val fieldErrors by viewModel.fieldErrors.collectAsState()
-    val success by viewModel.success.collectAsState()
-    val allowed by viewModel.allowed.collectAsState()
-    val tagSuggestions by viewModel.tagSuggestions.collectAsState()
-    val quotedPost by viewModel.quotedPost.collectAsState()
-    val quotedComment by viewModel.quotedComment.collectAsState()
-    val quotedCommentPostTitle by viewModel.quotedCommentPostTitle.collectAsState()
+    val title by viewModel.title.collectAsStateWithLifecycle()
+    val content by viewModel.content.collectAsStateWithLifecycle()
+    val audioUrl by viewModel.audioUrl.collectAsStateWithLifecycle()
+    val coverImageUrl by viewModel.coverImageUrl.collectAsStateWithLifecycle()
+    val isUploadingCover by viewModel.isUploadingCover.collectAsStateWithLifecycle()
+    val scheduledAtEpoch by viewModel.scheduledAtEpoch.collectAsStateWithLifecycle()
+    val isUploadingAudio by viewModel.isUploadingAudio.collectAsStateWithLifecycle()
+    val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
+    val isLoadingEdit by viewModel.isLoadingEdit.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val fieldErrors by viewModel.fieldErrors.collectAsStateWithLifecycle()
+    val success by viewModel.success.collectAsStateWithLifecycle()
+    val allowed by viewModel.allowed.collectAsStateWithLifecycle()
+    val tagSuggestions by viewModel.tagSuggestions.collectAsStateWithLifecycle()
+    val quotedPost by viewModel.quotedPost.collectAsStateWithLifecycle()
+    val quotedComment by viewModel.quotedComment.collectAsStateWithLifecycle()
+    val quotedCommentPostTitle by viewModel.quotedCommentPostTitle.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val isEditing = !editPostId.isNullOrBlank()
     val isQuote = !quotedPostId.isNullOrBlank() || !quotedCommentId.isNullOrBlank()
+    val hideTitle = !isEditing && (composeKind == ComposeKind.TEXT || isQuote)
 
     val audioPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri ->
         if (uri != null) viewModel.uploadAudio(uri)
     }
+    val coverPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) viewModel.uploadCover(uri)
+    }
+    val context = LocalContext.current
+    var audioPickerRequested by remember { mutableStateOf(false) }
+    LaunchedEffect(composeKind) {
+        if (composeKind == ComposeKind.AUDIO && !audioPickerRequested && audioUrl.isBlank()) {
+            audioPickerRequested = true
+            audioPicker.launch("audio/*")
+        }
+    }
 
-    LaunchedEffect(editPostId, quotedPostId, quotedCommentId) {
-        viewModel.prepare(editPostId, quotedPostId, quotedCommentId)
+    LaunchedEffect(editPostId, quotedPostId, quotedCommentId, composeKind) {
+        viewModel.prepare(editPostId, quotedPostId, quotedCommentId, composeKind)
     }
 
     LaunchedEffect(allowed) {
@@ -126,6 +153,8 @@ fun CreatePostScreen(
                             when {
                                 isEditing -> R.string.post_edit_title
                                 isQuote -> R.string.quote_compose_title
+                                composeKind == ComposeKind.TEXT -> R.string.compose_kind_text
+                                composeKind == ComposeKind.AUDIO -> R.string.compose_kind_audio
                                 else -> R.string.post_create_title
                             }
                         ),
@@ -174,7 +203,7 @@ fun CreatePostScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            if (!isQuote) {
+            if (!hideTitle) {
                 XiloTextField(
                     value = title,
                     onValueChange = viewModel::updateTitle,
@@ -184,6 +213,102 @@ fun CreatePostScreen(
                     errorText = fieldErrors[PostField.Title],
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (!isQuote && coverImageUrl.isNotBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                ) {
+                    AsyncImage(
+                        model = coverImageUrl,
+                        contentDescription = stringResource(R.string.cd_post_image),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                    )
+                    Text(
+                        text = stringResource(R.string.post_cover_attached),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = viewModel::clearCover) {
+                        XiloIcon(
+                            icon = XiloIcons.Close,
+                            contentDescription = stringResource(R.string.post_cover_remove),
+                        )
+                    }
+                }
+            } else if (!isQuote) {
+                OutlinedButton(
+                    onClick = { coverPicker.launch("image/*") },
+                    enabled = !isUploadingCover && !isSubmitting,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (isUploadingCover) R.string.post_cover_uploading else R.string.post_cover_attach
+                        ),
+                    )
+                }
+            }
+
+            if (!isQuote) {
+                OutlinedButton(
+                    onClick = {
+                        val now = Calendar.getInstance()
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute ->
+                                        val picked = Calendar.getInstance().apply {
+                                            set(year, month, day, hour, minute, 0)
+                                            set(Calendar.MILLISECOND, 0)
+                                        }
+                                        viewModel.setScheduledAt(picked.timeInMillis)
+                                    },
+                                    now.get(Calendar.HOUR_OF_DAY),
+                                    now.get(Calendar.MINUTE),
+                                    true,
+                                ).show()
+                            },
+                            now.get(Calendar.YEAR),
+                            now.get(Calendar.MONTH),
+                            now.get(Calendar.DAY_OF_MONTH),
+                        ).show()
+                    },
+                    enabled = !isSubmitting,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                ) {
+                    Text(
+                        text = if (scheduledAtEpoch != null) {
+                            stringResource(R.string.post_schedule_set)
+                        } else {
+                            stringResource(R.string.post_schedule)
+                        },
+                    )
+                }
+                if (scheduledAtEpoch != null) {
+                    Text(
+                        text = stringResource(R.string.post_schedule_clear),
+                        color = XiloBlue,
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .clickable { viewModel.setScheduledAt(null) },
+                    )
+                }
             }
 
             if (!isQuote && audioUrl.isNotBlank()) {
@@ -260,6 +385,28 @@ fun CreatePostScreen(
                             },
                         )
                     }
+                }
+            }
+
+            if (!isQuote) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                ) {
+                    AssistChip(
+                        onClick = { viewModel.wrapMarkdown("**") },
+                        label = { Text(stringResource(R.string.post_format_bold)) },
+                    )
+                    AssistChip(
+                        onClick = { viewModel.wrapMarkdown("_") },
+                        label = { Text(stringResource(R.string.post_format_italic)) },
+                    )
+                    AssistChip(
+                        onClick = { viewModel.wrapMarkdown("## ", "") },
+                        label = { Text(stringResource(R.string.post_format_heading)) },
+                    )
                 }
             }
 

@@ -1,6 +1,7 @@
 package ir.xilo.app.ui.contact
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
@@ -27,10 +30,11 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +55,7 @@ import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.XiloTopAppBar
 import ir.xilo.app.ui.components.forUsernameHandle
+import kotlinx.coroutines.launch
 
 @Composable
 fun ContactDetailScreen(
@@ -59,7 +64,7 @@ fun ContactDetailScreen(
     modifier: Modifier = Modifier,
     viewModel: ContactDetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         stringResource(R.string.contact_tab_media),
@@ -69,6 +74,9 @@ fun ContactDetailScreen(
         stringResource(R.string.contact_tab_gifs),
         stringResource(R.string.contact_tab_groups),
     )
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val comingSoon = stringResource(R.string.settings_coming_soon)
 
     LaunchedEffect(chatId) {
         viewModel.loadContact(chatId)
@@ -85,6 +93,7 @@ fun ContactDetailScreen(
 
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             XiloTopAppBar(
                 title = { Text(contact.name, fontWeight = FontWeight.Bold) },
@@ -96,11 +105,6 @@ fun ContactDetailScreen(
                         )
                     }
                 },
-                actions = {
-                    IconButton(onClick = { }) {
-                        XiloIcon(icon = XiloIcons.Edit, contentDescription = stringResource(R.string.common_edit))
-                    }
-                }
             )
         }
     ) { innerPadding ->
@@ -158,11 +162,24 @@ fun ContactDetailScreen(
                         .padding(horizontal = 8.dp, vertical = 56.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    ContactActionButton(XiloIcons.Call, stringResource(R.string.contact_action_call))
-                    ContactActionButton(XiloIcons.Video, stringResource(R.string.contact_action_video))
-                    ContactActionButton(XiloIcons.Notification, stringResource(R.string.contact_action_mute))
-                    ContactActionButton(XiloIcons.Search, stringResource(R.string.common_search))
-                    ContactActionButton(XiloIcons.MoreHorizontal, stringResource(R.string.common_more))
+                    ContactActionButton(
+                        XiloIcons.Notification,
+                        stringResource(R.string.contact_action_mute),
+                    ) {
+                        snackbarHostState.showSnackbar(comingSoon)
+                    }
+                    ContactActionButton(
+                        XiloIcons.Search,
+                        stringResource(R.string.common_search),
+                    ) {
+                        snackbarHostState.showSnackbar(comingSoon)
+                    }
+                    ContactActionButton(
+                        XiloIcons.MoreHorizontal,
+                        stringResource(R.string.common_more),
+                    ) {
+                        snackbarHostState.showSnackbar(comingSoon)
+                    }
                 }
             }
 
@@ -254,9 +271,14 @@ fun ContactDetailScreen(
 @Composable
 private fun ContactActionButton(
     @androidx.annotation.DrawableRes icon: Int,
-    label: String
+    label: String,
+    onClick: suspend () -> Unit,
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    val scope = rememberCoroutineScope()
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { scope.launch { onClick() } },
+    ) {
         Box(
             modifier = Modifier
                 .size(48.dp)

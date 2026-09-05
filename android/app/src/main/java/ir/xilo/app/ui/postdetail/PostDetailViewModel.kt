@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.data.local.entity.toggledReaction
 import ir.xilo.app.R
 import ir.xilo.app.core.util.canModerate
 import ir.xilo.app.core.util.canRepost
@@ -234,6 +235,7 @@ class PostDetailViewModel @Inject constructor(
                         _post.value = _post.value?.copy(
                             isLiked = fresh.isLiked,
                             likeCount = fresh.likeCount,
+                            reactionsJson = fresh.reactionsJson,
                         )
                     }
                 }
@@ -244,6 +246,35 @@ class PostDetailViewModel @Inject constructor(
                     _errorMessage.value =
                         errorMessageResolver.fromThrowable(it, R.string.error_unknown)
                 }
+        }
+    }
+
+    fun react(postId: String, emoji: String) {
+        viewModelScope.launch {
+            val snapshot = _post.value?.takeIf { it.id == postId }
+            if (snapshot != null) {
+                _post.value = snapshot.toggledReaction(emoji)
+            }
+            val result = if (snapshot != null) {
+                postRepository.toggleEmojiReaction(snapshot, emoji)
+            } else {
+                postRepository.toggleEmojiReaction(postId, emoji)
+            }
+            result.onFailure {
+                if (snapshot != null) {
+                    _post.value = snapshot
+                }
+                _errorMessage.value =
+                    errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+            }.onSuccess {
+                postRepository.getPostById(postId)?.let { fresh ->
+                    _post.value = _post.value?.copy(
+                        isLiked = fresh.isLiked,
+                        likeCount = fresh.likeCount,
+                        reactionsJson = fresh.reactionsJson,
+                    )
+                }
+            }
         }
     }
 

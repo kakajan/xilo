@@ -89,11 +89,25 @@ interface PostDao {
     @Update
     suspend fun updatePost(post: PostEntity)
 
-    @Query("UPDATE posts SET isLiked = :isLiked, likeCount = :likeCount WHERE id = :postId")
-    suspend fun updateLikeState(postId: String, isLiked: Boolean, likeCount: Int): Int
+    @Query(
+        """
+        UPDATE posts
+        SET isLiked = :isLiked, likeCount = :likeCount, reactionsJson = :reactionsJson
+        WHERE id = :postId
+        """
+    )
+    suspend fun updateLikeState(
+        postId: String,
+        isLiked: Boolean,
+        likeCount: Int,
+        reactionsJson: String,
+    ): Int
 
-    @Query("SELECT * FROM posts ORDER BY feedRank ASC, createdAt DESC, id DESC LIMIT 50")
+    @Query("SELECT * FROM posts ORDER BY feedRank ASC, createdAt DESC, id DESC LIMIT 200")
     fun getFeedFlow(): Flow<List<PostEntity>>
+
+    @Query("SELECT COALESCE(MAX(feedRank), -1) FROM posts")
+    suspend fun maxFeedRank(): Int
 
     @Query("SELECT * FROM posts WHERE id = :id")
     suspend fun getPostById(id: String): PostEntity?
@@ -235,6 +249,9 @@ interface MessageDao {
                     message.clientOperationKey ?: existing?.clientOperationKey,
                 clientPayloadHash =
                     message.clientPayloadHash ?: existing?.clientPayloadHash,
+                reactionsJson = message.reactionsJson.takeIf { it.isNotBlank() && it != "[]" }
+                    ?: existing?.reactionsJson
+                    ?: "[]",
                 // Authoritative receive restores a previously soft-deleted row.
                 isDeleted = message.isDeleted,
                 deliveryState = MessageDeliveryState.DELIVERED,
@@ -282,6 +299,9 @@ interface MessageDao {
         """
     )
     suspend fun softDeleteById(messageId: String): Int
+
+    @Query("UPDATE messages SET reactionsJson = :reactionsJson WHERE id = :messageId")
+    suspend fun updateReactionsJson(messageId: String, reactionsJson: String): Int
 
     @Query(
         """

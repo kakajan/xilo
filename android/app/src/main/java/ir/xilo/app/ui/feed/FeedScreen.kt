@@ -22,21 +22,23 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +61,6 @@ import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
-import ir.xilo.app.ui.components.CategoryTabChip
 import ir.xilo.app.ui.components.FeedSkeletonList
 import ir.xilo.app.ui.components.LocalChromeVisibility
 import ir.xilo.app.ui.components.VerifiedBadge
@@ -86,17 +87,17 @@ fun FeedScreen(
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
 ) {
-    val posts by viewModel.posts.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val isLoading by viewModel.isInitialLoading.collectAsState()
-    val isContentLoading by viewModel.isContentLoading.collectAsState()
-    val isOnline by viewModel.isOnline.collectAsState()
-    val selectedCategory by viewModel.selectedCategoryIndex.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val currentUserAvatarUrl by viewModel.currentUserAvatarUrl.collectAsState()
-    val currentUserId by viewModel.currentUserId.collectAsState()
-    val currentUsername by viewModel.currentUsername.collectAsState()
-    val canRepost by viewModel.canRepost.collectAsState()
+    val posts by viewModel.posts.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isInitialLoading.collectAsStateWithLifecycle()
+    val isContentLoading by viewModel.isContentLoading.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val undoMessageRes by viewModel.undoMessage.collectAsStateWithLifecycle()
+    val currentUserAvatarUrl by viewModel.currentUserAvatarUrl.collectAsStateWithLifecycle()
+    val currentUserId by viewModel.currentUserId.collectAsStateWithLifecycle()
+    val currentUsername by viewModel.currentUsername.collectAsStateWithLifecycle()
+    val canRepost by viewModel.canRepost.collectAsStateWithLifecycle()
     val chromeState = LocalChromeVisibility.current
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -107,6 +108,36 @@ fun FeedScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
         }
+    }
+
+    val undoText = undoMessageRes?.let { stringResource(it) }
+    val undoAction = stringResource(R.string.feed_undo_action)
+    LaunchedEffect(undoText) {
+        undoText?.let { message ->
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = if (undoMessageRes == R.string.feed_undo_deleted) {
+                    null
+                } else {
+                    undoAction
+                },
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoLast()
+            }
+            viewModel.consumeUndoMessage()
+        }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisible ->
+                val last = lastVisible ?: return@collect
+                if (last >= posts.size - 4) {
+                    viewModel.loadMore()
+                }
+            }
     }
 
     val isTopChromeVisible = chromeState?.isVisible != false
@@ -177,6 +208,15 @@ fun FeedScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
+                                    text = stringResource(R.string.feed_empty_topics_cta),
+                                    color = XiloBlue,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .clickable(onClick = onSearchClick)
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                                Text(
                                     text = stringResource(R.string.common_refresh),
                                     color = XiloBlue,
                                     fontWeight = FontWeight.Bold,
@@ -189,7 +229,7 @@ fun FeedScreen(
                         }
                     }
                 } else {
-                    items(posts, key = { it.id }) { post ->
+                    items(posts, key = { it.id }, contentType = { "post" }) { post ->
                         if (post.id.endsWith("-chat")) {
                             TelegramNotificationCard(
                                 post = post,
@@ -207,6 +247,7 @@ fun FeedScreen(
                                 onPostClick = onPostClick,
                                 onCommentClick = { onReplyToPost(post.slug) },
                                 onLikeClick = { viewModel.toggleLike(post.id, post.isLiked) },
+                                onReact = { emoji -> viewModel.react(post.id, emoji) },
                                 onBookmarkClick = { viewModel.toggleBookmark(post.id, post.isBookmarked) },
                                 onRepostClick = if (canRepost) {
                                     { viewModel.toggleRepost(post.id, post.isReposted) }
@@ -261,11 +302,6 @@ fun FeedScreen(
                         unreadNotificationCount = unreadNotificationCount,
                         onProfileClick = onProfileClick,
                         onSearchClick = onSearchClick,
-                    )
-                    FeedCategoryTabs(
-                        categories = viewModel.categoryResIds.map { stringResource(it) },
-                        selectedCategory = selectedCategory,
-                        onCategorySelected = viewModel::selectCategory
                     )
                 }
             }
@@ -386,26 +422,6 @@ private fun FeedHeader(
                 icon = XiloIcons.Settings,
                 contentDescription = stringResource(R.string.feed_settings_cd),
                 modifier = Modifier.size(XiloSpacing.iconInline)
-            )
-        }
-    }
-}
-
-@Composable
-private fun FeedCategoryTabs(
-    categories: List<String>,
-    selectedCategory: Int,
-    onCategorySelected: (Int) -> Unit
-) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = XiloSpacing.horizontal, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(categories.size) { index ->
-            CategoryTabChip(
-                label = categories[index],
-                selected = selectedCategory == index,
-                onClick = { onCategorySelected(index) },
             )
         }
     }

@@ -8,6 +8,7 @@ import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.NetworkMonitor
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.data.local.entity.toggledReaction
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.DiscoverCommentDto
 import ir.xilo.app.data.remote.dto.InterestDto
@@ -345,6 +346,23 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
+    fun react(postId: String, emoji: String) {
+        viewModelScope.launch {
+            val seed = _searchResults.value.firstOrNull { it.id == postId } ?: return@launch
+            _searchResults.update { posts ->
+                posts.map { post -> if (post.id == postId) post.toggledReaction(emoji) else post }
+            }
+            postRepository.toggleEmojiReaction(seed, emoji)
+                .onFailure {
+                    _searchResults.update { posts ->
+                        posts.map { post -> if (post.id == postId) seed else post }
+                    }
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(it, R.string.error_unknown)
+                }
+        }
+    }
+
     fun toggleBookmark(postId: String, currentState: Boolean) {
         viewModelScope.launch {
             _searchResults.update { posts ->
@@ -482,6 +500,10 @@ class DiscoverViewModel @Inject constructor(
                             isLiked = remote.resolvedIsLiked(),
                             isBookmarked = remote.isBookmarked,
                             isReposted = remote.isReposted,
+                            reactionsJson = ir.xilo.app.core.util.EmojiReactions.fromPostDto(
+                                remote.reactions,
+                                remote.viewerReactions,
+                            ),
                             createdAt = System.currentTimeMillis()
                         )
                     }

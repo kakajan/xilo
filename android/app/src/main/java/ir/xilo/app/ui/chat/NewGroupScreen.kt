@@ -27,7 +27,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -54,14 +54,14 @@ fun NewGroupScreen(
     modifier: Modifier = Modifier,
     viewModel: NewGroupViewModel = hiltViewModel(),
 ) {
-    val step by viewModel.step.collectAsState()
-    val query by viewModel.query.collectAsState()
-    val contacts by viewModel.contacts.collectAsState()
-    val selectedIds by viewModel.selectedIds.collectAsState()
-    val groupName by viewModel.groupName.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isCreating by viewModel.isCreating.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val step by viewModel.step.collectAsStateWithLifecycle()
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val contacts by viewModel.contacts.collectAsStateWithLifecycle()
+    val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
+    val groupName by viewModel.groupName.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel) {

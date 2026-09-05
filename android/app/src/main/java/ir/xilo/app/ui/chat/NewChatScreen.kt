@@ -27,7 +27,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -60,14 +60,14 @@ fun NewChatScreen(
     modifier: Modifier = Modifier,
     viewModel: NewChatViewModel = hiltViewModel(),
 ) {
-    val query by viewModel.query.collectAsState()
-    val suggestions by viewModel.suggestions.collectAsState()
-    val searchResult by viewModel.searchResult.collectAsState()
-    val isLoadingSuggestions by viewModel.isLoadingSuggestions.collectAsState()
-    val isSearching by viewModel.isSearching.collectAsState()
-    val isStartingChat by viewModel.isStartingChat.collectAsState()
-    val canCreateGroupChat by viewModel.canCreateGroupChat.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
+    val searchResult by viewModel.searchResult.collectAsStateWithLifecycle()
+    val isLoadingSuggestions by viewModel.isLoadingSuggestions.collectAsStateWithLifecycle()
+    val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
+    val isStartingChat by viewModel.isStartingChat.collectAsStateWithLifecycle()
+    val canCreateGroupChat by viewModel.canCreateGroupChat.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel) {

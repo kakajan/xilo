@@ -62,6 +62,10 @@ class FeedViewModel @Inject constructor(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    private val _undoMessage = MutableStateFlow<Int?>(null)
+    val undoMessage: StateFlow<Int?> = _undoMessage.asStateFlow()
+    private var pendingUndo: FeedUndo? = null
+    private var loadingMore = false
 
     val categoryResIds = listOf(
         R.string.feed_category_for_you,
@@ -100,6 +104,18 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun loadMore() {
+        if (loadingMore || !postRepository.hasMoreFeed()) return
+        viewModelScope.launch {
+            loadingMore = true
+            postRepository.loadMoreFeed()
+                .onFailure { e ->
+                    Log.e("FeedViewModel", "loadMore failed: ${e.message}", e)
+                }
+            loadingMore = false
+        }
+    }
+
     fun clearError() {
         _errorMessage.value = null
     }
@@ -115,12 +131,6 @@ class FeedViewModel @Inject constructor(
         }
     }
 
-    fun toggleBookmark(postId: String, currentState: Boolean) {
-        viewModelScope.launch {
-            postRepository.toggleBookmark(postId, currentState)
-        }
-    }
-
     fun toggleRepost(postId: String, currentState: Boolean) {
         if (!_canRepost.value) return
         viewModelScope.launch {
@@ -132,9 +142,41 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun react(postId: String, emoji: String) {
+        viewModelScope.launch {
+            postRepository.toggleEmojiReaction(postId, emoji)
+                .onFailure { e ->
+                    Log.e("FeedViewModel", "react failed: ${e.message}", e)
+                    _errorMessage.value =
+                        errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                }
+        }
+    }
+
+    fun toggleBookmark(postId: String, currentState: Boolean, emitUndo: Boolean = true) {
+        viewModelScope.launch {
+            postRepository.toggleBookmark(postId, currentState)
+                .onSuccess { bookmarked ->
+                    if (emitUndo) {
+                        pendingUndo = FeedUndo.Bookmark(postId, bookmarked)
+                        _undoMessage.value = if (bookmarked) {
+                            R.string.feed_undo_bookmarked
+                        } else {
+                            R.string.feed_undo_unbookmarked
+                        }
+                    }
+                }
+        }
+    }
+
     fun archivePost(postId: String) {
         viewModelScope.launch {
+            val snapshot = posts.value.firstOrNull { it.id == postId }
             postRepository.archivePost(postId)
+                .onSuccess {
+                    pendingUndo = snapshot?.let { FeedUndo.Archive(it) }
+                    _undoMessage.value = R.string.feed_undo_archived
+                }
                 .onFailure { e ->
                     Log.e("FeedViewModel", "archivePost failed: ${e.message}", e)
                     _errorMessage.value =
@@ -146,6 +188,10 @@ class FeedViewModel @Inject constructor(
     fun deletePost(postId: String) {
         viewModelScope.launch {
             postRepository.deletePost(postId)
+                .onSuccess {
+                    pendingUndo = null
+                    _undoMessage.value = R.string.feed_undo_deleted
+                }
                 .onFailure { e ->
                     Log.e("FeedViewModel", "deletePost failed: ${e.message}", e)
                     _errorMessage.value =
@@ -153,4 +199,33 @@ class FeedViewModel @Inject constructor(
                 }
         }
     }
+
+    fun undoLast() {
+        val action = pendingUndo ?: return
+        pendingUndo = null
+        _undoMessage.value = null
+        viewModelScope.launch {
+            when (action) {
+                is FeedUndo.Bookmark -> {
+                    toggleBookmark(action.postId, action.bookmarked, emitUndo = false)
+                }
+                is FeedUndo.Archive -> {
+                    postRepository.restoreArchivedPost(action.post)
+                        .onFailure { e ->
+                            _errorMessage.value =
+                                errorMessageResolver.fromThrowable(e, R.string.error_unknown)
+                        }
+                }
+            }
+        }
+    }
+
+    fun consumeUndoMessage() {
+        _undoMessage.value = null
+    }
+}
+
+private sealed interface FeedUndo {
+    data class Bookmark(val postId: String, val bookmarked: Boolean) : FeedUndo
+    data class Archive(val post: PostEntity) : FeedUndo
 }

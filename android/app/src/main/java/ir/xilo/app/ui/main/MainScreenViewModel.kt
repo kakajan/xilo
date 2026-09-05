@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ir.xilo.app.core.util.canCreatePost
 import ir.xilo.app.data.NetworkMonitor
+import ir.xilo.app.data.local.prefs.ComposeDraftStore
 import ir.xilo.app.data.remote.websocket.NotificationRealtimeReconciler
 import ir.xilo.app.data.remote.websocket.WebSocketManager
 import ir.xilo.app.data.repository.AuthRepository
@@ -23,6 +24,7 @@ class MainScreenViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val notificationRepository: NotificationRepository,
     private val pushTokenRepository: PushTokenRepository,
+    private val composeDraftStore: ComposeDraftStore,
     private val webSocketManager: WebSocketManager,
     @Suppress("unused")
     private val notificationRealtimeReconciler: NotificationRealtimeReconciler,
@@ -53,6 +55,13 @@ class MainScreenViewModel @Inject constructor(
     private val _pendingDiscoverSearch = MutableStateFlow(false)
     val pendingDiscoverSearch: StateFlow<Boolean> = _pendingDiscoverSearch.asStateFlow()
 
+    private val _hasComposeDraft = MutableStateFlow(false)
+    val hasComposeDraft: StateFlow<Boolean> = _hasComposeDraft.asStateFlow()
+
+    fun refreshComposeDraft() {
+        _hasComposeDraft.value = composeDraftStore.hasNewDraft()
+    }
+
     fun requestTab(index: Int) {
         _pendingTab.value = index
     }
@@ -81,6 +90,7 @@ class MainScreenViewModel @Inject constructor(
     init {
         refreshUsername()
         refreshPermissions()
+        refreshComposeDraft()
         if (authRepository.isAuthenticated()) {
             connectRealtime()
             syncNotifications()

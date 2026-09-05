@@ -66,6 +66,15 @@ class CreatePostViewModel @Inject constructor(
     private val _audioUrl = MutableStateFlow("")
     val audioUrl: StateFlow<String> = _audioUrl.asStateFlow()
 
+    private val _coverImageUrl = MutableStateFlow("")
+    val coverImageUrl: StateFlow<String> = _coverImageUrl.asStateFlow()
+
+    private val _isUploadingCover = MutableStateFlow(false)
+    val isUploadingCover: StateFlow<Boolean> = _isUploadingCover.asStateFlow()
+
+    private val _scheduledAtEpoch = MutableStateFlow<Long?>(null)
+    val scheduledAtEpoch: StateFlow<Long?> = _scheduledAtEpoch.asStateFlow()
+
     private val _isUploadingAudio = MutableStateFlow(false)
     val isUploadingAudio: StateFlow<Boolean> = _isUploadingAudio.asStateFlow()
 
@@ -89,6 +98,7 @@ class CreatePostViewModel @Inject constructor(
 
     private var quotedPostId: String? = null
     private var quotedCommentId: String? = null
+    private var composeKind: String = ComposeKind.ARTICLE
     private var suggestJob: Job? = null
     private var draftSaveJob: Job? = null
     private var draftKey: String = ComposeDraftStore.KEY_NEW
@@ -112,6 +122,7 @@ class CreatePostViewModel @Inject constructor(
         editPostId: String?,
         quotedPostId: String? = null,
         quotedCommentId: String? = null,
+        composeKind: String = ComposeKind.ARTICLE,
     ) {
         _success.value = false
         _error.value = null
@@ -125,6 +136,7 @@ class CreatePostViewModel @Inject constructor(
         _quotedPost.value = null
         _quotedComment.value = null
         _quotedCommentPostTitle.value = null
+        this.composeKind = composeKind.ifBlank { ComposeKind.ARTICLE }
         draftKey = composeDraftStore.draftKey(
             when {
                 !editPostId.isNullOrBlank() -> editPostId
@@ -185,6 +197,7 @@ class CreatePostViewModel @Inject constructor(
                 _title.value = local.title
                 _content.value = local.content
                 _audioUrl.value = local.audioUrl
+                _coverImageUrl.value = local.coverImageUrl
                 restoreDoneForKey = draftKey
             } else if (post != null) {
                 _title.value = post.title
@@ -192,6 +205,7 @@ class CreatePostViewModel @Inject constructor(
                     post.excerpt.orEmpty()
                 }
                 _audioUrl.value = post.audioUrl.orEmpty()
+                _coverImageUrl.value = post.coverImageUrl.orEmpty()
                 restoreDoneForKey = draftKey
             } else {
                 _error.value = errorMessageResolver.string(R.string.error_load_post)
@@ -202,6 +216,16 @@ class CreatePostViewModel @Inject constructor(
 
     fun consumeSuccess() {
         _success.value = false
+    }
+
+    fun wrapMarkdown(prefix: String, suffix: String = prefix) {
+        val current = _content.value
+        _content.value = if (current.isBlank()) {
+            "$prefix$suffix"
+        } else {
+            "$prefix$current$suffix"
+        }
+        scheduleDraftSave()
     }
 
     fun updateTitle(value: String) {
@@ -220,6 +244,38 @@ class CreatePostViewModel @Inject constructor(
     fun clearAudio() {
         _audioUrl.value = ""
         scheduleDraftSave()
+    }
+
+    fun clearCover() {
+        _coverImageUrl.value = ""
+        scheduleDraftSave()
+    }
+
+    fun setScheduledAt(epochMs: Long?) {
+        _scheduledAtEpoch.value = epochMs
+    }
+
+    fun uploadCover(uri: Uri) {
+        viewModelScope.launch {
+            _isUploadingCover.value = true
+            _error.value = null
+            try {
+                val size = audioByteSize(uri)
+                if (size != null && size > MAX_COVER_BYTES) {
+                    _error.value = errorMessageResolver.string(R.string.error_cover_too_large)
+                    return@launch
+                }
+                val part = uriToImageMultipart(uri)
+                    ?: throw IllegalStateException("cover")
+                val url = apiService.uploadMedia(part).url
+                _coverImageUrl.value = url
+                scheduleDraftSave()
+            } catch (e: Exception) {
+                _error.value = errorMessageResolver.fromThrowable(e, R.string.error_cover_upload)
+            } finally {
+                _isUploadingCover.value = false
+            }
+        }
     }
 
     fun uploadAudio(uri: Uri) {
@@ -295,7 +351,8 @@ class CreatePostViewModel @Inject constructor(
             return
         }
         val quoting = !quotedPostId.isNullOrBlank() || !quotedCommentId.isNullOrBlank()
-        val errors = validate(title, content, requireTitle = !quoting)
+        val requireTitle = !quoting && composeKind != ComposeKind.TEXT
+        val errors = validate(title, content, requireTitle = requireTitle)
         if (errors.isNotEmpty()) {
             _fieldErrors.value = errors
             _error.value = null
@@ -307,11 +364,14 @@ class CreatePostViewModel @Inject constructor(
             _error.value = null
             _fieldErrors.value = emptyMap()
 
-            val resolvedTitle = title.ifBlank { content.take(80).ifBlank { "نقل‌قول" } }
+            val untitled = errorMessageResolver.string(R.string.post_untitled_fallback)
+            val resolvedTitle = title.ifBlank { content.take(80).ifBlank { untitled } }
             postRepository.createPost(
                 title = resolvedTitle,
                 content = content,
                 audioUrl = audioUrl.takeIf { it.isNotBlank() },
+                coverImageUrl = _coverImageUrl.value.takeIf { it.isNotBlank() },
+                scheduledAt = isoScheduledAt(),
                 quotedPostId = quotedPostId,
                 quotedCommentId = quotedCommentId,
             )
@@ -354,7 +414,13 @@ class CreatePostViewModel @Inject constructor(
             _error.value = null
             _fieldErrors.value = emptyMap()
 
-            postRepository.updatePost(postId, title, content, audioUrl)
+            postRepository.updatePost(
+                postId,
+                title,
+                content,
+                audioUrl,
+                coverImageUrl = _coverImageUrl.value.takeIf { it.isNotBlank() },
+            )
                 .onSuccess {
                     clearLocalDraft()
                     _success.value = true
@@ -409,6 +475,7 @@ class CreatePostViewModel @Inject constructor(
         _title.value = draft?.title.orEmpty()
         _content.value = draft?.content.orEmpty()
         _audioUrl.value = draft?.audioUrl.orEmpty()
+        _coverImageUrl.value = draft?.coverImageUrl.orEmpty()
         restoreDoneForKey = draftKey
     }
 
@@ -420,6 +487,7 @@ class CreatePostViewModel @Inject constructor(
                 title = _title.value,
                 content = _content.value,
                 audioUrl = _audioUrl.value,
+                coverImageUrl = _coverImageUrl.value,
                 key = draftKey,
             )
         }
@@ -431,6 +499,7 @@ class CreatePostViewModel @Inject constructor(
             title = _title.value,
             content = _content.value,
             audioUrl = _audioUrl.value,
+            coverImageUrl = _coverImageUrl.value,
             key = draftKey,
         )
     }
@@ -442,6 +511,8 @@ class CreatePostViewModel @Inject constructor(
         _title.value = ""
         _content.value = ""
         _audioUrl.value = ""
+        _coverImageUrl.value = ""
+        _scheduledAtEpoch.value = null
     }
 
     private fun audioByteSize(uri: Uri): Long? {
@@ -485,8 +556,33 @@ class CreatePostViewModel @Inject constructor(
         return MultipartBody.Part.createFormData("file", filename, body)
     }
 
+    private fun uriToImageMultipart(uri: Uri): MultipartBody.Part? {
+        val resolver = context.contentResolver
+        val mime = resolver.getType(uri) ?: "image/jpeg"
+        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        if (bytes.size > MAX_COVER_BYTES) {
+            throw IllegalArgumentException("file too large")
+        }
+        val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
+        val filename = when {
+            mime.contains("png") -> "cover.png"
+            mime.contains("webp") -> "cover.webp"
+            mime.contains("gif") -> "cover.gif"
+            else -> "cover.jpg"
+        }
+        return MultipartBody.Part.createFormData("file", filename, body)
+    }
+
+    private fun isoScheduledAt(): String? {
+        val epoch = _scheduledAtEpoch.value ?: return null
+        val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+        format.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        return format.format(java.util.Date(epoch))
+    }
+
     private companion object {
         const val DRAFT_DEBOUNCE_MS = 800L
         const val MAX_AUDIO_BYTES = 50L * 1024L * 1024L
+        const val MAX_COVER_BYTES = 5L * 1024L * 1024L
     }
 }

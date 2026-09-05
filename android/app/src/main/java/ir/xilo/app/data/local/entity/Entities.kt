@@ -65,6 +65,8 @@ data class PostEntity(
     val isLiked: Boolean = false,
     val isBookmarked: Boolean = false,
     val isReposted: Boolean = false,
+    @ColumnInfo(defaultValue = "[]")
+    val reactionsJson: String = "[]",
     val createdAt: Long, // Timestamp in ms
     /** Stable feed position from last refresh; engagement must not change this. */
     val feedRank: Int = Int.MAX_VALUE,
@@ -156,7 +158,9 @@ data class MessageEntity(
     val deliveryState: String = MessageDeliveryState.DELIVERED,
     val deliveryErrorCode: String? = null,
     val deliveryErrorMessage: String? = null,
-    val createdAt: Long
+    val createdAt: Long,
+    @ColumnInfo(defaultValue = "'[]'")
+    val reactionsJson: String = "[]",
 )
 
 object MessageDeliveryState {

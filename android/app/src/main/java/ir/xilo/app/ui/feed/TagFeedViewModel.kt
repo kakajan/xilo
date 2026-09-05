@@ -7,6 +7,7 @@ import ir.xilo.app.R
 import ir.xilo.app.core.util.HashtagParser
 import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.data.local.entity.toggledReaction
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.PostResponse
 import ir.xilo.app.data.repository.AuthRepository
@@ -73,6 +74,10 @@ class TagFeedViewModel @Inject constructor(
                             isLiked = remote.resolvedIsLiked(),
                             isBookmarked = remote.isBookmarked,
                             isReposted = remote.isReposted,
+                            reactionsJson = ir.xilo.app.core.util.EmojiReactions.fromPostDto(
+                                remote.reactions,
+                                remote.viewerReactions,
+                            ),
                             createdAt = System.currentTimeMillis(),
                         )
                     }
@@ -117,6 +122,22 @@ class TagFeedViewModel @Inject constructor(
                         if (it.id != post.id) it
                         else it.copy(isLiked = previous, likeCount = previousCount)
                     }
+                }
+        }
+    }
+
+    fun react(post: PostEntity, emoji: String) {
+        viewModelScope.launch {
+            val snapshot = _posts.value.firstOrNull { it.id == post.id } ?: post
+            _posts.value = _posts.value.map {
+                if (it.id == post.id) it.toggledReaction(emoji) else it
+            }
+            postRepository.toggleEmojiReaction(post, emoji)
+                .onFailure {
+                    _posts.value = _posts.value.map {
+                        if (it.id == post.id) snapshot else it
+                    }
+                    _error.value = errorMessageResolver.fromThrowable(it, R.string.error_unknown)
                 }
         }
     }

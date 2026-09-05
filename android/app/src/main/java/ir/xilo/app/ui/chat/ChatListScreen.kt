@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.ChatEntity
 import ir.xilo.app.data.local.entity.displayAvatarUrl
@@ -55,13 +56,13 @@ fun ChatListScreen(
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel
 ) {
-    val chats by viewModel.filteredChats.collectAsState()
-    val folders by viewModel.folders.collectAsState()
-    val selectedFolderId by viewModel.selectedFolderId.collectAsState()
-    val listMode by viewModel.listMode.collectAsState()
-    val savedMessages by viewModel.savedMessages.collectAsState()
-    val savedHubLoading by viewModel.savedHubLoading.collectAsState()
-    val archivedChats by viewModel.archivedChats.collectAsState()
+    val chats by viewModel.filteredChats.collectAsStateWithLifecycle()
+    val folders by viewModel.folders.collectAsStateWithLifecycle()
+    val selectedFolderId by viewModel.selectedFolderId.collectAsStateWithLifecycle()
+    val listMode by viewModel.listMode.collectAsStateWithLifecycle()
+    val savedMessages by viewModel.savedMessages.collectAsStateWithLifecycle()
+    val savedHubLoading by viewModel.savedHubLoading.collectAsStateWithLifecycle()
+    val archivedChats by viewModel.archivedChats.collectAsStateWithLifecycle()
     var showArchived by remember { mutableStateOf(false) }
     val chromeState = LocalChromeVisibility.current
     val chatListState = rememberLazyListState()

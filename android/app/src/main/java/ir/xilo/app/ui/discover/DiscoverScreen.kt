@@ -20,11 +20,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import kotlinx.coroutines.delay
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ir.xilo.app.R
 import ir.xilo.app.core.util.AppLocale
 import ir.xilo.app.theme.XiloBlue
@@ -60,24 +64,26 @@ fun DiscoverScreen(
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel()
 ) {
-    val searchResults by viewModel.searchResults.collectAsState()
-    val discoverComments by viewModel.discoverComments.collectAsState()
-    val postTitleByPostId by viewModel.postTitleByPostId.collectAsState()
-    val postRefByPostId by viewModel.postRefByPostId.collectAsState()
-    val replyParentByCommentId by viewModel.replyParentByCommentId.collectAsState()
-    val topicInterests by viewModel.topicInterests.collectAsState()
-    val selectedInterestSlug by viewModel.selectedInterestSlug.collectAsState()
-    val isSearching by viewModel.isSearching.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val infoMessage by viewModel.infoMessage.collectAsState()
-    val currentUserId by viewModel.currentUserId.collectAsState()
-    val currentUsername by viewModel.currentUsername.collectAsState()
-    val canRepost by viewModel.canRepost.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val discoverComments by viewModel.discoverComments.collectAsStateWithLifecycle()
+    val postTitleByPostId by viewModel.postTitleByPostId.collectAsStateWithLifecycle()
+    val postRefByPostId by viewModel.postRefByPostId.collectAsStateWithLifecycle()
+    val replyParentByCommentId by viewModel.replyParentByCommentId.collectAsStateWithLifecycle()
+    val topicInterests by viewModel.topicInterests.collectAsStateWithLifecycle()
+    val selectedInterestSlug by viewModel.selectedInterestSlug.collectAsStateWithLifecycle()
+    val isSearching by viewModel.isSearching.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val infoMessage by viewModel.infoMessage.collectAsStateWithLifecycle()
+    val currentUserId by viewModel.currentUserId.collectAsStateWithLifecycle()
+    val currentUsername by viewModel.currentUsername.collectAsStateWithLifecycle()
+    val canRepost by viewModel.canRepost.collectAsStateWithLifecycle()
     val languageCode = AppLocale.languageCode(LocalContext.current)
 
     var isSearchActive by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     var reportTargetId by remember { mutableStateOf<String?>(null) }
     val chromeState = LocalChromeVisibility.current
 
@@ -85,6 +91,13 @@ fun DiscoverScreen(
         if (activateSearch) {
             isSearchActive = true
             onSearchActivated()
+        }
+    }
+    LaunchedEffect(isSearchActive) {
+        if (isSearchActive) {
+            delay(80)
+            runCatching { searchFocusRequester.requestFocus() }
+            keyboardController?.show()
         }
     }
     val discoverListState = rememberLazyListState()
@@ -160,6 +173,7 @@ fun DiscoverScreen(
                             onValueChange = { viewModel.updateSearchQuery(it) },
                             placeholder = stringResource(R.string.discover_search_placeholder),
                             modifier = Modifier.fillMaxWidth().height(50.dp),
+                            focusRequester = searchFocusRequester,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent,
@@ -261,7 +275,7 @@ fun DiscoverScreen(
                                 ),
                             contentPadding = PaddingValues(bottom = XiloSpacing.bottomNavPadding)
                         ) {
-                            items(searchResults, key = { it.id }) { post ->
+                            items(searchResults, key = { it.id }, contentType = { "post" }) { post ->
                                 val owner = isPostOwner(
                                     authorId = post.authorId,
                                     authorUsername = post.authorUsername,
@@ -273,6 +287,7 @@ fun DiscoverScreen(
                                     onPostClick = onCommentClick,
                                     onCommentClick = { onReplyToPost(post.slug) },
                                     onLikeClick = { viewModel.toggleLike(post.id, post.isLiked) },
+                                    onReact = { emoji -> viewModel.react(post.id, emoji) },
                                     onBookmarkClick = { viewModel.toggleBookmark(post.id, post.isBookmarked) },
                                     onRepostClick = if (canRepost) {
                                         { viewModel.toggleRepost(post.id, post.isReposted) }
@@ -343,7 +358,7 @@ fun DiscoverScreen(
                                         }
                                     }
                                 } else {
-                                    items(discoverComments, key = { it.id }) { comment ->
+                                    items(discoverComments, key = { it.id }, contentType = { "comment" }) { comment ->
                                         val postRef = postRefByPostId[comment.postId]
                                         val replyParent = replyParentByCommentId[comment.id]
                                         CommentCard(

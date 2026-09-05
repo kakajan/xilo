@@ -1,5 +1,6 @@
 package ir.xilo.app.ui.main
 
+import ir.xilo.app.data.local.prefs.ComposeDraftStore
 import ir.xilo.app.data.NetworkMonitor
 import ir.xilo.app.data.remote.websocket.NotificationRealtimeReconciler
 import ir.xilo.app.data.remote.websocket.WebSocketManager
@@ -23,6 +24,7 @@ class MainScreenViewModelTest {
     private val notificationRealtimeReconciler = mockk<NotificationRealtimeReconciler>(relaxed = true)
     private val notificationRepository = mockk<NotificationRepository>(relaxed = true)
     private val pushTokenRepository = mockk<PushTokenRepository>(relaxed = true)
+    private val composeDraftStore = mockk<ComposeDraftStore>(relaxed = true)
     private val networkMonitor = mockk<NetworkMonitor>()
 
     @Test
@@ -37,11 +39,13 @@ class MainScreenViewModelTest {
         coEvery { notificationRepository.refreshUnreadCount() } returns Result.success(0)
         coEvery { pushTokenRepository.syncPushToken() } returns Result.success(Unit)
         every { authRepository.getRole() } returns "user"
+        every { composeDraftStore.hasNewDraft() } returns false
 
         val viewModel = MainScreenViewModel(
             authRepository,
             notificationRepository,
             pushTokenRepository,
+            composeDraftStore,
             webSocketManager,
             notificationRealtimeReconciler,
             networkMonitor,
@@ -65,11 +69,13 @@ class MainScreenViewModelTest {
         every { notificationRepository.unreadCount } returns MutableStateFlow(0)
         coEvery { notificationRepository.refreshUnreadCount() } returns Result.success(0)
         coEvery { pushTokenRepository.syncPushToken() } returns Result.success(Unit)
+        every { composeDraftStore.hasNewDraft() } returns false
 
         val viewModel = MainScreenViewModel(
             authRepository,
             notificationRepository,
             pushTokenRepository,
+            composeDraftStore,
             webSocketManager,
             notificationRealtimeReconciler,
             networkMonitor,

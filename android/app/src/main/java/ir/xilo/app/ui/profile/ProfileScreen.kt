@@ -47,7 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -167,17 +167,18 @@ fun ProfileScreen(
     refreshOnResume: Boolean = true,
     viewModel: ProfileViewModel = hiltViewModel(key = username),
 ) {
-    val userProfile by viewModel.userProfile.collectAsState()
-    val userPosts by viewModel.userPosts.collectAsState()
-    val userReplies by viewModel.userReplies.collectAsState()
-    val userLikes by viewModel.userLikes.collectAsState()
-    val isFollowing by viewModel.isFollowing.collectAsState()
-    val isOwnProfile by viewModel.isOwnProfile.collectAsState()
-    val canCreatePost by viewModel.canCreatePost.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isUploadingAvatar by viewModel.isUploadingAvatar.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val infoMessage by viewModel.infoMessage.collectAsState()
+    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
+    val userPosts by viewModel.userPosts.collectAsStateWithLifecycle()
+    val userReplies by viewModel.userReplies.collectAsStateWithLifecycle()
+    val userLikes by viewModel.userLikes.collectAsStateWithLifecycle()
+    val userArchived by viewModel.userArchived.collectAsStateWithLifecycle()
+    val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
+    val isOwnProfile by viewModel.isOwnProfile.collectAsStateWithLifecycle()
+    val canCreatePost by viewModel.canCreatePost.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isUploadingAvatar by viewModel.isUploadingAvatar.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val infoMessage by viewModel.infoMessage.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -352,7 +353,7 @@ fun ProfileScreen(
     // Other empty tabs stay fixed (no bounce over empty content).
     val canScrollProfile = when {
         selectedTab == 0 -> userPosts.isNotEmpty() || isOwnProfile
-        isOwnProfile -> false
+        isOwnProfile && selectedTab == 1 -> userArchived.isNotEmpty()
         selectedTab == 1 -> userReplies.isNotEmpty()
         selectedTab == 2 -> userLikes.isNotEmpty()
         else -> false
@@ -565,8 +566,17 @@ fun ProfileScreen(
                             }
                         }
                         isOwnProfile -> {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                ProfileEmptyTab(text = stringResource(R.string.profile_empty_archived))
+                            if (userArchived.isEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    ProfileEmptyTab(text = stringResource(R.string.profile_empty_archived))
+                                }
+                            } else {
+                                items(userArchived, key = { it.id }, contentType = { "archived" }) { post ->
+                                    ProfileMediaCell(
+                                        post = post,
+                                        onClick = { onPostClick(post.slug) }
+                                    )
+                                }
                             }
                         }
                         selectedTab == 1 -> {

@@ -246,6 +246,8 @@ data class CreatePostRequest(
     val isPremium: Boolean = false,
     val quotedPostId: String? = null,
     val quotedCommentId: String? = null,
+    @SerialName("scheduled_at")
+    val scheduledAt: String? = null,
 )
 
 @Serializable
@@ -280,6 +282,9 @@ data class UpdatePostRequest(
     val audioUrl: String? = null,
     val tags: List<String>? = null,
     val status: String? = null,
+    val coverImageUrl: String? = null,
+    @SerialName("scheduled_at")
+    val scheduledAt: String? = null,
 )
 
 @Serializable
@@ -660,6 +665,13 @@ data class MessageReactionResponse(
     val reaction: String,
     val count: Long,
     val reacted: Boolean
+)
+
+@Serializable
+data class MessageReactionToggleResponse(
+    val reaction: String,
+    val active: Boolean = false,
+    val count: Long = 0,
 )
 
 @Serializable

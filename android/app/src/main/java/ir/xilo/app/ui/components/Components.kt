@@ -24,6 +24,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import ir.xilo.app.R
@@ -147,6 +149,7 @@ fun XiloTextField(
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge.forInput(),
     colors: TextFieldColors? = null,
     transparentBorder: Boolean = false,
+    focusRequester: FocusRequester? = null,
 ) {
     val fieldColors = colors ?: xiloTextFieldColors(
         isError = isError,
@@ -172,7 +175,9 @@ fun XiloTextField(
             minLines = minLines,
             maxLines = maxLines,
             textStyle = textStyle,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
             shape = RoundedCornerShape(12.dp),
             colors = fieldColors,
             supportingText = if (isError && !errorText.isNullOrBlank()) {

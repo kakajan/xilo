@@ -34,6 +34,7 @@ data class CreatePostKey(
     val editPostId: String? = null,
     val quotedPostId: String? = null,
     val quotedCommentId: String? = null,
+    val composeKind: String = "article",
 ) : NavKey
 @Serializable
 data class TagFeedKey(val tag: String) : NavKey

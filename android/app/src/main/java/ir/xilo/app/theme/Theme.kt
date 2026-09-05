@@ -131,7 +131,9 @@ fun XiloTheme(
         ownBubble = palette.bubbleOwn,
         othersBubble = palette.bubbleOthers
     )
-    val layoutDirection = AppLocale.layoutDirection(AppLocale.languageCode(LocalContext.current))
+    val languageCode = AppLocale.languageCode(LocalContext.current)
+    val layoutDirection = AppLocale.layoutDirection(languageCode)
+    val typography = xiloTypography(rtl = AppLocale.isRtlLanguage(languageCode))
 
     CompositionLocalProvider(
         LocalBubbleColors provides bubbleColors,
@@ -140,7 +142,7 @@ fun XiloTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
+            typography = typography,
             content = content
         )
     }

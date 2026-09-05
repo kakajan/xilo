@@ -3,12 +3,21 @@ package ir.xilo.app.ui.feed
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import coil.request.ImageRequest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,14 +46,17 @@ import ir.xilo.app.ui.components.forRelativeTime
 import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.usernameHandle
 import ir.xilo.app.core.util.DateFormatter
+import ir.xilo.app.core.util.EmojiReactions
 import ir.xilo.app.core.util.PublicWebUrls
 import ir.xilo.app.core.util.ShareActions
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PostCard(
     post: PostEntity,
     onPostClick: (String) -> Unit,
     onLikeClick: () -> Unit,
+    onReact: ((String) -> Unit)? = null,
     onBookmarkClick: () -> Unit,
     onCommentClick: () -> Unit = { onPostClick(post.slug) },
     /** Null hides the repost control (readers / non-authors). */
@@ -61,6 +73,19 @@ fun PostCard(
 ) {
     val openAuthor = onAuthorClick?.takeIf { post.authorUsername.isNotBlank() }
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val likeWithHaptic = {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        onLikeClick()
+    }
+    val reactWithHaptic: (String) -> Unit = { emoji ->
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        if (onReact != null) onReact(emoji) else if (EmojiReactions.isLikeFamily(emoji)) {
+            onLikeClick()
+        }
+    }
+    var showReactionPicker by remember { mutableStateOf(false) }
+    var showQuickActions by remember { mutableStateOf(false) }
     val sharePost = onShareClick ?: {
         val url = ShareActions.postUrl(post.authorUsername, post.slug)
         ShareActions.sendText(
@@ -89,12 +114,13 @@ fun PostCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            Box(modifier = Modifier.weight(1f)) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .clickable(
+                    .combinedClickable(
                         role = Role.Button,
-                        onClick = { onPostClick(post.slug) }
+                        onClick = { onPostClick(post.slug) },
+                        onLongClick = { showQuickActions = true },
                     )
             ) {
                 Row(
@@ -174,6 +200,36 @@ fun PostCard(
                 }
             }
 
+            DropdownMenu(
+                expanded = showQuickActions,
+                onDismissRequest = { showQuickActions = false },
+            ) {
+                if (onQuoteClick != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.repost_action_quote)) },
+                        onClick = {
+                            showQuickActions = false
+                            onQuoteClick()
+                        },
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.cd_bookmark)) },
+                    onClick = {
+                        showQuickActions = false
+                        onBookmarkClick()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.cd_share)) },
+                    onClick = {
+                        showQuickActions = false
+                        sharePost()
+                    },
+                )
+            }
+            }
+
             if (isOwner && onEditClick != null && onArchiveClick != null && onDeleteClick != null) {
                 PostOwnerMenu(
                     onEdit = onEditClick,
@@ -187,7 +243,11 @@ fun PostCard(
         if (!post.coverImageUrl.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(10.dp))
             AsyncImage(
-                model = post.coverImageUrl,
+                model = ImageRequest.Builder(context)
+                    .data(post.coverImageUrl)
+                    .size(1080, 720)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = stringResource(R.string.cd_post_image),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -195,9 +255,10 @@ fun PostCard(
                     .padding(horizontal = XiloSpacing.horizontal)
                     .height(200.dp)
                     .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
-                    .clickable(
+                    .combinedClickable(
                         role = Role.Button,
                         onClick = { onPostClick(post.slug) },
+                        onDoubleClick = { likeWithHaptic() },
                     ),
             )
         }
@@ -224,6 +285,37 @@ fun PostCard(
                     end = XiloSpacing.horizontal,
                 ),
             )
+        }
+
+        val reactionPills = EmojiReactions.decode(post.reactionsJson)
+            .filter { !EmojiReactions.isLikeFamily(it.reaction) }
+        if (reactionPills.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = XiloSpacing.horizontal + 52.dp,
+                        end = XiloSpacing.horizontal,
+                        top = 8.dp,
+                    ),
+            ) {
+                reactionPills.forEach { pill ->
+                    Text(
+                        text = "${pill.reaction} ${pill.count}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (pill.reacted) XiloBlue else MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (pill.reacted) XiloBlue.copy(alpha = 0.16f)
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                            )
+                            .clickable { reactWithHaptic(pill.reaction) }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
+            }
         }
 
         Row(
@@ -270,15 +362,41 @@ fun PostCard(
                 ),
                 label = "likeScale"
             )
-            PostAction(
-                icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
-                count = post.likeCount.toString(),
-                contentDescription = stringResource(R.string.cd_like),
-                tint = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
-                countColor = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
-                onClick = onLikeClick,
-                modifier = Modifier.scale(likeScale)
-            )
+            Box {
+                PostAction(
+                    icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
+                    count = post.likeCount.toString(),
+                    contentDescription = stringResource(R.string.cd_like),
+                    tint = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
+                    countColor = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
+                    onClick = likeWithHaptic,
+                    onLongClick = { showReactionPicker = true },
+                    modifier = Modifier.scale(likeScale)
+                )
+                DropdownMenu(
+                    expanded = showReactionPicker,
+                    onDismissRequest = { showReactionPicker = false },
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        EmojiReactions.ALL.forEach { emoji ->
+                            Text(
+                                text = emoji,
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        showReactionPicker = false
+                                        reactWithHaptic(emoji)
+                                    }
+                                    .padding(6.dp),
+                            )
+                        }
+                    }
+                }
+            }
 
             PostAction(
                 icon = if (post.isBookmarked) XiloIcons.BookmarkFilled else XiloIcons.Bookmark,
@@ -309,6 +427,7 @@ fun PostCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PostAction(
     @androidx.annotation.DrawableRes icon: Int,
@@ -317,14 +436,25 @@ private fun PostAction(
     tint: Color = MaterialTheme.colorScheme.secondary,
     countColor: Color = MaterialTheme.colorScheme.secondary,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val clickableModifier = if (onClick != null) {
-        Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(role = Role.Button, onClick = onClick)
-    } else {
-        Modifier
+    val clickableModifier = when {
+        onClick != null && onLongClick != null -> {
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .combinedClickable(
+                    role = Role.Button,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
+        }
+        onClick != null -> {
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(role = Role.Button, onClick = onClick)
+        }
+        else -> Modifier
     }
 
     Row(

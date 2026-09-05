@@ -251,6 +251,7 @@ fun MainNavigation() {
             editPostId = key.editPostId,
             quotedPostId = key.quotedPostId,
             quotedCommentId = key.quotedCommentId,
+            composeKind = key.composeKind,
             onBackClick = { backStack.removeLastOrNull() },
             onPostCreated = { backStack.removeLastOrNull() },
             modifier = Modifier.fillMaxSize()

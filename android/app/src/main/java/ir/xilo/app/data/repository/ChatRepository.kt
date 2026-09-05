@@ -25,6 +25,8 @@ import ir.xilo.app.data.remote.dto.SendMessageRequest
 import ir.xilo.app.data.remote.dto.UpdateChatRequest
 import ir.xilo.app.data.remote.dto.UpdateMemberRoleRequest
 import ir.xilo.app.data.remote.dto.UpdateMessageRequest
+import ir.xilo.app.core.util.EmojiReactions
+import ir.xilo.app.data.remote.dto.ToggleReactionRequest
 import ir.xilo.app.data.remote.idempotency.OperationKeyGenerator
 import ir.xilo.app.data.remote.websocket.ChatRealtimeReconciler
 import ir.xilo.app.data.remote.websocket.WebSocketManager
@@ -249,6 +251,33 @@ class ChatRepository @Inject constructor(
                 messageDao.insertMessage(snapshot)
                 updateChatPreview(snapshot.chatId)
             }
+            Result.failure(e)
+        }
+    }
+
+    suspend fun toggleMessageReaction(messageId: String, reaction: String): Result<Unit> {
+        if (messageId.startsWith("local-")) {
+            return Result.failure(IllegalStateException("Cannot react to a pending message"))
+        }
+        val snapshot = messageDao.getMessageById(messageId)
+            ?: return Result.failure(IllegalStateException("message not cached"))
+        return try {
+            val result = apiService.toggleMessageReaction(
+                id = messageId,
+                request = ToggleReactionRequest(reaction = reaction),
+            )
+            messageDao.updateReactionsJson(
+                messageId,
+                EmojiReactions.applyEvent(
+                    raw = snapshot.reactionsJson,
+                    reaction = result.reaction,
+                    active = result.active,
+                    count = result.count,
+                    selfToggled = true,
+                ),
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
@@ -766,7 +795,8 @@ internal fun MessageResponse.toMessageEntity(
     isEdited = isEdited,
     isRead = readBy.isNotEmpty(),
     isDeleted = isDeleted,
-    createdAt = parseTimestamp(createdAt)
+    createdAt = parseTimestamp(createdAt),
+    reactionsJson = EmojiReactions.fromMessageDto(reactions),
 )
 
 internal fun MessageResponse.previewContent(): String? =

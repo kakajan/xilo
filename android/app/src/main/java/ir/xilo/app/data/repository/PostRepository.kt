@@ -1,5 +1,6 @@
 package ir.xilo.app.data.repository
 
+import ir.xilo.app.core.util.EmojiReactions
 import ir.xilo.app.data.local.dao.PostDao
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.prefs.AnalyticsSessionStore
@@ -15,7 +16,10 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -32,8 +36,15 @@ class PostRepository @Inject constructor(
     private val json: Json
 ) {
     private val likeMutexes = ConcurrentHashMap<String, Mutex>()
+    @Volatile private var feedNextCursor: String? = null
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
+    }
+
+    private fun nextCursorOf(map: Map<String, kotlinx.serialization.json.JsonElement>): String? {
+        val el = map["next_cursor"] ?: return null
+        if (el is JsonNull) return null
+        return el.jsonPrimitive.contentOrNull?.takeIf { it.isNotBlank() }
     }
 
     private fun parseDateToEpoch(dateStr: String?): Long {
@@ -53,22 +64,44 @@ class PostRepository @Inject constructor(
 
     suspend fun refreshFeed(): Result<Unit> {
         return try {
-            val responseMap = apiService.listPosts(limit = 40)
+            val responseMap = apiService.listPosts(limit = 20)
             val dataElement = responseMap["data"] ?: throw Exception("Invalid response structure")
             val postsList = json.decodeFromJsonElement<List<PostResponse>>(dataElement)
+            feedNextCursor = nextCursorOf(responseMap)
 
-            // Assign feedRank from API order so like/repost cannot reshuffle the list.
             val entities = postsList.mapIndexed { index, dto ->
                 dto.toEntity(feedRank = index)
             }
 
             postDao.clearAllPosts()
-            postDao.insertPosts(entities.take(50))
+            postDao.insertPosts(entities)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
+    suspend fun loadMoreFeed(): Result<Unit> {
+        val cursor = feedNextCursor ?: return Result.success(Unit)
+        return try {
+            val responseMap = apiService.listPosts(cursor = cursor, limit = 20)
+            val dataElement = responseMap["data"] ?: throw Exception("Invalid response structure")
+            val postsList = json.decodeFromJsonElement<List<PostResponse>>(dataElement)
+            feedNextCursor = nextCursorOf(responseMap)
+            val rankBase = postDao.maxFeedRank() + 1
+            val entities = postsList.mapIndexed { index, dto ->
+                dto.toEntity(feedRank = rankBase + index)
+            }
+            if (entities.isNotEmpty()) {
+                postDao.insertPosts(entities)
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun hasMoreFeed(): Boolean = !feedNextCursor.isNullOrBlank()
 
     suspend fun getPostBySlug(slug: String): Result<PostEntity> {
         return try {
@@ -102,6 +135,8 @@ class PostRepository @Inject constructor(
         title: String,
         content: String,
         audioUrl: String? = null,
+        coverImageUrl: String? = null,
+        scheduledAt: String? = null,
         quotedPostId: String? = null,
         quotedCommentId: String? = null,
     ): Result<PostEntity> {
@@ -110,11 +145,11 @@ class PostRepository @Inject constructor(
                 .replace(Regex("[^a-z0-9\\u0600-\\u06FF]+"), "-")
                 .trim('-')
                 .ifBlank { "quote" }
-            // Backend expects Tiptap JSON; wrap plain text with structured encoding (safe escaping).
             val tiptapJson = buildTiptapDoc(content)
             val tags = ir.xilo.app.core.util.HashtagParser.extract(content)
             val quoteComment = quotedCommentId?.takeIf { it.isNotBlank() }
             val quotePost = quotedPostId?.takeIf { it.isNotBlank() }.takeIf { quoteComment == null }
+            val scheduled = scheduledAt?.takeIf { it.isNotBlank() }
 
             val request = CreatePostRequest(
                 title = title.ifBlank { content.take(80).ifBlank { "نقل‌قول" } },
@@ -123,10 +158,12 @@ class PostRepository @Inject constructor(
                 contentMd = content,
                 excerpt = content.take(100),
                 audioUrl = audioUrl?.takeIf { it.isNotBlank() },
+                coverImageUrl = coverImageUrl?.takeIf { it.isNotBlank() },
                 tags = tags.takeIf { it.isNotEmpty() },
-                status = "published",
+                status = if (scheduled != null) "scheduled" else "published",
                 quotedPostId = quotePost,
                 quotedCommentId = quoteComment,
+                scheduledAt = scheduled,
             )
             val remote = apiService.createPost(request)
             val entity = remote.toEntity(feedRank = 0)
@@ -163,8 +200,11 @@ class PostRepository @Inject constructor(
             val previousCount = snapshot?.likeCount ?: 0
             val wantLiked = !previousLiked
             val optimisticCount = (previousCount + if (wantLiked) 1 else -1).coerceAtLeast(0)
-            if (snapshot != null) {
-                postDao.updateLikeState(postId, wantLiked, optimisticCount)
+            val optimisticJson = snapshot?.let {
+                likeReactionsJson(it.reactionsJson, wantLiked, optimisticCount)
+            }
+            if (snapshot != null && optimisticJson != null) {
+                postDao.updateLikeState(postId, wantLiked, optimisticCount, optimisticJson)
             }
 
             try {
@@ -193,19 +233,104 @@ class PostRepository @Inject constructor(
                         val rank = snapshot?.feedRank ?: Int.MAX_VALUE
                         postDao.insertPost(confirmed.toEntity(feedRank = rank))
                     } else if (snapshot != null) {
-                        postDao.updateLikeState(postId, liked, count.coerceAtLeast(0))
+                        postDao.updateLikeState(
+                            postId,
+                            liked,
+                            count.coerceAtLeast(0),
+                            likeReactionsJson(snapshot.reactionsJson, liked, count.coerceAtLeast(0)),
+                        )
                     }
                 }
                 Result.success(liked)
             } catch (e: Exception) {
                 if (snapshot != null) {
-                    postDao.updateLikeState(postId, previousLiked, previousCount)
+                    postDao.updateLikeState(
+                        postId,
+                        previousLiked,
+                        previousCount,
+                        snapshot.reactionsJson,
+                    )
                 }
                 Result.failure(e)
             }
         } finally {
             mutex.unlock()
         }
+    }
+
+    suspend fun toggleEmojiReaction(postId: String, emoji: String): Result<Unit> {
+        if (EmojiReactions.isLikeFamily(emoji)) {
+            val current = postDao.getPostById(postId)?.isLiked ?: false
+            return toggleLike(postId, current).map { }
+        }
+        val snapshot = postDao.getPostById(postId)
+            ?: return Result.failure(IllegalStateException("post not cached"))
+        val optimistic = applyEmoji(snapshot, emoji)
+        postDao.updatePost(optimistic)
+        return try {
+            apiService.toggleReaction(
+                type = "post",
+                id = postId,
+                request = ToggleReactionRequest(reaction = EmojiReactions.apiKey(emoji)),
+            )
+            val confirmed = snapshot.slug.takeIf { it.isNotBlank() }?.let { slug ->
+                runCatching { apiService.getPostBySlug(slug) }.getOrNull()
+            }
+            if (confirmed != null) {
+                postDao.insertPost(confirmed.toEntity(feedRank = snapshot.feedRank))
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            postDao.updatePost(snapshot)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun toggleEmojiReaction(seed: PostEntity, emoji: String): Result<Unit> {
+        val existing = postDao.getPostById(seed.id)
+        if (existing == null) {
+            postDao.insertPost(seed.copy(feedRank = Int.MAX_VALUE))
+        }
+        return toggleEmojiReaction(seed.id, emoji)
+    }
+
+    suspend fun restoreArchivedPost(post: PostEntity): Result<Unit> {
+        return try {
+            apiService.updatePost(
+                id = post.id,
+                request = UpdatePostRequest(status = "published"),
+            )
+            postDao.insertPost(post)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun likeReactionsJson(raw: String?, liked: Boolean, count: Int): String {
+        val current = EmojiReactions.decode(raw).toMutableList()
+        val index = current.indexOfFirst { EmojiReactions.isLikeFamily(it.reaction) }
+        when {
+            liked && count > 0 -> {
+                val next = ir.xilo.app.core.util.ReactionCount("❤️", count.toLong(), true)
+                if (index >= 0) current[index] = next else current.add(0, next)
+            }
+            index >= 0 -> current.removeAt(index)
+        }
+        return EmojiReactions.encode(current)
+    }
+
+    private fun applyEmoji(post: PostEntity, emoji: String): PostEntity {
+        val json = EmojiReactions.toggleSelf(post.reactionsJson, emoji)
+        if (!EmojiReactions.isLikeFamily(emoji)) {
+            return post.copy(reactionsJson = json)
+        }
+        val heart = EmojiReactions.decode(json).firstOrNull { EmojiReactions.isLikeFamily(it.reaction) }
+        return post.copy(
+            reactionsJson = json,
+            isLiked = heart?.reacted == true,
+            likeCount = heart?.count?.toInt() ?: 0,
+        )
     }
 
     private suspend fun clearRemainingLikeReactionOnce(postId: String, slug: String) {
@@ -241,6 +366,7 @@ class PostRepository @Inject constructor(
         isLiked = resolvedIsLiked(),
         isBookmarked = isBookmarked,
         isReposted = isReposted,
+        reactionsJson = EmojiReactions.fromPostDto(reactions, viewerReactions),
         // Prefer publish time to match backend feed ordering.
         createdAt = parseDateToEpoch(publishedAt?.takeIf { it.isNotBlank() } ?: createdAt),
         feedRank = feedRank,
@@ -345,6 +471,7 @@ class PostRepository @Inject constructor(
         title: String,
         content: String,
         audioUrl: String? = null,
+        coverImageUrl: String? = null,
     ): Result<PostEntity> {
         return try {
             val tiptapJson = buildTiptapDoc(content)
@@ -359,6 +486,7 @@ class PostRepository @Inject constructor(
                     excerpt = content.take(100),
                     audioUrl = audioUrl ?: "",
                     tags = tags,
+                    coverImageUrl = coverImageUrl,
                 ),
             )
             val local = postDao.getPostById(postId)
@@ -376,25 +504,34 @@ class PostRepository @Inject constructor(
             put(
                 "content",
                 buildJsonArray {
+                    val paragraphs = content.split("\n")
+                    if (paragraphs.isEmpty()) {
+                        add(tiptapParagraph(""))
+                    } else {
+                        paragraphs.forEach { line ->
+                            add(tiptapParagraph(line))
+                        }
+                    }
+                },
+            )
+        }.toString()
+
+    private fun tiptapParagraph(text: String) = buildJsonObject {
+        put("type", "paragraph")
+        if (text.isNotEmpty()) {
+            put(
+                "content",
+                buildJsonArray {
                     add(
                         buildJsonObject {
-                            put("type", "paragraph")
-                            put(
-                                "content",
-                                buildJsonArray {
-                                    add(
-                                        buildJsonObject {
-                                            put("type", "text")
-                                            put("text", content)
-                                        },
-                                    )
-                                },
-                            )
+                            put("type", "text")
+                            put("text", text)
                         },
                     )
                 },
             )
-        }.toString()
+        }
+    }
 
     suspend fun archivePost(postId: String): Result<Unit> {
         return try {

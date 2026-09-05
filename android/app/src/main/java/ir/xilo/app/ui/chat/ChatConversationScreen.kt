@@ -3,10 +3,12 @@ package ir.xilo.app.ui.chat
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import ir.xilo.app.core.util.EmojiReactions
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -25,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.MessageDeliveryState
 import ir.xilo.app.data.local.entity.MessageEntity
@@ -52,13 +55,13 @@ fun ChatConversationScreen(
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel
 ) {
-    val currentChat by viewModel.currentChat.collectAsState()
-    val messages by viewModel.messages.collectAsState()
-    val peerTyping by viewModel.peerTyping.collectAsState()
-    val peerOnline by viewModel.peerOnline.collectAsState()
+    val currentChat by viewModel.currentChat.collectAsStateWithLifecycle()
+    val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val peerTyping by viewModel.peerTyping.collectAsStateWithLifecycle()
+    val peerOnline by viewModel.peerOnline.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     var textInput by remember { mutableStateOf("") }
-    val editingMessage by viewModel.editingMessage.collectAsState()
+    val editingMessage by viewModel.editingMessage.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val sendFailureMessage = stringResource(R.string.chat_send_failed)
 
@@ -253,7 +256,7 @@ fun ChatConversationScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(XiloSpacing.horizontal)
             ) {
-                items(messages, key = { it.id }) { msg ->
+                items(messages, key = { it.id }, contentType = { "message" }) { msg ->
                     val isMe = msg.senderId == "me" || msg.senderId == viewModel.currentUserId
                     MessageBubble(
                         message = msg,
@@ -276,6 +279,11 @@ fun ChatConversationScreen(
                         } else {
                             null
                         },
+                        onReact = if (!msg.isDeleted) {
+                            { emoji -> viewModel.toggleMessageReaction(msg.id, emoji) }
+                        } else {
+                            null
+                        },
                     )
                 }
             }
@@ -292,6 +300,7 @@ fun MessageBubble(
     onDeleteFailed: () -> Unit = {},
     onEdit: (() -> Unit)? = null,
     onDeleteDelivered: (() -> Unit)? = null,
+    onReact: ((String) -> Unit)? = null,
 ) {
     // Chat sides follow Telegram physical alignment (own = right), independent of app RTL.
     val contentLayoutDirection = LocalLayoutDirection.current
@@ -307,6 +316,8 @@ fun MessageBubble(
     val canEdit = isMe && isDelivered && withinEditWindow && onEdit != null &&
         !message.content.isNullOrBlank()
     val canDeleteDelivered = isMe && isDelivered && onDeleteDelivered != null
+    val canReact = isDelivered && onReact != null
+    val canOpenMenu = canEdit || canDeleteDelivered || canReact
     var menuExpanded by remember(message.id) { mutableStateOf(false) }
     val deletedLabel = stringResource(R.string.chat_message_deleted)
     val deliveryStateDescription = when {
@@ -368,7 +379,7 @@ fun MessageBubble(
                 .background(bubbleBg)
                 .animateContentSize()
                 .then(
-                    if (canEdit || canDeleteDelivered) {
+                    if (canOpenMenu) {
                         Modifier.combinedClickable(
                             onClick = {},
                             onLongClick = { menuExpanded = true },
@@ -404,6 +415,36 @@ fun MessageBubble(
                 },
                 color = contentColor
             )
+
+            val reactionPills = EmojiReactions.decode(message.reactionsJson)
+            if (reactionPills.isNotEmpty() && !isDeleted) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.align(if (isMe) Alignment.End else Alignment.Start),
+                ) {
+                    reactionPills.forEach { pill ->
+                        Text(
+                            text = "${pill.reaction} ${pill.count}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (pill.reacted) XiloBlue else contentColor,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (pill.reacted) {
+                                        XiloBlue.copy(alpha = 0.18f)
+                                    } else {
+                                        contentColor.copy(alpha = 0.12f)
+                                    }
+                                )
+                                .clickable(enabled = canReact) {
+                                    onReact?.invoke(pill.reaction)
+                                }
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -526,6 +567,26 @@ fun MessageBubble(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
         ) {
+            if (canReact) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    EmojiReactions.ALL.forEach { emoji ->
+                        Text(
+                            text = emoji,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    menuExpanded = false
+                                    onReact?.invoke(emoji)
+                                }
+                                .padding(6.dp),
+                        )
+                    }
+                }
+            }
             if (canEdit) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.chat_message_edit)) },

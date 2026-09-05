@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ir.xilo.app.R
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.AileBrandLogo
@@ -46,9 +47,9 @@ fun AuthScreen(
     modifier: Modifier = Modifier,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
-    val preferredLanguage by viewModel.preferredLanguage.collectAsState()
-    val brandTitle by viewModel.brandTitle.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val preferredLanguage by viewModel.preferredLanguage.collectAsStateWithLifecycle()
+    val brandTitle by viewModel.brandTitle.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var isLoginMode by remember { mutableStateOf(true) }
     var isOtpMode by remember { mutableStateOf(false) }

@@ -39,6 +39,8 @@ class ChatRealtimeReconcilerTest {
 
     private fun reconciler(): ChatRealtimeReconciler {
         every { webSocketManager.events } returns inboundEvents
+        every { webSocketManager.activeJoinedChatIds() } returns emptySet()
+        every { webSocketManager.sendMessageRead(any()) } returns Unit
         return ChatRealtimeReconciler(
             webSocketManager = webSocketManager,
             chatDao = chatDao,
@@ -222,5 +224,43 @@ class ChatRealtimeReconcilerTest {
 
         coVerify { messageDao.softDeleteById("msg-1") }
         coVerify(exactly = 0) { messageDao.deleteById(any()) }
+    }
+
+    @Test
+    fun messageReaction_persistsJsonOnCachedRow() = runTest {
+        coEvery { messageDao.getMessageById("msg-1") } returns MessageEntity(
+            id = "msg-1",
+            chatId = "chat-1",
+            senderId = "other",
+            senderName = null,
+            senderAvatar = null,
+            content = "hi",
+            mediaUrl = null,
+            replyToId = null,
+            createdAt = 100L,
+            reactionsJson = "[]",
+        )
+        val jsonSlot = slot<String>()
+        coEvery { messageDao.updateReactionsJson("msg-1", capture(jsonSlot)) } returns 1
+        val sut = reconciler()
+
+        sut.reconcile(
+            RealtimeEvent.MessageReaction(
+                envelope = RealtimeEnvelope(
+                    event = RealtimeEvents.MESSAGE_REACTION,
+                    eventId = "evt-react",
+                ),
+                payload = RealtimeMessageReactionPayload(
+                    messageId = "msg-1",
+                    chatId = "chat-1",
+                    userId = "me",
+                    reaction = "🔥",
+                    active = true,
+                    count = 1,
+                ),
+            )
+        )
+
+        assertTrue(jsonSlot.captured.contains("🔥"))
     }
 }

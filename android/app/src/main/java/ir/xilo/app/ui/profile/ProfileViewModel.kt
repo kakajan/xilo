@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.core.util.canCreatePost
 import ir.xilo.app.core.util.canRepost
+import ir.xilo.app.core.util.EmojiReactions
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.entity.UserEntity
 import ir.xilo.app.data.remote.api.XiloApiService
@@ -58,6 +59,9 @@ class ProfileViewModel @Inject constructor(
 
     private val _userLikes = MutableStateFlow<List<PostEntity>>(emptyList())
     val userLikes: StateFlow<List<PostEntity>> = _userLikes.asStateFlow()
+
+    private val _userArchived = MutableStateFlow<List<PostEntity>>(emptyList())
+    val userArchived: StateFlow<List<PostEntity>> = _userArchived.asStateFlow()
 
     private val _isOwnProfile = MutableStateFlow(false)
     val isOwnProfile: StateFlow<Boolean> = _isOwnProfile.asStateFlow()
@@ -373,6 +377,21 @@ class ProfileViewModel @Inject constructor(
                     }
                 _isTabLoading.value = false
             }
+            own && tabIndex == 1 -> {
+                if (!force && _userArchived.value.isNotEmpty()) return
+                _isTabLoading.value = true
+                runCatching {
+                    apiService.listUserPosts(username = username, tab = "archived", limit = 20)
+                }
+                    .onSuccess { page -> _userArchived.value = page.data.map { it.toProfileEntity() } }
+                    .onFailure { e ->
+                        if (_userArchived.value.isEmpty() && _userProfile.value == null) {
+                            _error.value =
+                                errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                        }
+                    }
+                _isTabLoading.value = false
+            }
             !own && tabIndex == 1 -> {
                 if (!force && _userReplies.value.isNotEmpty()) return
                 _isTabLoading.value = true
@@ -421,6 +440,7 @@ class ProfileViewModel @Inject constructor(
         isLiked = resolvedIsLiked(),
         isBookmarked = isBookmarked,
         isReposted = isReposted,
+        reactionsJson = EmojiReactions.fromPostDto(reactions, viewerReactions),
         createdAt = 0L,
         quotedPostId = quotedPostId ?: quotedPost?.id,
         quotedTitle = quotedPost?.title,

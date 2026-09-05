@@ -199,7 +199,7 @@ fun ChatInput(
                         onClick = {
                             photoPicker.launch(
                                 PickVisualMediaRequest(
-                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                    ActivityResultContracts.PickVisualMedia.ImageAndVideo,
                                 )
                             )
                         },

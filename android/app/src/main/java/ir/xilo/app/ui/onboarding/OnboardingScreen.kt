@@ -43,7 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -75,8 +75,8 @@ fun OnboardingScreen(
     modifier: Modifier = Modifier,
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val brand by viewModel.brand.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val brand by viewModel.brand.collectAsStateWithLifecycle()
     val languageCode = AppLocale.languageCode(LocalContext.current)
     val brandName = brand.nameForLanguage(languageCode).ifBlank { stringResource(R.string.app_name) }
     val snackbarHostState = remember { SnackbarHostState() }

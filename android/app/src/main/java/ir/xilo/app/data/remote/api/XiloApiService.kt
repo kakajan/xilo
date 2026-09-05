@@ -315,6 +315,12 @@ interface XiloApiService {
     @DELETE("api/messages/{id}")
     suspend fun deleteMessage(@Path("id") id: String): Map<String, String>
 
+    @POST("api/messages/{id}/reactions")
+    suspend fun toggleMessageReaction(
+        @Path("id") id: String,
+        @Body request: ToggleReactionRequest,
+    ): MessageReactionToggleResponse
+
     // ── Chat folders ──────────────────────────────────────────────────────
 
     @GET("api/chat-folders")

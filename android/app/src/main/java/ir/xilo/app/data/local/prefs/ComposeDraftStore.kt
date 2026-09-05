@@ -19,20 +19,24 @@ class ComposeDraftStore @Inject constructor(
         val title: String,
         val content: String,
         val audioUrl: String = "",
+        val coverImageUrl: String = "",
         val updatedAtMs: Long,
     ) {
-        val isEmpty: Boolean get() = title.isBlank() && content.isBlank() && audioUrl.isBlank()
+        val isEmpty: Boolean get() =
+            title.isBlank() && content.isBlank() && audioUrl.isBlank() && coverImageUrl.isBlank()
     }
 
     fun load(key: String = KEY_NEW): Draft? {
         val title = prefs.getString(titleKey(key), null) ?: return null
         val content = prefs.getString(contentKey(key), null) ?: return null
         val audioUrl = prefs.getString(audioKey(key), "") ?: ""
+        val coverImageUrl = prefs.getString(coverKey(key), "") ?: ""
         val updatedAt = prefs.getLong(updatedKey(key), 0L)
         val draft = Draft(
             title = title,
             content = content,
             audioUrl = audioUrl,
+            coverImageUrl = coverImageUrl,
             updatedAtMs = updatedAt,
         )
         return draft.takeUnless { it.isEmpty }
@@ -42,9 +46,10 @@ class ComposeDraftStore @Inject constructor(
         title: String,
         content: String,
         audioUrl: String = "",
+        coverImageUrl: String = "",
         key: String = KEY_NEW,
     ) {
-        if (title.isBlank() && content.isBlank() && audioUrl.isBlank()) {
+        if (title.isBlank() && content.isBlank() && audioUrl.isBlank() && coverImageUrl.isBlank()) {
             clear(key)
             return
         }
@@ -52,6 +57,7 @@ class ComposeDraftStore @Inject constructor(
             .putString(titleKey(key), title)
             .putString(contentKey(key), content)
             .putString(audioKey(key), audioUrl)
+            .putString(coverKey(key), coverImageUrl)
             .putLong(updatedKey(key), System.currentTimeMillis())
             .apply()
     }
@@ -61,6 +67,7 @@ class ComposeDraftStore @Inject constructor(
             .remove(titleKey(key))
             .remove(contentKey(key))
             .remove(audioKey(key))
+            .remove(coverKey(key))
             .remove(updatedKey(key))
             .apply()
     }
@@ -68,9 +75,12 @@ class ComposeDraftStore @Inject constructor(
     fun draftKey(editPostId: String?): String =
         if (editPostId.isNullOrBlank()) KEY_NEW else editPostId
 
+    fun hasNewDraft(): Boolean = load(KEY_NEW) != null
+
     private fun titleKey(key: String) = "title_$key"
     private fun contentKey(key: String) = "content_$key"
     private fun audioKey(key: String) = "audio_$key"
+    private fun coverKey(key: String) = "cover_$key"
     private fun updatedKey(key: String) = "updated_$key"
 
     companion object {

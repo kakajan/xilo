@@ -3,8 +3,10 @@ package ir.xilo.app.ui.postdetail
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,9 +30,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import ir.xilo.app.R
 import ir.xilo.app.core.util.AppLocale
+import ir.xilo.app.core.util.EmojiReactions
 import ir.xilo.app.core.util.PublicWebUrls
 import ir.xilo.app.core.util.ShareActions
 import ir.xilo.app.data.local.entity.PostEntity
@@ -107,16 +111,16 @@ fun PostDetailScreen(
     replyToPost: Boolean = false,
     viewModel: PostDetailViewModel = hiltViewModel()
 ) {
-    val post by viewModel.post.collectAsState()
-    val comments by viewModel.comments.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val currentUserId by viewModel.currentUserId.collectAsState()
-    val currentUsername by viewModel.currentUsername.collectAsState()
-    val canRepost by viewModel.canRepost.collectAsState()
-    val canModerateComments by viewModel.canModerateComments.collectAsState()
-    val postRemoved by viewModel.postRemoved.collectAsState()
+    val post by viewModel.post.collectAsStateWithLifecycle()
+    val comments by viewModel.comments.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val currentUserId by viewModel.currentUserId.collectAsStateWithLifecycle()
+    val currentUsername by viewModel.currentUsername.collectAsStateWithLifecycle()
+    val canRepost by viewModel.canRepost.collectAsStateWithLifecycle()
+    val canModerateComments by viewModel.canModerateComments.collectAsStateWithLifecycle()
+    val postRemoved by viewModel.postRemoved.collectAsStateWithLifecycle()
 
     var replyDraftText by remember { mutableStateOf("") }
     var replyingToCommentId by remember(replyToCommentId) { mutableStateOf(replyToCommentId) }
@@ -128,8 +132,8 @@ fun PostDetailScreen(
     var reportTargetId by remember { mutableStateOf<String?>(null) }
     var focusStack by remember { mutableStateOf<List<String>>(emptyList()) }
     val focusCommentId = focusStack.lastOrNull()
-    val currentUserAvatarUrl by viewModel.currentUserAvatarUrl.collectAsState()
-    val infoMessage by viewModel.infoMessage.collectAsState()
+    val currentUserAvatarUrl by viewModel.currentUserAvatarUrl.collectAsStateWithLifecycle()
+    val infoMessage by viewModel.infoMessage.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     var didScrollToReplyTarget by remember(replyToCommentId) { mutableStateOf(false) }
@@ -328,6 +332,7 @@ fun PostDetailScreen(
                                 onLikeClick = {
                                     viewModel.toggleLike(detailPost.id, detailPost.isLiked)
                                 },
+                                onReact = { emoji -> viewModel.react(detailPost.id, emoji) },
                                 onBookmarkClick = {
                                     viewModel.toggleBookmark(detailPost.id, detailPost.isBookmarked)
                                 },
@@ -540,6 +545,7 @@ fun PostDetailHeader(
     post: PostEntity,
     onReplyClick: () -> Unit = {},
     onLikeClick: () -> Unit = {},
+    onReact: ((String) -> Unit)? = null,
     onBookmarkClick: () -> Unit = {},
     onShareClick: (() -> Unit)? = null,
     /** Null hides the repost control (readers / non-authors). */
@@ -718,14 +724,42 @@ fun PostDetailHeader(
                 ),
                 label = "detailLikeScale",
             )
-            DetailAction(
-                icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
-                count = post.likeCount.toString(),
-                description = stringResource(R.string.cd_like),
-                tint = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
-                onClick = onLikeClick,
-                modifier = Modifier.scale(likeScale),
-            )
+            var showReactionPicker by remember { mutableStateOf(false) }
+            Box {
+                DetailAction(
+                    icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
+                    count = post.likeCount.toString(),
+                    description = stringResource(R.string.cd_like),
+                    tint = if (post.isLiked) ColorError else MaterialTheme.colorScheme.secondary,
+                    onClick = onLikeClick,
+                    onLongClick = { showReactionPicker = true },
+                    modifier = Modifier.scale(likeScale),
+                )
+                DropdownMenu(
+                    expanded = showReactionPicker,
+                    onDismissRequest = { showReactionPicker = false },
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        EmojiReactions.ALL.forEach { emoji ->
+                            Text(
+                                text = emoji,
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        showReactionPicker = false
+                                        if (onReact != null) onReact(emoji)
+                                        else if (EmojiReactions.isLikeFamily(emoji)) onLikeClick()
+                                    }
+                                    .padding(6.dp),
+                            )
+                        }
+                    }
+                }
+            }
             DetailAction(
                 icon = if (post.isBookmarked) XiloIcons.BookmarkFilled else XiloIcons.Bookmark,
                 count = null,
@@ -748,6 +782,7 @@ fun PostDetailHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DetailAction(
     @androidx.annotation.DrawableRes icon: Int,
@@ -755,14 +790,25 @@ private fun DetailAction(
     description: String,
     tint: Color = MaterialTheme.colorScheme.secondary,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val rowModifier = if (onClick != null) {
-        Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(role = Role.Button, onClick = onClick)
-    } else {
-        Modifier
+    val rowModifier = when {
+        onClick != null && onLongClick != null -> {
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .combinedClickable(
+                    role = Role.Button,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
+        }
+        onClick != null -> {
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(role = Role.Button, onClick = onClick)
+        }
+        else -> Modifier
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,

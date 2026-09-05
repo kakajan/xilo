@@ -1,5 +1,6 @@
 package ir.xilo.app.data.remote.websocket
 
+import ir.xilo.app.core.util.EmojiReactions
 import ir.xilo.app.data.local.dao.ChatDao
 import ir.xilo.app.data.local.dao.MessageDao
 import ir.xilo.app.data.local.dao.OutboxDao
@@ -59,9 +60,7 @@ class ChatRealtimeReconciler @Inject constructor(
                 is RealtimeEvent.MessageEdit -> onMessageEdit(event.payload)
                 is RealtimeEvent.MessageDelete -> onMessageDelete(event.payload)
                 is RealtimeEvent.MessageRead -> onMessageRead(event.payload)
-                is RealtimeEvent.MessageReaction -> {
-                    // Reactions are not persisted in the local Room schema yet.
-                }
+                is RealtimeEvent.MessageReaction -> onMessageReaction(event.payload)
                 is RealtimeEvent.Ack -> onAck(event)
                 is RealtimeEvent.Typing,
                 is RealtimeEvent.Presence,
@@ -105,6 +104,18 @@ class ChatRealtimeReconciler @Inject constructor(
             messageDao.updateEditedContent(payload.messageId, payload.content)
             updateChatPreview(payload.chatId)
         }
+    }
+
+    private suspend fun onMessageReaction(payload: RealtimeMessageReactionPayload) {
+        val existing = messageDao.getMessageById(payload.messageId) ?: return
+        val updated = EmojiReactions.applyEvent(
+            raw = existing.reactionsJson,
+            reaction = payload.reaction,
+            active = payload.active,
+            count = payload.count,
+            selfToggled = payload.userId == authRepository.getUserId(),
+        )
+        messageDao.updateReactionsJson(payload.messageId, updated)
     }
 
     private suspend fun onMessageDelete(payload: RealtimeMessageDeletePayload) {

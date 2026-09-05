@@ -19,7 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,11 +47,11 @@ fun SavedHubScreen(
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel,
 ) {
-    val savedSegment by viewModel.savedSegment.collectAsState()
-    val savedMessages by viewModel.savedMessages.collectAsState()
-    val bookmarkedPosts by viewModel.bookmarkedPosts.collectAsState()
-    val bookmarkedComments by viewModel.bookmarkedComments.collectAsState()
-    val savedHubLoading by viewModel.savedHubLoading.collectAsState()
+    val savedSegment by viewModel.savedSegment.collectAsStateWithLifecycle()
+    val savedMessages by viewModel.savedMessages.collectAsStateWithLifecycle()
+    val bookmarkedPosts by viewModel.bookmarkedPosts.collectAsStateWithLifecycle()
+    val bookmarkedComments by viewModel.bookmarkedComments.collectAsStateWithLifecycle()
+    val savedHubLoading by viewModel.savedHubLoading.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {

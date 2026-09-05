@@ -25,7 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +52,7 @@ fun SavedMessagesScreen(
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel,
 ) {
-    val messages by viewModel.messages.collectAsState()
+    val messages by viewModel.messages.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     LaunchedEffect(chatId) {

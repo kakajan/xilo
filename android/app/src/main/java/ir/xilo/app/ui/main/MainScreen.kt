@@ -10,10 +10,13 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -22,17 +25,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -70,22 +81,24 @@ import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.components.rememberChromeVisibilityState
 import ir.xilo.app.ui.discover.DiscoverScreen
+import ir.xilo.app.ui.feed.ComposeKind
 import ir.xilo.app.ui.feed.FeedScreen
 import ir.xilo.app.ui.profile.ProfileScreen
 import ir.xilo.app.push.RequestNotificationPermissionEffect
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     onItemClick: (NavKey) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MainScreenViewModel = hiltViewModel()
 ) {
-    val isAuthenticated by viewModel.isAuthenticated.collectAsState()
-    val onboardingCompleted by viewModel.onboardingCompleted.collectAsState()
-    val isOnline by viewModel.isOnline.collectAsState()
-    val canCreatePost by viewModel.canCreatePost.collectAsState()
-    val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
+    val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
+    val onboardingCompleted by viewModel.onboardingCompleted.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val canCreatePost by viewModel.canCreatePost.collectAsStateWithLifecycle()
+    val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsStateWithLifecycle()
 
     if (!isAuthenticated) {
         AuthScreen(
@@ -103,9 +116,15 @@ fun MainScreen(
         val pagerState = rememberPagerState(pageCount = { 4 })
         val selectedTab = pagerState.currentPage
         val coroutineScope = rememberCoroutineScope()
-        val pendingTab by viewModel.pendingTab.collectAsState()
-        val pendingDiscoverSearch by viewModel.pendingDiscoverSearch.collectAsState()
-        val openSettingsForUsername by viewModel.openSettingsForUsername.collectAsState()
+        val pendingTab by viewModel.pendingTab.collectAsStateWithLifecycle()
+        val pendingDiscoverSearch by viewModel.pendingDiscoverSearch.collectAsStateWithLifecycle()
+        val openSettingsForUsername by viewModel.openSettingsForUsername.collectAsStateWithLifecycle()
+        val hasComposeDraft by viewModel.hasComposeDraft.collectAsStateWithLifecycle()
+        var showComposeSheet by remember { mutableStateOf(false) }
+
+        LaunchedEffect(selectedTab) {
+            if (selectedTab == 0) viewModel.refreshComposeDraft()
+        }
 
         val navItems = listOf(
             NavigationItem(stringResource(R.string.nav_feed), XiloIcons.FeedSelected, XiloIcons.FeedUnselected),
@@ -141,7 +160,7 @@ fun MainScreen(
                     OfflineBanner(isOffline = !isOnline)
                 },
                 bottomBar = {
-                    val showFab = selectedTab == 0 && chromeState.isVisible && canCreatePost
+                        val showFab = selectedTab == 0 && chromeState.isVisible && canCreatePost
                     val chromeAnimSpec = tween<Float>(durationMillis = 300)
                     val chromeAnimSpecDp = tween<Dp>(durationMillis = 300)
 
@@ -157,7 +176,7 @@ fun MainScreen(
                     )
                     val fabSectionHeight by animateDpAsState(
                         targetValue = if (showFab) {
-                            XiloSpacing.fabSize + XiloSpacing.fabGapAboveNav
+                            XiloSpacing.fabSize + XiloSpacing.fabGapAboveNav + if (hasComposeDraft) 36.dp else 0.dp
                         } else {
                             0.dp
                         },
@@ -194,18 +213,33 @@ fun MainScreen(
                                     contentAlignment = Alignment.BottomEnd
                                 ) {
                                     if (fabScale > 0f) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(XiloSpacing.fabSize)
-                                                .graphicsLayer {
-                                                    scaleX = fabScale
-                                                    scaleY = fabScale
-                                                    alpha = fabAlpha
-                                                    transformOrigin = TransformOrigin(0.5f, 1f)
-                                                }
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.Bottom,
                                         ) {
+                                            if (hasComposeDraft) {
+                                                AssistChip(
+                                                    onClick = { onItemClick(CreatePostKey()) },
+                                                    label = {
+                                                        Text(stringResource(R.string.compose_continue_draft))
+                                                    },
+                                                )
+                                            } else {
+                                                Box(modifier = Modifier.size(0.dp))
+                                            }
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(XiloSpacing.fabSize)
+                                                    .graphicsLayer {
+                                                        scaleX = fabScale
+                                                        scaleY = fabScale
+                                                        alpha = fabAlpha
+                                                        transformOrigin = TransformOrigin(0.5f, 1f)
+                                                    }
+                                            ) {
                                             FloatingActionButton(
-                                                onClick = { onItemClick(CreatePostKey()) },
+                                                onClick = { showComposeSheet = true },
                                                 shape = CircleShape,
                                                 containerColor = XiloBlue,
                                                 contentColor = Color.White,
@@ -232,6 +266,7 @@ fun MainScreen(
                                                     tint = Color.White,
                                                     modifier = Modifier.size(24.dp)
                                                 )
+                                            }
                                             }
                                         }
                                     }
@@ -340,7 +375,7 @@ fun MainScreen(
                                 )
                             }
                             3 -> {
-                                val currentUsername by viewModel.currentUsername.collectAsState()
+                                val currentUsername by viewModel.currentUsername.collectAsStateWithLifecycle()
                                 LaunchedEffect(Unit) {
                                     if (currentUsername.isNullOrBlank()) {
                                         viewModel.refreshUsername()
@@ -399,6 +434,62 @@ fun MainScreen(
                     }
                 }
             }
+
+            if (showComposeSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showComposeSheet = false },
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                ) {
+                    Text(
+                        text = stringResource(R.string.compose_type_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                    ComposeKindRow(
+                        label = stringResource(R.string.compose_kind_text),
+                        onClick = {
+                            showComposeSheet = false
+                            onItemClick(CreatePostKey(composeKind = ComposeKind.TEXT))
+                        },
+                    )
+                    ComposeKindRow(
+                        label = stringResource(R.string.compose_kind_article),
+                        onClick = {
+                            showComposeSheet = false
+                            onItemClick(CreatePostKey(composeKind = ComposeKind.ARTICLE))
+                        },
+                    )
+                    ComposeKindRow(
+                        label = stringResource(R.string.compose_kind_quote),
+                        onClick = {
+                            showComposeSheet = false
+                            onItemClick(CreatePostKey(composeKind = ComposeKind.ARTICLE))
+                        },
+                    )
+                    ComposeKindRow(
+                        label = stringResource(R.string.compose_kind_audio),
+                        onClick = {
+                            showComposeSheet = false
+                            onItemClick(CreatePostKey(composeKind = ComposeKind.AUDIO))
+                        },
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun ComposeKindRow(
+    label: String,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+    )
 }
