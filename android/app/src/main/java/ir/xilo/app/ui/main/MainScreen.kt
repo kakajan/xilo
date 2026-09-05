@@ -104,6 +104,7 @@ fun MainScreen(
         val selectedTab = pagerState.currentPage
         val coroutineScope = rememberCoroutineScope()
         val pendingTab by viewModel.pendingTab.collectAsState()
+        val pendingDiscoverSearch by viewModel.pendingDiscoverSearch.collectAsState()
         val openSettingsForUsername by viewModel.openSettingsForUsername.collectAsState()
 
         val navItems = listOf(
@@ -227,7 +228,7 @@ fun MainScreen(
                                             ) {
                                                 XiloIcon(
                                                     icon = XiloIcons.Add,
-                                                    contentDescription = "ایجاد پست جدید",
+                                                    contentDescription = stringResource(R.string.cd_create_post),
                                                     tint = Color.White,
                                                     modifier = Modifier.size(24.dp)
                                                 )
@@ -292,9 +293,12 @@ fun MainScreen(
                                 onHashtagClick = { tag ->
                                     if (tag.isNotBlank()) onItemClick(TagFeedKey(tag = tag))
                                 },
+                                onSearchClick = { viewModel.requestDiscoverSearch() },
                                 modifier = Modifier.fillMaxSize()
                             )
                             1 -> DiscoverScreen(
+                                activateSearch = pendingDiscoverSearch,
+                                onSearchActivated = { viewModel.consumeDiscoverSearch() },
                                 onCommentClick = { slug -> onItemClick(PostDetailKey(slug)) },
                                 onReplyToPost = { slug ->
                                     onItemClick(PostDetailKey(slug = slug, replyToPost = true))

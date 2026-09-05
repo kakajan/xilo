@@ -10,6 +10,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import ir.xilo.app.R
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -148,7 +150,7 @@ fun VerifiedBadge(
 ) {
     XiloIcon(
         icon = XiloIcons.Verify,
-        contentDescription = "Verified",
+        contentDescription = stringResource(R.string.cd_verified),
         tint = tint,
         modifier = modifier.size(size)
     )

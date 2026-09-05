@@ -3,3 +3,5 @@
 
 # xilo.apiBaseUrl=https://brain.aile.ir/
 # xilo.wsBaseUrl=wss://brain.aile.ir/ws
+# Public website origin used for share links and App Links (no trailing slash).
+# xilo.webBaseUrl=https://aile.ir

@@ -25,6 +25,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import ir.xilo.app.R
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
@@ -267,7 +269,7 @@ fun XiloAvatar(
         key(resolvedUrl) {
             AsyncImage(
                 model = resolvedUrl,
-                contentDescription = "Avatar",
+                contentDescription = stringResource(R.string.cd_avatar),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(avatarSize)

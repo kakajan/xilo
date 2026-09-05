@@ -1,6 +1,5 @@
 package ir.xilo.app.ui.components
 
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,12 +32,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ir.xilo.app.R
+import ir.xilo.app.core.util.DateFormatter
+import ir.xilo.app.core.util.ShareActions
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloSpacing
-import ir.xilo.app.core.util.DateFormatter
 import ir.xilo.app.ui.feed.RepostMenuButton
 
 private val CommentAvatarSize = 40.dp
@@ -88,12 +88,10 @@ fun CommentCard(
         val slug = postSlug?.takeIf { it.isNotBlank() }
         if (author != null && slug != null) {
             {
-                val link = "/$author/$slug?reply=${comment.id}"
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, link)
-                }
-                context.startActivity(Intent.createChooser(intent, null))
+                ShareActions.sendText(
+                    context,
+                    ShareActions.commentUrl(author, slug, comment.id),
+                )
             }
         } else {
             null

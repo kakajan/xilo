@@ -214,7 +214,7 @@
     <string name="profile_unfollow">Unfollow</string>
     <string name="profile_message">Message</string>
     <string name="profile_share">Share</string>
-    <string name="profile_share_text">@%1$s on aile</string>
+    <string name="profile_share_text">@%1$s on aile\n%2$s</string>
     <string name="profile_empty_archived">No archived posts yet.</string>
     <string name="profile_empty_posts">No posts yet.</string>
     <string name="profile_empty_replies">No replies yet.</string>
@@ -299,6 +299,9 @@
     <string name="cd_views">Views</string>
     <string name="post_cover_untitled">Post</string>
     <string name="cd_share">Share</string>
+    <string name="cd_create_post">Create post</string>
+    <string name="cd_avatar">Avatar</string>
+    <string name="cd_verified">Verified</string>
     <string name="cd_emoji">Emoji</string>
     <string name="cd_attach">Attach</string>
     <string name="cd_send">Send</string>

@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.getInsetsController(window, window.decorView)
             .show(WindowInsetsCompat.Type.navigationBars())
 
-        handlePushIntent(intent)
+        handleIncomingIntent(intent)
 
         setContent {
             val platformTheme by themeRepository.theme.collectAsStateWithLifecycle()
@@ -95,6 +95,15 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        if (intent.action == Intent.ACTION_VIEW && intent.data != null) {
+            pushNavigationCoordinator.handleHttpUri(intent.data.toString())
+            return
+        }
         handlePushIntent(intent)
     }
 

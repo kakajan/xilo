@@ -216,7 +216,7 @@
     <string name="profile_unfollow">لغو دنبال</string>
     <string name="profile_message">گفتگو</string>
     <string name="profile_share">اشتراک</string>
-    <string name="profile_share_text">پروفایل @%1$s در آیله</string>
+    <string name="profile_share_text">پروفایل @%1$s در آیله\n%2$s</string>
     <string name="profile_empty_archived">پست آرشیو‌شده‌ای وجود ندارد.</string>
     <string name="profile_empty_posts">هنوز پستی منتشر نشده است.</string>
     <string name="profile_empty_replies">هنوز نظری ثبت نشده است.</string>
@@ -301,6 +301,9 @@
     <string name="cd_views">بازدید</string>
     <string name="post_cover_untitled">پست</string>
     <string name="cd_share">اشتراک‌گذاری</string>
+    <string name="cd_create_post">ایجاد پست جدید</string>
+    <string name="cd_avatar">آواتار</string>
+    <string name="cd_verified">تأییدشده</string>
     <string name="cd_emoji">ایموجی</string>
     <string name="cd_attach">پیوست</string>
     <string name="cd_send">ارسال</string>

@@ -82,6 +82,7 @@ fun FeedScreen(
     onProfileClick: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
     onHashtagClick: (String) -> Unit = {},
+    onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
 ) {
@@ -258,7 +259,8 @@ fun FeedScreen(
                         onSettingsClick = onSettingsClick,
                         onNotificationsClick = onNotificationsClick,
                         unreadNotificationCount = unreadNotificationCount,
-                        onProfileClick = onProfileClick
+                        onProfileClick = onProfileClick,
+                        onSearchClick = onSearchClick,
                     )
                     FeedCategoryTabs(
                         categories = viewModel.categoryResIds.map { stringResource(it) },
@@ -291,7 +293,8 @@ private fun FeedHeader(
     onSettingsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     unreadNotificationCount: Int,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    onSearchClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -317,7 +320,7 @@ private fun FeedHeader(
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(22.dp)
                 )
-                .clickable { },
+                .clickable(onClick = onSearchClick),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(

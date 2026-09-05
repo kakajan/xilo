@@ -50,8 +50,20 @@ class MainScreenViewModel @Inject constructor(
     val unreadNotificationCount: StateFlow<Int> = notificationRepository.unreadCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    private val _pendingDiscoverSearch = MutableStateFlow(false)
+    val pendingDiscoverSearch: StateFlow<Boolean> = _pendingDiscoverSearch.asStateFlow()
+
     fun requestTab(index: Int) {
         _pendingTab.value = index
+    }
+
+    fun requestDiscoverSearch() {
+        _pendingTab.value = 1
+        _pendingDiscoverSearch.value = true
+    }
+
+    fun consumeDiscoverSearch() {
+        _pendingDiscoverSearch.value = false
     }
 
     fun consumePendingTab() {

@@ -193,7 +193,7 @@
     <string name="profile_unfollow">Takipten çık</string>
     <string name="profile_message">Mesaj</string>
     <string name="profile_share">Paylaş</string>
-    <string name="profile_share_text">aile üzerinde @%1$s</string>
+    <string name="profile_share_text">aile üzerinde @%1$s\n%2$s</string>
     <string name="profile_empty_archived">Henüz arşivlenmiş gönderi yok.</string>
     <string name="profile_empty_posts">Henüz gönderi yok.</string>
     <string name="profile_empty_replies">Henüz yanıt yok.</string>
@@ -277,6 +277,9 @@
     <string name="cd_views">Görüntülenme</string>
     <string name="post_cover_untitled">Gönderi</string>
     <string name="cd_share">Paylaş</string>
+    <string name="cd_create_post">Gönderi oluştur</string>
+    <string name="cd_avatar">Avatar</string>
+    <string name="cd_verified">Doğrulanmış</string>
     <string name="cd_emoji">Emoji</string>
     <string name="cd_attach">Ekle</string>
     <string name="cd_send">Gönder</string>

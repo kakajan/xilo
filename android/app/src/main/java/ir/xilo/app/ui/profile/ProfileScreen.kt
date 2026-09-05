@@ -1,6 +1,5 @@
 package ir.xilo.app.ui.profile
 
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -90,6 +89,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import ir.xilo.app.R
+import ir.xilo.app.core.util.ShareActions
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.IranSansXFontFamily
 import ir.xilo.app.theme.XiloBlue
@@ -274,12 +274,9 @@ fun ProfileScreen(
 
     fun shareProfile() {
         val handle = userProfile?.username ?: username
-        val text = context.getString(R.string.profile_share_text, handle)
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, text)
-        }
-        context.startActivity(Intent.createChooser(intent, null))
+        val url = ShareActions.profileUrl(handle)
+        val text = context.getString(R.string.profile_share_text, handle, url)
+        ShareActions.sendText(context, text)
     }
 
     if (isLoading && userProfile == null) {

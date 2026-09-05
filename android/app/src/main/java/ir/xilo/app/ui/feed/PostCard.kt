@@ -1,6 +1,5 @@
 package ir.xilo.app.ui.feed
 
-import android.content.Intent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -38,6 +37,8 @@ import ir.xilo.app.ui.components.forRelativeTime
 import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.usernameHandle
 import ir.xilo.app.core.util.DateFormatter
+import ir.xilo.app.core.util.PublicWebUrls
+import ir.xilo.app.core.util.ShareActions
 
 @Composable
 fun PostCard(
@@ -61,16 +62,11 @@ fun PostCard(
     val openAuthor = onAuthorClick?.takeIf { post.authorUsername.isNotBlank() }
     val context = LocalContext.current
     val sharePost = onShareClick ?: {
-        val text = buildString {
-            if (post.title.isNotBlank()) append(post.title).append('\n')
-            append(post.excerpt?.takeIf { it.isNotBlank() } ?: post.content.take(160))
-            append("\n/p/").append(post.slug)
-        }
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, text.trim())
-        }
-        context.startActivity(Intent.createChooser(intent, null))
+        val url = ShareActions.postUrl(post.authorUsername, post.slug)
+        ShareActions.sendText(
+            context,
+            PublicWebUrls.sharePostBody(post.title, url),
+        )
     }
 
     Column(modifier = modifier.fillMaxWidth()) {

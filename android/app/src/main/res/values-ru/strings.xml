@@ -193,7 +193,7 @@
     <string name="profile_unfollow">Отписаться</string>
     <string name="profile_message">Сообщение</string>
     <string name="profile_share">Поделиться</string>
-    <string name="profile_share_text">@%1$s в aile</string>
+    <string name="profile_share_text">@%1$s в aile\n%2$s</string>
     <string name="profile_empty_archived">Архивных постов пока нет.</string>
     <string name="profile_empty_posts">Постов пока нет.</string>
     <string name="profile_empty_replies">Ответов пока нет.</string>
@@ -277,6 +277,9 @@
     <string name="cd_views">Просмотры</string>
     <string name="post_cover_untitled">Пост</string>
     <string name="cd_share">Поделиться</string>
+    <string name="cd_create_post">Создать пост</string>
+    <string name="cd_avatar">Аватар</string>
+    <string name="cd_verified">Подтверждено</string>
     <string name="cd_emoji">Эмодзи</string>
     <string name="cd_attach">Вложение</string>
     <string name="cd_send">Отправить</string>

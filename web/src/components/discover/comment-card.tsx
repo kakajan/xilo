@@ -13,6 +13,7 @@ import {
   commentDislikeCount,
   commentLikeCount,
 } from "@/lib/comment-reactions";
+import { commentShareUrl, shareOrCopy } from "@/lib/share-urls";
 import type { Comment } from "@/types/comment";
 
 export interface DiscoverComment extends Comment {
@@ -168,8 +169,8 @@ export function CommentCard({
               onShare ||
               (canOpenPost
                 ? () => {
-                    void navigator.clipboard?.writeText(
-                      `${window.location.origin}${href}`
+                    void shareOrCopy(
+                      commentShareUrl(postAuthor, postSlug, comment.id),
                     );
                   }
                 : undefined)

@@ -35,6 +35,7 @@ Endpoints are injected via `BuildConfig` (`API_BASE_URL`, `WS_BASE_URL`). Prefer
 |---------|-----------------|----------------------|
 | REST base URL (trailing `/` optional) | `xilo.apiBaseUrl` | `XILO_API_BASE_URL` |
 | WebSocket URL | `xilo.wsBaseUrl` | `XILO_WS_BASE_URL` |
+| Public website origin for share / App Links | `xilo.webBaseUrl` | `XILO_WEB_BASE_URL` |
 
 Examples:
 
@@ -73,7 +74,9 @@ gradlew.bat :app:assembleRelease
 
 See also `gradle.properties.example` for the production property names.
 
-Release packaging runs `checkReleaseEndpoints` and **fails** if either override is missing, contains embedded credentials, lacks a valid host, or does not use `https://` for REST and `wss://` for WebSocket.
+Release packaging runs `checkReleaseEndpoints` and **fails** if REST/WebSocket/public-web overrides are missing, contain embedded credentials, lack a valid host, or do not use `https://` for REST and the public site and `wss://` for WebSocket.
+
+Share sheets use `BuildConfig.PUBLIC_WEB_URL` (default `https://aile.ir`) so posts share as `https://aile.ir/{username}/{slug}`, comments as `...?reply={id}`, and profiles as `https://aile.ir/{username}`. Debug builds default the public site to `https://aile.ir` even when the API is the emulator bridge.
 
 ## Logging
 

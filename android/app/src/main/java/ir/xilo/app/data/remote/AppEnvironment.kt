@@ -12,6 +12,7 @@ import javax.inject.Singleton
 class AppEnvironment @Inject constructor() {
     val apiBaseUrl: String = BuildConfig.API_BASE_URL
     val wsBaseUrl: String = BuildConfig.WS_BASE_URL
+    val publicWebUrl: String = BuildConfig.PUBLIC_WEB_URL
     val isDebuggable: Boolean = BuildConfig.DEBUG
 
     fun websocketUrlWithToken(accessToken: String): String {

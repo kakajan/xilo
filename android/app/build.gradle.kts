@@ -36,10 +36,14 @@ abstract class CheckReleaseEndpoints : DefaultTask() {
     @get:Input
     abstract val websocketBaseUrl: Property<String>
 
+    @get:Input
+    abstract val publicWebUrl: Property<String>
+
     @TaskAction
     fun verifyEndpoints() {
         validate(apiBaseUrl.orNull, "API base URL", "https")
         validate(websocketBaseUrl.orNull, "WebSocket base URL", "wss")
+        validate(publicWebUrl.orNull, "Public web URL", "https")
     }
 
     private fun validate(value: String?, label: String, requiredScheme: String) {
@@ -64,6 +68,8 @@ abstract class CheckReleaseEndpoints : DefaultTask() {
 
 val RELEASE_API_UNSET = "https://unset.xilo.invalid/"
 val RELEASE_WS_UNSET = "wss://unset.xilo.invalid/ws"
+val RELEASE_WEB_UNSET = "https://unset.xilo.invalid"
+val DEFAULT_PUBLIC_WEB_URL = "https://aile.ir"
 
 fun projectOrEnv(gradleProperty: String, envVar: String): String? =
     (project.findProperty(gradleProperty) as String?)
@@ -140,8 +146,11 @@ android {
             )
             val wsBase = projectOrEnv("xilo.wsBaseUrl", "XILO_WS_BASE_URL")
                 ?: "ws://10.0.2.2:8888/ws"
+            val publicWeb = projectOrEnv("xilo.webBaseUrl", "XILO_WEB_BASE_URL")
+                ?: DEFAULT_PUBLIC_WEB_URL
             buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
             buildConfigField("String", "WS_BASE_URL", "\"$wsBase\"")
+            buildConfigField("String", "PUBLIC_WEB_URL", "\"${publicWeb.trimEnd('/')}\"")
         }
         release {
             signingConfig = signingConfigs.getByName("release")
@@ -159,8 +168,12 @@ android {
             val wsBase = projectOrEnv("xilo.wsBaseUrl", "XILO_WS_BASE_URL")
                 ?.let { requireReleaseSafe(it, "WebSocket base URL", "wss") }
                 ?: RELEASE_WS_UNSET
+            val publicWeb = projectOrEnv("xilo.webBaseUrl", "XILO_WEB_BASE_URL")
+                ?.let { requireReleaseSafe(it.trimEnd('/'), "Public web URL", "https") }
+                ?: RELEASE_WEB_UNSET
             buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
             buildConfigField("String", "WS_BASE_URL", "\"$wsBase\"")
+            buildConfigField("String", "PUBLIC_WEB_URL", "\"$publicWeb\"")
         }
     }
     compileOptions {
@@ -284,6 +297,11 @@ tasks.register<CheckReleaseEndpoints>("checkReleaseEndpoints") {
     websocketBaseUrl.set(
         providers.gradleProperty("xilo.wsBaseUrl")
             .orElse(providers.environmentVariable("XILO_WS_BASE_URL"))
+            .orElse("")
+    )
+    publicWebUrl.set(
+        providers.gradleProperty("xilo.webBaseUrl")
+            .orElse(providers.environmentVariable("XILO_WEB_BASE_URL"))
             .orElse("")
     )
 }

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import type { Post } from "@/types/post";
+import type { Metadata } from "next";
 import { formatDate, readingTimeText, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,22 +12,43 @@ import { PostBody } from "@/components/post/post-body";
 import { QuotedPostCard } from "@/components/post/quoted-post-card";
 import { QuotedCommentCard } from "@/components/post/quoted-comment-card";
 import { RecordPostView } from "@/components/post/record-post-view";
+import { ShareControl } from "@/components/post/share-control";
 import {
   AuthorHandleMeta,
   TimeLabel,
 } from "@/components/user/username-handle";
+import { fetchPublishedPost } from "@/lib/posts-server";
+import { postShareUrl, publicSiteOrigin } from "@/lib/share-urls";
+import { getArticleJsonLd } from "@/lib/seo";
 
-async function getPost(slug: string): Promise<Post | null> {
-  try {
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const res = await fetch(`${base}/api/posts/${slug}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string; slug: string }>;
+}): Promise<Metadata> {
+  const { username, slug } = await params;
+  const post = await fetchPublishedPost(slug);
+  if (!post) return { title: "پست پیدا نشد" };
+  const url = postShareUrl(post.author?.username || username, post.slug);
+  const title = post.title;
+  const description = post.excerpt || undefined;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "article",
+      images: post.cover_image_url ? [post.cover_image_url] : undefined,
+    },
+    twitter: {
+      card: post.cover_image_url ? "summary_large_image" : "summary",
+      title,
+      description,
+    },
+  };
 }
 
 export default async function PostPage({
@@ -39,13 +60,19 @@ export default async function PostPage({
 }) {
   const { username, slug } = await params;
   const { reply } = await searchParams;
-  const post = await getPost(slug);
+  const post = await fetchPublishedPost(slug);
   if (!post) notFound();
 
   const authorName = post.author?.display_name || post.author?.username || "ناشناس";
+  const shareUrl = postShareUrl(post.author?.username || username, post.slug);
+  const jsonLd = getArticleJsonLd(post, publicSiteOrigin());
 
   return (
     <article className="mx-auto max-w-3xl">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="mb-8">
         <h1 className="mb-4 text-3xl font-bold md:text-4xl">{post.title}</h1>
 
@@ -58,7 +85,7 @@ export default async function PostPage({
               <AvatarFallback>{getInitials(authorName)}</AvatarFallback>
             </Avatar>
           </Link>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <Link
               href={`/${post.author?.username || username}`}
               className="font-medium hover:underline"
@@ -92,6 +119,7 @@ export default async function PostPage({
               }
             />
           </div>
+          <ShareControl url={shareUrl} title={post.title} />
         </div>
 
         {post.tags?.length > 0 && (

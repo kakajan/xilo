@@ -193,7 +193,7 @@
     <string name="profile_unfollow">إلغاء المتابعة</string>
     <string name="profile_message">رسالة</string>
     <string name="profile_share">مشاركة</string>
-    <string name="profile_share_text">ملف @%1$s على آيلة</string>
+    <string name="profile_share_text">ملف @%1$s على آيلة\n%2$s</string>
     <string name="profile_empty_archived">لا توجد منشورات مؤرشفة بعد.</string>
     <string name="profile_empty_posts">لا توجد منشورات بعد.</string>
     <string name="profile_empty_replies">لا توجد ردود بعد.</string>
@@ -277,6 +277,9 @@
     <string name="cd_views">المشاهدات</string>
     <string name="post_cover_untitled">منشور</string>
     <string name="cd_share">مشاركة</string>
+    <string name="cd_create_post">إنشاء منشور</string>
+    <string name="cd_avatar">الصورة الشخصية</string>
+    <string name="cd_verified">موثّق</string>
     <string name="cd_emoji">رمز تعبيري</string>
     <string name="cd_attach">إرفاق</string>
     <string name="cd_send">إرسال</string>

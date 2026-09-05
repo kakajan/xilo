@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FollowButton } from "@/components/user/follow-button";
 import { UsernameHandle } from "@/components/user/username-handle";
 import { cn, getInitials } from "@/lib/utils";
+import { profileShareUrl, shareOrCopy } from "@/lib/share-urls";
 import type { Post } from "@/types/post";
 import type { Comment } from "@/types/comment";
 
@@ -186,12 +187,7 @@ export default function AuthorProfilePage() {
             variant="outline"
             className="min-h-11"
             onClick={async () => {
-              const url = `${window.location.origin}/${username}`;
-              try {
-                await navigator.clipboard.writeText(url);
-              } catch {
-                /* ignore */
-              }
+              await shareOrCopy(profileShareUrl(username), `@${username}`);
             }}
           >
             <Share2 className="ms-1 h-4 w-4" />

@@ -159,7 +159,7 @@ fun ChatConversationScreen(
                     IconButton(onClick = onBackClick) {
                         XiloIcon(
                             icon = XiloIcons.Back,
-                            contentDescription = "بازگشت"
+                            contentDescription = stringResource(R.string.common_back)
                         )
                     }
                 },

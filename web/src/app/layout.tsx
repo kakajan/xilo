@@ -12,7 +12,10 @@ const siteDisplay =
   process.env.NEXT_PUBLIC_SITE_DISPLAY ||
   `${process.env.NEXT_PUBLIC_SITE_NAME_FA || "آیله"} | ${process.env.NEXT_PUBLIC_SITE_NAME_EN || "aile"}`;
 
+const siteUrl = (process.env.NEXT_PUBLIC_URL || "https://aile.ir").replace(/\/$/, "");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: siteDisplay,
   description: "پلتفرم مدرن وبلاگ و گفتگو",
   icons: {

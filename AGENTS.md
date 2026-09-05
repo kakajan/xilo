@@ -58,7 +58,8 @@ openspec/
 | `openspec-verify` | Verify implementation matches specs |
 | `xilo-backend` | Go/Fiber backend development conventions |
 | `xilo-frontend` | Next.js/React frontend development conventions |
-| `xilo-android` | Native Android Kotlin/Jetpack Compose development conventions |
+| `xilo-android` | Native Android Kotlin/Jetpack Compose (`android/`). Read this before Android work. |
+| `xilo-mobile` | Legacy Flutter (`mobile/`) — do not use for new platform work |
 | `xilo-infra` | Docker/K8s infrastructure conventions |
 
 ## Development Conventions

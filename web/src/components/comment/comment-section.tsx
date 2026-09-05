@@ -13,6 +13,7 @@ import { useFormatDate } from "@/hooks/use-format-date";
 import { useAuthStore } from "@/stores/auth-store";
 import { CommentActions } from "@/components/comment/comment-actions";
 import { bookmarkComment, unbookmarkComment } from "@/lib/api/bookmarks";
+import { commentShareUrl, shareOrCopy } from "@/lib/share-urls";
 import {
   commentDislikeCount,
   commentLikeCount,
@@ -478,9 +479,8 @@ function CommentBubble({
         onShare={
           postAuthorUsername && postSlug
             ? () => {
-                const path = `/${postAuthorUsername}/${postSlug}?reply=${encodeURIComponent(comment.id)}`;
-                void navigator.clipboard?.writeText(
-                  `${window.location.origin}${path}`
+                void shareOrCopy(
+                  commentShareUrl(postAuthorUsername, postSlug, comment.id),
                 );
               }
             : undefined

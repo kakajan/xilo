@@ -55,6 +55,8 @@ fun DiscoverScreen(
     onEditPost: (String) -> Unit = {},
     onQuotePost: (String) -> Unit = {},
     onQuoteComment: (String) -> Unit = {},
+    activateSearch: Boolean = false,
+    onSearchActivated: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DiscoverViewModel = hiltViewModel()
 ) {
@@ -78,6 +80,13 @@ fun DiscoverScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var reportTargetId by remember { mutableStateOf<String?>(null) }
     val chromeState = LocalChromeVisibility.current
+
+    LaunchedEffect(activateSearch) {
+        if (activateSearch) {
+            isSearchActive = true
+            onSearchActivated()
+        }
+    }
     val discoverListState = rememberLazyListState()
     val searchListState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }

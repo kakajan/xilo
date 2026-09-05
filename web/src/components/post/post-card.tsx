@@ -15,6 +15,7 @@ import { AuthorHandleMeta, TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import { bookmarkPost, unbookmarkPost } from "@/lib/api/bookmarks";
 import { apiFetch } from "@/lib/api-client";
+import { postShareUrl, shareOrCopy } from "@/lib/share-urls";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Post } from "@/types/post";
 
@@ -44,7 +45,9 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
 
   const href = post.author?.username
     ? `/${post.author.username}/${post.slug}`
-    : `/${post.slug}`;
+    : `/p/${post.slug}`;
+
+  const shareUrl = postShareUrl(post.author?.username || "", post.slug);
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,12 +87,7 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
   const share = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const url = typeof window !== "undefined" ? `${window.location.origin}${href}` : href;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      /* ignore */
-    }
+    await shareOrCopy(shareUrl, post.title);
   };
 
   return (

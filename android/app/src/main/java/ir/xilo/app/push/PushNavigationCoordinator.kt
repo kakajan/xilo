@@ -1,10 +1,14 @@
 package ir.xilo.app.push
 
 import androidx.navigation3.runtime.NavKey
+import ir.xilo.app.BuildConfig
 import ir.xilo.app.ChatConversationKey
 import ir.xilo.app.NotificationsKey
 import ir.xilo.app.PostDetailKey
 import ir.xilo.app.ProfileKey
+import ir.xilo.app.TagFeedKey
+import ir.xilo.app.core.util.PublicWebDestination
+import ir.xilo.app.core.util.PublicWebUrls
 import ir.xilo.app.data.repository.NotificationDeepLink
 import ir.xilo.app.data.repository.NotificationRepository
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +29,11 @@ class PushNavigationCoordinator @Inject constructor(
 
     private val _pendingNavKey = MutableStateFlow<NavKey?>(null)
     val pendingNavKey: StateFlow<NavKey?> = _pendingNavKey.asStateFlow()
+
+    fun handleHttpUri(url: String) {
+        val dest = PublicWebUrls.parse(url, BuildConfig.PUBLIC_WEB_URL) ?: return
+        _pendingNavKey.value = dest.toNavKey()
+    }
 
     fun handlePushData(data: Map<String, String>) {
         if (data.isEmpty()) return
@@ -48,4 +57,11 @@ internal fun NotificationDeepLink.toNavKey(): NavKey? = when (this) {
     is NotificationDeepLink.Profile -> ProfileKey(username = username)
     NotificationDeepLink.Inbox -> NotificationsKey
     NotificationDeepLink.None -> null
+}
+
+internal fun PublicWebDestination.toNavKey(): NavKey = when (this) {
+    is PublicWebDestination.Post -> PostDetailKey(slug = slug, replyToCommentId = replyId)
+    is PublicWebDestination.Profile -> ProfileKey(username = username)
+    is PublicWebDestination.Tag -> TagFeedKey(tag = tag)
+    is PublicWebDestination.Chat -> ChatConversationKey(chatId = chatId)
 }

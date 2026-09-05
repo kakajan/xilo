@@ -14,7 +14,7 @@ Do not consider an Android task done until the emulator test passes.
 
 1. Ensure a device/emulator is connected: `adb devices`
 2. Build and install: `./gradlew installDebug` (from `android/`)
-3. Launch the app: `adb shell am start -n com.example.xilo/.MainActivity`
+3. Launch the app: `adb shell am start -n ir.xilo.app/.MainActivity`
 4. Verify the change visually:
    - Take a screenshot: `adb exec-out screencap -p > android/emulator_test.png`
    - Or dump UI if needed: `adb shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml android/ui_dump.xml`

@@ -1,6 +1,5 @@
 package ir.xilo.app.ui.postdetail
 
-import android.content.Intent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -32,6 +31,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import ir.xilo.app.R
 import ir.xilo.app.core.util.AppLocale
+import ir.xilo.app.core.util.PublicWebUrls
+import ir.xilo.app.core.util.ShareActions
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
@@ -555,16 +556,11 @@ fun PostDetailHeader(
 ) {
     val context = LocalContext.current
     val sharePost = onShareClick ?: {
-        val text = buildString {
-            if (post.title.isNotBlank()) append(post.title).append('\n')
-            append(post.excerpt?.takeIf { it.isNotBlank() } ?: extractPlainText(post.content).take(160))
-            append("\n/p/").append(post.slug)
-        }
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, text.trim())
-        }
-        context.startActivity(Intent.createChooser(intent, null))
+        val url = ShareActions.postUrl(post.authorUsername, post.slug)
+        ShareActions.sendText(
+            context,
+            PublicWebUrls.sharePostBody(post.title, url),
+        )
     }
     val openAuthor = onAuthorClick?.takeIf { post.authorUsername.isNotBlank() }
     Column(
