@@ -1,9 +1,0 @@
-HSPLir/xilo/app/MainActivity;
-HSPLir/xilo/app/ui/feed/**
-HSPLir/xilo/app/ui/main/**
-HSPLir/xilo/app/data/repository/PostRepository;
-HSPLir/xilo/app/data/repository/FeedRemoteMediator;
-HSPLandroidx/compose/**
-HSPLcoil/**
-HSPLandroidx/paging/**
-HSPLandroidx/room/**
