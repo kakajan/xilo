@@ -1,3 +1,13 @@
+import { User } from "./user";
+
+export type PostType = "article" | "micro" | "photo" | "video" | "link";
+
+export interface PostMedia {
+  id: string;
+  url: string;
+  mime_type?: string;
+}
+
 export interface Post {
   id: string;
   author_id: string;
@@ -30,6 +40,10 @@ export interface Post {
   viewer_reactions?: string[];
   is_bookmarked?: boolean;
   is_reposted?: boolean;
+  post_type?: PostType;
+  link_url?: string | null;
+  media_ids?: string[];
+  media?: PostMedia[];
 }
 
 export interface QuotedPostSummary {
@@ -53,14 +67,13 @@ export interface QuotedCommentSummary {
   created_at?: string | null;
 }
 
-import { User } from "./user";
-
 export interface PostListParams {
   cursor?: string;
   limit?: number;
   category?: string;
   tag?: string;
   author?: string;
+  status?: string;
 }
 
 export interface PostListResponse {
@@ -83,4 +96,7 @@ export interface CreatePostRequest {
   is_premium?: boolean;
   quoted_post_id?: string;
   quoted_comment_id?: string;
+  post_type?: PostType;
+  link_url?: string;
+  media_ids?: string[];
 }

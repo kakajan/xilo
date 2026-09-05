@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { MetadataSidebar } from "@/components/editor/metadata-sidebar";
+import { PostTypeBadge, PostTypePicker } from "@/components/editor/post-type-picker";
+import { TypedPostFields } from "@/components/editor/typed-post-fields";
 import { useEditorStore } from "@/stores/editor-store";
 import { useDraftAutosave, useEditorDraftHydrated } from "@/hooks/use-draft-autosave";
 import { useRequireAuth } from "@/hooks/use-require-auth";
@@ -11,9 +13,10 @@ import { apiFetch } from "@/lib/api-client";
 import { fetchPostForEdit } from "@/lib/api/posts";
 import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
 import { extractHashtags, mergeTags } from "@/lib/hashtag";
+import { buildCreatePostPayload, validatePostPayload } from "@/lib/post-type";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Post } from "@/types/post";
+import type { Post, PostType } from "@/types/post";
 
 export default function EditPage() {
   const router = useRouter();
@@ -27,6 +30,8 @@ export default function EditPage() {
   const store = useEditorStore();
   const contentRef = useRef<{ html: string; json: string } | null>(null);
   const [json, setJson] = useState("");
+  const [microText, setMicroText] = useState("");
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [postId, setPostId] = useState("");
   const [authorUsername, setAuthorUsername] = useState("");
   const [postSlug, setPostSlug] = useState("");
@@ -40,7 +45,7 @@ export default function EditPage() {
       store.setEditDraft(postId, nextJson);
     },
     contentRef,
-    enabled: hydrated && isAuthenticated && !!postId,
+    enabled: hydrated && isAuthenticated && !!postId && store.postType !== "micro",
   });
 
   useEffect(() => {
@@ -61,6 +66,9 @@ export default function EditPage() {
         store.setTags(post.tags || []);
         store.setStatus(post.status as "draft" | "published");
         store.setIsPremium(post.is_premium);
+        store.setPostType((post.post_type ?? "article") as PostType);
+        store.setLinkUrl(post.link_url || "");
+        store.setMedia(post.media ?? []);
 
         const serverContent = post.content && post.content !== "{}" ? post.content : "";
         const snap = useEditorStore.getState();
@@ -70,6 +78,9 @@ export default function EditPage() {
             : "";
         const initial = localEdit || serverContent;
         setJson(initial);
+        if ((post.post_type ?? "article") === "micro") {
+          setMicroText(post.content_md?.trim() || extractTextFromTipTapJSON(initial));
+        }
         store.setHasUnsaved(Boolean(localEdit));
         setAuthorUsername(post.author?.username || "");
         setPostSlug(post.slug);
@@ -90,15 +101,42 @@ export default function EditPage() {
     [schedule]
   );
 
-  const handleSubmit = async () => {
-    if (!store.title.trim()) {
-      setError("عنوان لازم است");
-      return;
+  const resolveContentJson = () => {
+    if (store.postType === "micro") {
+      if (!microText.trim()) return "{}";
+      return JSON.stringify({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: microText }],
+          },
+        ],
+      });
     }
+    return contentRef.current?.json || json;
+  };
 
-    const payloadJson = contentRef.current?.json || json;
-    if (!payloadJson || payloadJson === "{}") {
-      setError("متن پست خالی است");
+  const handleSubmit = async () => {
+    const payloadJson = resolveContentJson();
+    const validationError = validatePostPayload({
+      postType: store.postType,
+      title: store.title,
+      slug: store.slug,
+      excerpt: store.excerpt,
+      contentJson: payloadJson,
+      coverImageUrl: store.coverImageUrl,
+      audioUrl: store.audioUrl,
+      category: store.category,
+      tags: store.tags,
+      status: store.status,
+      isPremium: store.isPremium,
+      linkUrl: store.linkUrl,
+      mediaIds: store.mediaIds,
+    });
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -111,23 +149,30 @@ export default function EditPage() {
     setError("");
 
     try {
-      const contentMd = extractTextFromTipTapJSON(payloadJson);
+      const contentMd =
+        store.postType === "micro"
+          ? microText.trim()
+          : extractTextFromTipTapJSON(payloadJson);
       const mergedTags = mergeTags(extractHashtags(contentMd), store.tags);
+      const body = buildCreatePostPayload({
+        postType: store.postType,
+        title: store.title,
+        slug: store.slug,
+        excerpt: store.excerpt,
+        contentJson: payloadJson,
+        coverImageUrl: store.coverImageUrl,
+        audioUrl: store.audioUrl,
+        category: store.category,
+        tags: mergedTags,
+        status: store.status,
+        isPremium: store.isPremium,
+        linkUrl: store.linkUrl,
+        mediaIds: store.mediaIds,
+      });
+
       const post = await apiFetch<Post>(`/api/posts/${postId}`, {
         method: "PATCH",
-        body: JSON.stringify({
-          title: store.title,
-          slug: store.slug || undefined,
-          excerpt: store.excerpt || undefined,
-          content: payloadJson,
-          content_md: contentMd,
-          cover_image_url: store.coverImageUrl || undefined,
-          audio_url: store.audioUrl,
-          category: store.category || undefined,
-          tags: mergedTags,
-          status: store.status,
-          is_premium: store.isPremium,
-        }),
+        body: JSON.stringify(body),
       });
 
       store.clearEditDraft();
@@ -162,30 +207,58 @@ export default function EditPage() {
     );
   }
 
+  const showTiptap =
+    store.postType === "article" || store.postType === "photo" || store.postType === "link";
+
   return (
-    <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
-      <div className="min-w-0 flex-1">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h1 className="min-w-0 text-xl font-bold">ویرایش پست</h1>
-          <Button className="shrink-0" onClick={handleSubmit} disabled={saving}>
-            {store.status === "published"
-              ? saving
-                ? "در حال انتشار..."
-                : "انتشار مجدد"
-              : saving
-                ? "در حال ذخیره..."
-                : "ذخیره پیش‌نویس"}
-          </Button>
+    <>
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+        <div className="min-w-0 flex-1">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <h1 className="min-w-0 text-xl font-bold">ویرایش پست</h1>
+              <PostTypeBadge value={store.postType} onClick={() => setTypePickerOpen(true)} />
+            </div>
+            <Button className="shrink-0" onClick={handleSubmit} disabled={saving}>
+              {store.status === "published"
+                ? saving
+                  ? "در حال انتشار..."
+                  : "انتشار مجدد"
+                : saving
+                  ? "در حال ذخیره..."
+                  : "ذخیره پیش‌نویس"}
+            </Button>
+          </div>
+
+          {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+
+          <div className="mb-4 space-y-4">
+            <TypedPostFields
+              postType={store.postType}
+              microText={microText}
+              onMicroTextChange={setMicroText}
+            />
+          </div>
+
+          {showTiptap ? (
+            <TiptapEditor content={json} onSave={handleSave} contentRef={contentRef} />
+          ) : null}
         </div>
 
-        {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
-
-        <TiptapEditor content={json} onSave={handleSave} contentRef={contentRef} />
+        <aside className="w-full shrink-0 md:sticky md:top-6 md:w-72 lg:w-80">
+          <MetadataSidebar />
+        </aside>
       </div>
 
-      <aside className="w-full shrink-0 md:sticky md:top-6 md:w-72 lg:w-80">
-        <MetadataSidebar />
-      </aside>
-    </div>
+      <PostTypePicker
+        value={store.postType}
+        onChange={(type) => {
+          store.setPostType(type);
+          setError("");
+        }}
+        open={typePickerOpen}
+        onOpenChange={setTypePickerOpen}
+      />
+    </>
   );
 }

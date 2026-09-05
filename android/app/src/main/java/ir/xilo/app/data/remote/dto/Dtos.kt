@@ -248,6 +248,9 @@ data class CreatePostRequest(
     val quotedCommentId: String? = null,
     @SerialName("scheduled_at")
     val scheduledAt: String? = null,
+    val postType: String? = null,
+    val linkUrl: String? = null,
+    val mediaIds: List<String>? = null,
 )
 
 @Serializable
@@ -285,6 +288,9 @@ data class UpdatePostRequest(
     val coverImageUrl: String? = null,
     @SerialName("scheduled_at")
     val scheduledAt: String? = null,
+    val postType: String? = null,
+    val linkUrl: String? = null,
+    val mediaIds: List<String>? = null,
 )
 
 @Serializable
@@ -329,6 +335,10 @@ data class PostResponse(
     val quotedPost: QuotedPostSummary? = null,
     val quotedCommentId: String? = null,
     val quotedComment: QuotedCommentSummary? = null,
+    val postType: String = "article",
+    val linkUrl: String? = null,
+    val mediaIds: List<String> = emptyList(),
+    val media: List<PostMediaDto> = emptyList(),
 ) {
     fun resolvedLikeCount(): Int =
         reactions["like"]
@@ -338,6 +348,13 @@ data class PostResponse(
     fun resolvedIsLiked(): Boolean =
         viewerReactions.any { it == "like" || it == "heart" } || isLiked
 }
+
+@Serializable
+data class PostMediaDto(
+    val id: String = "",
+    val url: String = "",
+    val mimeType: String = "",
+)
 
 @Serializable
 data class ToggleReactionRequest(

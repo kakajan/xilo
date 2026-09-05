@@ -31,6 +31,8 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
+data class AttachedMedia(val id: String, val url: String)
+
 @HiltViewModel
 class CreatePostViewModel @Inject constructor(
     private val postRepository: PostRepository,
@@ -69,8 +71,23 @@ class CreatePostViewModel @Inject constructor(
     private val _coverImageUrl = MutableStateFlow("")
     val coverImageUrl: StateFlow<String> = _coverImageUrl.asStateFlow()
 
+    private val _linkUrl = MutableStateFlow("")
+    val linkUrl: StateFlow<String> = _linkUrl.asStateFlow()
+
+    private val _photoMedia = MutableStateFlow<List<AttachedMedia>>(emptyList())
+    val photoMedia: StateFlow<List<AttachedMedia>> = _photoMedia.asStateFlow()
+
+    private val _videoMedia = MutableStateFlow<AttachedMedia?>(null)
+    val videoMedia: StateFlow<AttachedMedia?> = _videoMedia.asStateFlow()
+
     private val _isUploadingCover = MutableStateFlow(false)
     val isUploadingCover: StateFlow<Boolean> = _isUploadingCover.asStateFlow()
+
+    private val _isUploadingPhoto = MutableStateFlow(false)
+    val isUploadingPhoto: StateFlow<Boolean> = _isUploadingPhoto.asStateFlow()
+
+    private val _isUploadingVideo = MutableStateFlow(false)
+    val isUploadingVideo: StateFlow<Boolean> = _isUploadingVideo.asStateFlow()
 
     private val _scheduledAtEpoch = MutableStateFlow<Long?>(null)
     val scheduledAtEpoch: StateFlow<Long?> = _scheduledAtEpoch.asStateFlow()
@@ -189,7 +206,6 @@ class CreatePostViewModel @Inject constructor(
         _success.value = false
         viewModelScope.launch {
             _isLoadingEdit.value = true
-            // Local cache first; API GetBySlug also accepts post id as a fallback.
             val post = postRepository.getPostById(postId)
                 ?: postRepository.getPostBySlug(postId).getOrNull()
             val local = composeDraftStore.load(draftKey)
@@ -241,6 +257,12 @@ class CreatePostViewModel @Inject constructor(
         scheduleDraftSave()
     }
 
+    fun updateLinkUrl(value: String) {
+        _linkUrl.value = value
+        clearFieldError(PostField.LinkUrl)
+        scheduleDraftSave()
+    }
+
     fun clearAudio() {
         _audioUrl.value = ""
         scheduleDraftSave()
@@ -248,6 +270,24 @@ class CreatePostViewModel @Inject constructor(
 
     fun clearCover() {
         _coverImageUrl.value = ""
+        scheduleDraftSave()
+    }
+
+    fun removePhoto(index: Int) {
+        val current = _photoMedia.value.toMutableList()
+        if (index !in current.indices) return
+        current.removeAt(index)
+        _photoMedia.value = current
+        if (current.isEmpty()) {
+            _coverImageUrl.value = ""
+        } else if (_coverImageUrl.value.isBlank()) {
+            _coverImageUrl.value = current.first().url
+        }
+        scheduleDraftSave()
+    }
+
+    fun clearVideo() {
+        _videoMedia.value = null
         scheduleDraftSave()
     }
 
@@ -260,15 +300,15 @@ class CreatePostViewModel @Inject constructor(
             _isUploadingCover.value = true
             _error.value = null
             try {
-                val size = audioByteSize(uri)
+                val size = fileByteSize(uri)
                 if (size != null && size > MAX_COVER_BYTES) {
                     _error.value = errorMessageResolver.string(R.string.error_cover_too_large)
                     return@launch
                 }
                 val part = uriToImageMultipart(uri)
                     ?: throw IllegalStateException("cover")
-                val url = apiService.uploadMedia(part).url
-                _coverImageUrl.value = url
+                val response = apiService.uploadMedia(part)
+                _coverImageUrl.value = response.url
                 scheduleDraftSave()
             } catch (e: Exception) {
                 _error.value = errorMessageResolver.fromThrowable(e, R.string.error_cover_upload)
@@ -278,12 +318,65 @@ class CreatePostViewModel @Inject constructor(
         }
     }
 
+    fun uploadPhoto(uri: Uri) {
+        viewModelScope.launch {
+            if (_photoMedia.value.size >= MAX_PHOTOS) return@launch
+            _isUploadingPhoto.value = true
+            _error.value = null
+            try {
+                val size = fileByteSize(uri)
+                if (size != null && size > MAX_COVER_BYTES) {
+                    _error.value = errorMessageResolver.string(R.string.error_cover_too_large)
+                    return@launch
+                }
+                val part = uriToImageMultipart(uri)
+                    ?: throw IllegalStateException("photo")
+                val response = apiService.uploadMedia(part)
+                val attached = AttachedMedia(id = response.id, url = response.url)
+                _photoMedia.value = _photoMedia.value + attached
+                if (_coverImageUrl.value.isBlank()) {
+                    _coverImageUrl.value = response.url
+                }
+                clearFieldError(PostField.Media)
+                scheduleDraftSave()
+            } catch (e: Exception) {
+                _error.value = errorMessageResolver.fromThrowable(e, R.string.error_cover_upload)
+            } finally {
+                _isUploadingPhoto.value = false
+            }
+        }
+    }
+
+    fun uploadVideo(uri: Uri) {
+        viewModelScope.launch {
+            _isUploadingVideo.value = true
+            _error.value = null
+            try {
+                val size = fileByteSize(uri)
+                if (size != null && size > MAX_VIDEO_BYTES) {
+                    _error.value = errorMessageResolver.string(R.string.error_video_too_large)
+                    return@launch
+                }
+                val part = uriToVideoMultipart(uri)
+                    ?: throw IllegalStateException("video")
+                val response = apiService.uploadMedia(part)
+                _videoMedia.value = AttachedMedia(id = response.id, url = response.url)
+                clearFieldError(PostField.Media)
+                scheduleDraftSave()
+            } catch (e: Exception) {
+                _error.value = errorMessageResolver.fromThrowable(e, R.string.error_cover_upload)
+            } finally {
+                _isUploadingVideo.value = false
+            }
+        }
+    }
+
     fun uploadAudio(uri: Uri) {
         viewModelScope.launch {
             _isUploadingAudio.value = true
             _error.value = null
             try {
-                val size = audioByteSize(uri)
+                val size = fileByteSize(uri)
                 if (size != null && size > MAX_AUDIO_BYTES) {
                     _error.value = errorMessageResolver.string(R.string.error_audio_too_large)
                     return@launch
@@ -345,14 +438,27 @@ class CreatePostViewModel @Inject constructor(
         }
     }
 
-    fun createPost(title: String, content: String, audioUrl: String = _audioUrl.value) {
+    fun submitDraft() {
+        createPost(
+            title = _title.value,
+            content = _content.value,
+            audioUrl = _audioUrl.value,
+            status = "draft",
+        )
+    }
+
+    fun createPost(
+        title: String,
+        content: String,
+        audioUrl: String = _audioUrl.value,
+        status: String? = null,
+    ) {
         if (!canCreatePost(authRepository.getRole())) {
             _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
             return
         }
         val quoting = !quotedPostId.isNullOrBlank() || !quotedCommentId.isNullOrBlank()
-        val requireTitle = !quoting && composeKind != ComposeKind.TEXT
-        val errors = validate(title, content, requireTitle = requireTitle)
+        val errors = validate(title, content, _linkUrl.value, quoting = quoting)
         if (errors.isNotEmpty()) {
             _fieldErrors.value = errors
             _error.value = null
@@ -365,7 +471,18 @@ class CreatePostViewModel @Inject constructor(
             _fieldErrors.value = emptyMap()
 
             val untitled = errorMessageResolver.string(R.string.post_untitled_fallback)
-            val resolvedTitle = title.ifBlank { content.take(80).ifBlank { untitled } }
+            val resolvedTitle = when {
+                composeKind == ComposeKind.TEXT -> content.take(80).ifBlank { untitled }
+                composeKind == ComposeKind.PHOTO -> content.take(80).ifBlank { untitled }
+                composeKind == ComposeKind.VIDEO -> content.take(80).ifBlank { untitled }
+                composeKind == ComposeKind.LINK -> content.take(80).ifBlank { untitled }
+                else -> title.ifBlank { content.take(80).ifBlank { untitled } }
+            }
+            val mediaIds = when (composeKind) {
+                ComposeKind.PHOTO -> _photoMedia.value.map { it.id }
+                ComposeKind.VIDEO -> _videoMedia.value?.let { listOf(it.id) }
+                else -> null
+            }
             postRepository.createPost(
                 title = resolvedTitle,
                 content = content,
@@ -374,6 +491,12 @@ class CreatePostViewModel @Inject constructor(
                 scheduledAt = isoScheduledAt(),
                 quotedPostId = quotedPostId,
                 quotedCommentId = quotedCommentId,
+                postType = ComposeKind.apiPostType(composeKind),
+                linkUrl = _linkUrl.value.takeIf {
+                    composeKind == ComposeKind.LINK && it.isNotBlank()
+                },
+                mediaIds = mediaIds,
+                status = status,
             )
                 .onSuccess {
                     clearLocalDraft()
@@ -384,6 +507,7 @@ class CreatePostViewModel @Inject constructor(
                     val parsed = errorMessageResolver.parseFormErrors(e, R.string.error_create_post)
                     val mappedErrors = parsed.fieldErrors.toMutableMap()
                     parsed.fieldErrors["text"]?.let { mappedErrors[PostField.Content] = it }
+                    parsed.fieldErrors["link_url"]?.let { mappedErrors[PostField.LinkUrl] = it }
                     _fieldErrors.value = mappedErrors
                     _error.value = parsed.generalError?.takeIf { mappedErrors.isEmpty() }
                 }
@@ -402,7 +526,7 @@ class CreatePostViewModel @Inject constructor(
             _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
             return
         }
-        val errors = validate(title, content)
+        val errors = validate(title, content, _linkUrl.value, quoting = false, editing = true)
         if (errors.isNotEmpty()) {
             _fieldErrors.value = errors
             _error.value = null
@@ -441,15 +565,68 @@ class CreatePostViewModel @Inject constructor(
     private fun validate(
         title: String,
         content: String,
-        requireTitle: Boolean = true,
+        linkUrl: String,
+        quoting: Boolean,
+        editing: Boolean = false,
     ): Map<String, String> = buildMap {
-        if (requireTitle && title.isBlank()) {
-            put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))
-        }
-        if (content.isBlank()) {
-            put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
+        when {
+            quoting || editing -> {
+                if (requireTitle(quoting) && title.isBlank()) {
+                    put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))
+                }
+                if (content.isBlank()) {
+                    put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
+                }
+            }
+            composeKind == ComposeKind.TEXT -> {
+                if (content.isBlank()) {
+                    put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
+                } else if (content.codePointCount(0, content.length) > MICRO_MAX_RUNES) {
+                    put(
+                        PostField.Content,
+                        errorMessageResolver.string(R.string.validation_title_too_long),
+                    )
+                }
+            }
+            composeKind == ComposeKind.PHOTO -> {
+                if (_photoMedia.value.isEmpty()) {
+                    put(PostField.Media, errorMessageResolver.string(R.string.validation_content_required))
+                }
+            }
+            composeKind == ComposeKind.VIDEO -> {
+                if (_videoMedia.value == null) {
+                    put(PostField.Media, errorMessageResolver.string(R.string.validation_content_required))
+                }
+            }
+            composeKind == ComposeKind.LINK -> {
+                if (!isValidHttpsUrl(linkUrl)) {
+                    put(PostField.LinkUrl, errorMessageResolver.string(R.string.post_link_invalid))
+                }
+            }
+            composeKind == ComposeKind.AUDIO -> {
+                if (title.isBlank()) {
+                    put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))
+                }
+                if (content.isBlank()) {
+                    put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
+                }
+            }
+            else -> {
+                if (title.isBlank()) {
+                    put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))
+                }
+                if (content.isBlank()) {
+                    put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
+                }
+            }
         }
     }
+
+    private fun requireTitle(quoting: Boolean): Boolean =
+        !quoting && composeKind != ComposeKind.TEXT
+
+    private fun isValidHttpsUrl(url: String): Boolean =
+        url.startsWith("https://", ignoreCase = true) && url.length > "https://".length
 
     fun clearFieldError(field: String) {
         val updated = _fieldErrors.value - field
@@ -476,6 +653,9 @@ class CreatePostViewModel @Inject constructor(
         _content.value = draft?.content.orEmpty()
         _audioUrl.value = draft?.audioUrl.orEmpty()
         _coverImageUrl.value = draft?.coverImageUrl.orEmpty()
+        _linkUrl.value = ""
+        _photoMedia.value = emptyList()
+        _videoMedia.value = null
         restoreDoneForKey = draftKey
     }
 
@@ -512,10 +692,13 @@ class CreatePostViewModel @Inject constructor(
         _content.value = ""
         _audioUrl.value = ""
         _coverImageUrl.value = ""
+        _linkUrl.value = ""
+        _photoMedia.value = emptyList()
+        _videoMedia.value = null
         _scheduledAtEpoch.value = null
     }
 
-    private fun audioByteSize(uri: Uri): Long? {
+    private fun fileByteSize(uri: Uri): Long? {
         val resolver = context.contentResolver
         resolver.query(uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)
             ?.use { cursor ->
@@ -573,6 +756,22 @@ class CreatePostViewModel @Inject constructor(
         return MultipartBody.Part.createFormData("file", filename, body)
     }
 
+    private fun uriToVideoMultipart(uri: Uri): MultipartBody.Part? {
+        val resolver = context.contentResolver
+        val mime = resolver.getType(uri) ?: "video/mp4"
+        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        if (bytes.size > MAX_VIDEO_BYTES) {
+            throw IllegalArgumentException("file too large")
+        }
+        val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
+        val filename = when {
+            mime.contains("webm") -> "post.webm"
+            mime.contains("quicktime") || mime.contains("mov") -> "post.mov"
+            else -> "post.mp4"
+        }
+        return MultipartBody.Part.createFormData("file", filename, body)
+    }
+
     private fun isoScheduledAt(): String? {
         val epoch = _scheduledAtEpoch.value ?: return null
         val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
@@ -584,5 +783,8 @@ class CreatePostViewModel @Inject constructor(
         const val DRAFT_DEBOUNCE_MS = 800L
         const val MAX_AUDIO_BYTES = 50L * 1024L * 1024L
         const val MAX_COVER_BYTES = 5L * 1024L * 1024L
+        const val MAX_VIDEO_BYTES = 100L * 1024L * 1024L
+        const val MAX_PHOTOS = 10
+        const val MICRO_MAX_RUNES = 500
     }
 }

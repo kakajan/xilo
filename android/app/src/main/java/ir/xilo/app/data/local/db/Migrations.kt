@@ -283,6 +283,18 @@ object XiloMigrations {
         }
     }
 
+    val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE posts ADD COLUMN postType TEXT NOT NULL DEFAULT 'article'",
+            )
+            db.execSQL("ALTER TABLE posts ADD COLUMN linkUrl TEXT")
+            db.execSQL(
+                "ALTER TABLE posts ADD COLUMN mediaJson TEXT NOT NULL DEFAULT '[]'",
+            )
+        }
+    }
+
     val ALL = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
@@ -301,5 +313,6 @@ object XiloMigrations {
         MIGRATION_15_16,
         MIGRATION_16_17,
         MIGRATION_17_18,
+        MIGRATION_18_19,
     )
 }

@@ -133,7 +133,7 @@ fun XiloTheme(
     )
     val languageCode = AppLocale.languageCode(LocalContext.current)
     val layoutDirection = AppLocale.layoutDirection(languageCode)
-    val typography = xiloTypography(rtl = AppLocale.isRtlLanguage(languageCode))
+    val typography = xiloTypography(languageCode = languageCode)
 
     CompositionLocalProvider(
         LocalBubbleColors provides bubbleColors,

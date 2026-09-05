@@ -7,9 +7,14 @@ import ir.xilo.app.data.local.prefs.AnalyticsSessionStore
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.CreatePostRequest
 import ir.xilo.app.data.remote.dto.PostResponse
+import ir.xilo.app.data.remote.dto.toPostEntity
 import ir.xilo.app.data.remote.dto.RecordViewRequest
 import ir.xilo.app.data.remote.dto.ToggleReactionRequest
 import ir.xilo.app.data.remote.dto.UpdatePostRequest
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -58,9 +63,37 @@ class PostRepository @Inject constructor(
         }
     }
 
+    suspend fun listDrafts(limit: Int = 20): Result<List<PostEntity>> {
+        return try {
+            val responseMap = apiService.listPosts(limit = limit, status = "draft")
+            val data = responseMap["data"]
+            val list = if (data != null) {
+                json.decodeFromJsonElement<List<PostResponse>>(data).map { it.toPostEntity() }
+            } else {
+                emptyList()
+            }
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getPostSlugById(id: String): String? = postDao.getPostById(id)?.slug
 
     fun getFeed(): Flow<List<PostEntity>> = postDao.getFeedFlow()
+
+    @OptIn(ExperimentalPagingApi::class)
+    fun feedPager(): Flow<PagingData<PostEntity>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 10,
+                prefetchDistance = 4,
+                enablePlaceholders = false,
+            ),
+            remoteMediator = FeedRemoteMediator(this),
+            pagingSourceFactory = { postDao.feedPagingSource() },
+        ).flow
+    }
 
     suspend fun refreshFeed(): Result<Unit> {
         return try {
@@ -70,7 +103,7 @@ class PostRepository @Inject constructor(
             feedNextCursor = nextCursorOf(responseMap)
 
             val entities = postsList.mapIndexed { index, dto ->
-                dto.toEntity(feedRank = index)
+                dto.toPostEntity(feedRank = index)
             }
 
             postDao.clearAllPosts()
@@ -90,7 +123,7 @@ class PostRepository @Inject constructor(
             feedNextCursor = nextCursorOf(responseMap)
             val rankBase = postDao.maxFeedRank() + 1
             val entities = postsList.mapIndexed { index, dto ->
-                dto.toEntity(feedRank = rankBase + index)
+                dto.toPostEntity(feedRank = rankBase + index)
             }
             if (entities.isNotEmpty()) {
                 postDao.insertPosts(entities)
@@ -114,7 +147,7 @@ class PostRepository @Inject constructor(
                 if (!likeLocked) {
                     try {
                         val remote = apiService.getPostBySlug(slug)
-                        val updated = remote.toEntity(feedRank = local.feedRank)
+                        val updated = remote.toPostEntity(feedRank = local.feedRank)
                         postDao.insertPost(updated)
                     } catch (_: Exception) {
                     }
@@ -122,7 +155,7 @@ class PostRepository @Inject constructor(
                 Result.success(postDao.getPostById(local.id) ?: local)
             } else {
                 val remote = apiService.getPostBySlug(slug)
-                val entity = remote.toEntity(feedRank = Int.MAX_VALUE)
+                val entity = remote.toPostEntity(feedRank = Int.MAX_VALUE)
                 postDao.insertPost(entity)
                 Result.success(entity)
             }
@@ -139,6 +172,10 @@ class PostRepository @Inject constructor(
         scheduledAt: String? = null,
         quotedPostId: String? = null,
         quotedCommentId: String? = null,
+        postType: String? = null,
+        linkUrl: String? = null,
+        mediaIds: List<String>? = null,
+        status: String? = null,
     ): Result<PostEntity> {
         return try {
             val slugBase = title.ifBlank { content }.lowercase()
@@ -150,6 +187,7 @@ class PostRepository @Inject constructor(
             val quoteComment = quotedCommentId?.takeIf { it.isNotBlank() }
             val quotePost = quotedPostId?.takeIf { it.isNotBlank() }.takeIf { quoteComment == null }
             val scheduled = scheduledAt?.takeIf { it.isNotBlank() }
+            val resolvedType = postType?.takeIf { it.isNotBlank() }
 
             val request = CreatePostRequest(
                 title = title.ifBlank { content.take(80).ifBlank { "نقل‌قول" } },
@@ -160,13 +198,17 @@ class PostRepository @Inject constructor(
                 audioUrl = audioUrl?.takeIf { it.isNotBlank() },
                 coverImageUrl = coverImageUrl?.takeIf { it.isNotBlank() },
                 tags = tags.takeIf { it.isNotEmpty() },
-                status = if (scheduled != null) "scheduled" else "published",
+                status = status?.takeIf { it.isNotBlank() }
+                    ?: if (scheduled != null) "scheduled" else "published",
                 quotedPostId = quotePost,
                 quotedCommentId = quoteComment,
                 scheduledAt = scheduled,
+                postType = resolvedType,
+                linkUrl = linkUrl?.takeIf { it.isNotBlank() },
+                mediaIds = mediaIds?.takeIf { it.isNotEmpty() },
             )
             val remote = apiService.createPost(request)
-            val entity = remote.toEntity(feedRank = 0)
+            val entity = remote.toPostEntity(feedRank = 0)
             postDao.insertPost(entity)
             Result.success(entity)
         } catch (e: Exception) {
@@ -231,7 +273,7 @@ class PostRepository @Inject constructor(
                 if (snapshot != null || confirmed != null) {
                     if (confirmed != null) {
                         val rank = snapshot?.feedRank ?: Int.MAX_VALUE
-                        postDao.insertPost(confirmed.toEntity(feedRank = rank))
+                        postDao.insertPost(confirmed.toPostEntity(feedRank = rank))
                     } else if (snapshot != null) {
                         postDao.updateLikeState(
                             postId,
@@ -277,7 +319,7 @@ class PostRepository @Inject constructor(
                 runCatching { apiService.getPostBySlug(slug) }.getOrNull()
             }
             if (confirmed != null) {
-                postDao.insertPost(confirmed.toEntity(feedRank = snapshot.feedRank))
+                postDao.insertPost(confirmed.toPostEntity(feedRank = snapshot.feedRank))
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -347,47 +389,6 @@ class PostRepository @Inject constructor(
         }
     }
 
-    private fun PostResponse.toEntity(feedRank: Int): PostEntity = PostEntity(
-        id = id,
-        authorId = authorId,
-        authorName = author?.displayName ?: "",
-        authorUsername = author?.username ?: "",
-        authorAvatar = author?.avatarUrl ?: "",
-        title = title,
-        slug = slug,
-        content = content,
-        excerpt = excerpt,
-        coverImageUrl = coverImageUrl,
-        audioUrl = audioUrl,
-        likeCount = resolvedLikeCount(),
-        commentCount = commentCount,
-        repostCount = repostCount,
-        viewCount = viewCount,
-        isLiked = resolvedIsLiked(),
-        isBookmarked = isBookmarked,
-        isReposted = isReposted,
-        reactionsJson = EmojiReactions.fromPostDto(reactions, viewerReactions),
-        // Prefer publish time to match backend feed ordering.
-        createdAt = parseDateToEpoch(publishedAt?.takeIf { it.isNotBlank() } ?: createdAt),
-        feedRank = feedRank,
-        quotedPostId = quotedPostId ?: quotedPost?.id,
-        quotedTitle = quotedPost?.title,
-        quotedSlug = quotedPost?.slug,
-        quotedExcerpt = quotedPost?.excerpt,
-        quotedAuthorName = quotedPost?.author?.displayName,
-        quotedAuthorUsername = quotedPost?.author?.username,
-        quotedAuthorAvatar = quotedPost?.author?.avatarUrl,
-        quotedCoverImageUrl = quotedPost?.coverImageUrl,
-        quotedCommentId = quotedCommentId ?: quotedComment?.id,
-        quotedCommentContent = quotedComment?.content,
-        quotedCommentAuthorName = quotedComment?.author?.displayName,
-        quotedCommentAuthorUsername = quotedComment?.author?.username,
-        quotedCommentAuthorAvatar = quotedComment?.author?.avatarUrl,
-        quotedCommentPostTitle = quotedComment?.postTitle,
-        quotedCommentPostSlug = quotedComment?.postSlug,
-        quotedCommentPostAuthorUsername = quotedComment?.postAuthorUsername,
-    )
-
     suspend fun recordView(postId: String): Result<Long> {
         return try {
             val response = apiService.recordPostView(
@@ -407,7 +408,7 @@ class PostRepository @Inject constructor(
     suspend fun getBookmarkedPosts(): Result<List<PostEntity>> {
         return try {
             val page = apiService.getBookmarks()
-            Result.success(page.data.map { it.toEntity(feedRank = Int.MAX_VALUE) })
+            Result.success(page.data.map { it.toPostEntity(feedRank = Int.MAX_VALUE) })
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -490,7 +491,7 @@ class PostRepository @Inject constructor(
                 ),
             )
             val local = postDao.getPostById(postId)
-            val entity = remote.toEntity(feedRank = local?.feedRank ?: Int.MAX_VALUE)
+            val entity = remote.toPostEntity(feedRank = local?.feedRank ?: Int.MAX_VALUE)
             postDao.insertPost(entity)
             Result.success(entity)
         } catch (e: Exception) {

@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,7 +36,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.XiloBlue
@@ -87,9 +87,7 @@ fun FeedScreen(
     modifier: Modifier = Modifier,
     viewModel: FeedViewModel = hiltViewModel()
 ) {
-    val posts by viewModel.posts.collectAsStateWithLifecycle()
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isInitialLoading.collectAsStateWithLifecycle()
+    val pagingItems = viewModel.posts.collectAsLazyPagingItems()
     val isContentLoading by viewModel.isContentLoading.collectAsStateWithLifecycle()
     val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
@@ -101,7 +99,30 @@ fun FeedScreen(
     val chromeState = LocalChromeVisibility.current
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val showFeedSkeleton = (isLoading && posts.isEmpty()) || isContentLoading
+    val refreshLoadState = pagingItems.loadState.refresh
+    val isRefreshing = refreshLoadState is LoadState.Loading && pagingItems.itemCount > 0
+    val showFeedSkeleton =
+        (refreshLoadState is LoadState.Loading && pagingItems.itemCount == 0) || isContentLoading
+    val showEmptyFeed =
+        pagingItems.itemCount == 0 &&
+            refreshLoadState is LoadState.NotLoading &&
+            !isContentLoading
+
+    LaunchedEffect(viewModel.pagingRefreshRequests) {
+        viewModel.pagingRefreshRequests.collect {
+            pagingItems.refresh()
+        }
+    }
+
+    LaunchedEffect(refreshLoadState) {
+        when (refreshLoadState) {
+            is LoadState.NotLoading -> viewModel.clearContentLoading()
+            is LoadState.Error -> {
+                viewModel.reportPagingRefreshError(refreshLoadState.error)
+            }
+            else -> Unit
+        }
+    }
 
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
@@ -130,20 +151,10 @@ fun FeedScreen(
         }
     }
 
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisible ->
-                val last = lastVisible ?: return@collect
-                if (last >= posts.size - 4) {
-                    viewModel.loadMore()
-                }
-            }
-    }
-
     val isTopChromeVisible = chromeState?.isVisible != false
     val density = LocalDensity.current
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    var stickyHeaderHeight by remember { mutableStateOf(112.dp) }
+    var stickyHeaderHeight by remember { mutableStateOf(XiloSpacing.topAppBarHeight) }
     val totalHeaderHeight = stickyHeaderHeight + statusBarPadding
     val animatedHeaderHeight by animateDpAsState(
         targetValue = if (isTopChromeVisible) totalHeaderHeight else 0.dp,
@@ -170,7 +181,7 @@ fun FeedScreen(
         val pullRefreshState = rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = isRefreshing,
-            onRefresh = { viewModel.refreshFeed() },
+            onRefresh = { pagingItems.refresh() },
             modifier = Modifier.fillMaxSize(),
             state = pullRefreshState,
             // Indicator is drawn in the outer Box, below the sticky header.
@@ -192,7 +203,7 @@ fun FeedScreen(
                             FeedSkeletonList(modifier = Modifier.fillMaxWidth())
                         }
                     }
-                } else if (posts.isEmpty() && !isRefreshing) {
+                } else if (showEmptyFeed) {
                     item(key = "feed_empty") {
                         Box(
                             modifier = Modifier
@@ -222,14 +233,19 @@ fun FeedScreen(
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
-                                        .clickable { viewModel.refreshFeed() }
+                                        .clickable { pagingItems.refresh() }
                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
                             }
                         }
                     }
                 } else {
-                    items(posts, key = { it.id }, contentType = { "post" }) { post ->
+                    items(
+                        count = pagingItems.itemCount,
+                        key = { index -> pagingItems.peek(index)?.id ?: "ph-$index" },
+                        contentType = { "post" },
+                    ) { index ->
+                        val post = pagingItems[index] ?: return@items
                         if (post.id.endsWith("-chat")) {
                             TelegramNotificationCard(
                                 post = post,
@@ -290,7 +306,7 @@ fun FeedScreen(
                         .fillMaxWidth()
                         .onSizeChanged { size ->
                             val measured = with(density) { size.height.toDp() }
-                            if (measured > stickyHeaderHeight - 1.dp) {
+                            if (kotlin.math.abs((measured - stickyHeaderHeight).value) > 0.5f) {
                                 stickyHeaderHeight = measured
                             }
                         }
@@ -307,7 +323,7 @@ fun FeedScreen(
             }
         }
 
-        // Refresh spinner starts below search + category chips (not under status bar).
+        // Refresh spinner starts below the sticky search header.
         Indicator(
             modifier = Modifier
                 .align(Alignment.TopCenter)

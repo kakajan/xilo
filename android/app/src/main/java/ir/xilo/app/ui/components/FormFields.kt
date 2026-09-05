@@ -14,4 +14,6 @@ enum class AuthField(val key: String) {
 object PostField {
     const val Title = "title"
     const val Content = "content"
+    const val LinkUrl = "link_url"
+    const val Media = "media"
 }

@@ -179,6 +179,7 @@
     <string name="profile_settings">Ayarlar</string>
     <string name="profile_tab_posts">Gönderiler</string>
     <string name="profile_tab_archived">Arşiv</string>
+    <string name="profile_tab_drafts">Taslaklar</string>
     <string name="profile_tab_replies">Yanıtlar</string>
     <string name="profile_tab_likes">Beğeniler</string>
     <string name="profile_add_post">Gönderi ekle</string>
@@ -195,6 +196,7 @@
     <string name="profile_share">Paylaş</string>
     <string name="profile_share_text">aile üzerinde @%1$s\n%2$s</string>
     <string name="profile_empty_archived">Henüz arşivlenmiş gönderi yok.</string>
+    <string name="profile_empty_drafts">Henüz taslak yok.</string>
     <string name="profile_empty_posts">Henüz gönderi yok.</string>
     <string name="profile_empty_replies">Henüz yanıt yok.</string>
     <string name="profile_empty_likes">Henüz beğenilen gönderi yok.</string>
@@ -273,6 +275,7 @@
     <string name="quote_compose_title">Alıntı</string>
     <string name="quote_compose_hint">Yorum ekle...</string>
     <string name="cd_like">Beğen</string>
+    <string name="cd_thumbs">Beğeni</string>
     <string name="cd_bookmark">Kaydet</string>
     <string name="cd_views">Görüntülenme</string>
     <string name="post_cover_untitled">Gönderi</string>
@@ -284,6 +287,14 @@
     <string name="compose_kind_article">Makale</string>
     <string name="compose_kind_quote">Alıntı</string>
     <string name="compose_kind_audio">Ses</string>
+    <string name="compose_kind_photo">Fotoğraf</string>
+    <string name="compose_kind_video">Video</string>
+    <string name="compose_kind_link">Bağlantı</string>
+    <string name="post_create_save_draft">Taslağı kaydet</string>
+    <string name="post_link_url_placeholder">https://</string>
+    <string name="post_link_invalid">Bağlantı https ile başlamalı</string>
+    <string name="post_photo_attach">Fotoğraf ekle</string>
+    <string name="post_video_attach">Video ekle</string>
     <string name="feed_undo_action">Geri al</string>
     <string name="feed_undo_bookmarked">Kaydedildi</string>
     <string name="feed_undo_unbookmarked">Kayıtlardan çıkarıldı</string>
@@ -292,6 +303,8 @@
     <string name="post_format_bold">Kalın</string>
     <string name="post_format_italic">İtalik</string>
     <string name="post_format_heading">Başlık</string>
+    <string name="post_format_quote">Alıntı</string>
+    <string name="post_format_code">Kod</string>
     <string name="post_untitled_fallback">Gönderi</string>
     <string name="error_video_too_large">Video 100 MB veya daha küçük olmalı</string>
     <string name="error_image_too_large">Görsel 10 MB veya daha küçük olmalı</string>

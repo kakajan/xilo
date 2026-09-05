@@ -13,15 +13,39 @@ object EmojiReactions {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun apiKey(emoji: String): String =
-        if (emoji == "❤️" || emoji == "❤") "like" else emoji
+    fun apiKey(emoji: String): String {
+        val glyph = displayEmoji(emoji)
+        return when (glyph) {
+            "❤️" -> "like"
+            "👍" -> "thumbsup"
+            else -> glyph
+        }
+    }
 
-    fun displayEmoji(key: String): String = when (key) {
-        "like", "heart", "❤" -> "❤️"
-        else -> key
+    fun displayEmoji(key: String): String {
+        val trimmed = key.trim()
+        if (trimmed == "❤") return "❤️"
+        return when (trimmed.lowercase()) {
+            "like", "heart" -> "❤️"
+            "thumbsup", "+1", "thumbs_up", "thumbs-up" -> "👍"
+            "laugh", "haha" -> "😄"
+            "wow" -> "😮"
+            "sad", "cry" -> "😢"
+            "angry" -> "😡"
+            "clap", "clapping" -> "👏"
+            "party", "tada" -> "🎉"
+            "bulb", "idea", "lightbulb" -> "💡"
+            "flame", "fire" -> "🔥"
+            else -> trimmed
+        }
     }
 
     fun isLikeFamily(emoji: String): Boolean = apiKey(emoji) == "like"
+
+    fun isThumbsFamily(emoji: String): Boolean = displayEmoji(emoji) == "👍"
+
+    fun thumbsReaction(raw: String?): ReactionCount? =
+        decode(raw).firstOrNull { isThumbsFamily(it.reaction) }
 
     fun fromPostDto(reactions: Map<String, Int>, viewer: List<String>): String {
         val merged = linkedMapOf<String, ReactionCount>()
@@ -66,14 +90,32 @@ object EmojiReactions {
 
     fun decode(raw: String?): List<ReactionCount> {
         if (raw.isNullOrBlank() || raw == "[]") return emptyList()
-        return runCatching { json.decodeFromString<List<ReactionCount>>(raw) }.getOrDefault(emptyList())
+        val parsed = runCatching {
+            json.decodeFromString<List<ReactionCount>>(raw)
+        }.getOrDefault(emptyList())
+        val merged = linkedMapOf<String, ReactionCount>()
+        parsed.forEach { item ->
+            if (item.count <= 0) return@forEach
+            val emoji = displayEmoji(item.reaction)
+            val previous = merged[emoji]
+            merged[emoji] = ReactionCount(
+                reaction = emoji,
+                count = (previous?.count ?: 0L) + item.count,
+                reacted = previous?.reacted == true || item.reacted,
+            )
+        }
+        return merged.values.toList()
     }
 
     fun encode(items: List<ReactionCount>): String =
         json.encodeToString(items.filter { it.count > 0 })
 
     fun fromMessageDto(items: List<ir.xilo.app.data.remote.dto.MessageReactionResponse>): String =
-        encode(items.map { ReactionCount(it.reaction, it.count, it.reacted) })
+        encode(
+            items.map {
+                ReactionCount(displayEmoji(it.reaction), it.count, it.reacted)
+            },
+        )
 
     fun applyEvent(
         raw: String?,
@@ -82,18 +124,19 @@ object EmojiReactions {
         count: Long,
         selfToggled: Boolean,
     ): String {
+        val glyph = displayEmoji(reaction)
         val current = decode(raw).toMutableList()
-        val index = current.indexOfFirst { it.reaction == reaction }
+        val index = current.indexOfFirst { displayEmoji(it.reaction) == glyph }
         val previousMine = current.getOrNull(index)?.reacted ?: false
         val mine = if (selfToggled) active else previousMine
         if (index >= 0) {
             if (count <= 0) {
                 current.removeAt(index)
             } else {
-                current[index] = ReactionCount(reaction, count, mine)
+                current[index] = ReactionCount(glyph, count, mine)
             }
         } else if (count > 0) {
-            current.add(ReactionCount(reaction, count, mine && selfToggled))
+            current.add(ReactionCount(glyph, count, mine && selfToggled))
         }
         return encode(current)
     }

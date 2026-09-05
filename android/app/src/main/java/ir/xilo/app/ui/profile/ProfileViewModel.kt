@@ -6,12 +6,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.core.util.canCreatePost
 import ir.xilo.app.core.util.canRepost
-import ir.xilo.app.core.util.EmojiReactions
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.entity.UserEntity
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.CommentResponse
-import ir.xilo.app.data.remote.dto.PostResponse
+import ir.xilo.app.data.remote.dto.toPostEntity
 import ir.xilo.app.data.remote.dto.PublicProfileResponse
 import ir.xilo.app.data.remote.dto.UserResponse
 import ir.xilo.app.data.repository.AuthRepository
@@ -62,6 +61,9 @@ class ProfileViewModel @Inject constructor(
 
     private val _userArchived = MutableStateFlow<List<PostEntity>>(emptyList())
     val userArchived: StateFlow<List<PostEntity>> = _userArchived.asStateFlow()
+
+    private val _userDrafts = MutableStateFlow<List<PostEntity>>(emptyList())
+    val userDrafts: StateFlow<List<PostEntity>> = _userDrafts.asStateFlow()
 
     private val _isOwnProfile = MutableStateFlow(false)
     val isOwnProfile: StateFlow<Boolean> = _isOwnProfile.asStateFlow()
@@ -367,7 +369,7 @@ class ProfileViewModel @Inject constructor(
                 if (!force && _userPosts.value.isNotEmpty()) return
                 _isTabLoading.value = true
                 runCatching { apiService.listUserPosts(username = username, limit = 20) }
-                    .onSuccess { page -> _userPosts.value = page.data.map { it.toProfileEntity() } }
+                    .onSuccess { page -> _userPosts.value = page.data.map { it.toPostEntity() } }
                     .onFailure { e ->
                         // Don't toast over an already-visible header (e.g. offline after local seed).
                         if (_userPosts.value.isEmpty() && _userProfile.value == null) {
@@ -378,12 +380,27 @@ class ProfileViewModel @Inject constructor(
                 _isTabLoading.value = false
             }
             own && tabIndex == 1 -> {
+                if (!force && _userDrafts.value.isNotEmpty()) return
+                _isTabLoading.value = true
+                runCatching {
+                    apiService.listUserPosts(username = username, tab = "drafts", limit = 20)
+                }
+                    .onSuccess { page -> _userDrafts.value = page.data.map { it.toPostEntity() } }
+                    .onFailure { e ->
+                        if (_userDrafts.value.isEmpty() && _userProfile.value == null) {
+                            _error.value =
+                                errorMessageResolver.fromThrowable(e, R.string.error_load_profile)
+                        }
+                    }
+                _isTabLoading.value = false
+            }
+            own && tabIndex == 2 -> {
                 if (!force && _userArchived.value.isNotEmpty()) return
                 _isTabLoading.value = true
                 runCatching {
                     apiService.listUserPosts(username = username, tab = "archived", limit = 20)
                 }
-                    .onSuccess { page -> _userArchived.value = page.data.map { it.toProfileEntity() } }
+                    .onSuccess { page -> _userArchived.value = page.data.map { it.toPostEntity() } }
                     .onFailure { e ->
                         if (_userArchived.value.isEmpty() && _userProfile.value == null) {
                             _error.value =
@@ -409,7 +426,7 @@ class ProfileViewModel @Inject constructor(
                 if (!force && _userLikes.value.isNotEmpty()) return
                 _isTabLoading.value = true
                 runCatching { apiService.listUserLikes(username = username, limit = 20) }
-                    .onSuccess { page -> _userLikes.value = page.data.map { it.toProfileEntity() } }
+                    .onSuccess { page -> _userLikes.value = page.data.map { it.toPostEntity() } }
                     .onFailure { e ->
                         if (_userLikes.value.isEmpty() && _userProfile.value == null) {
                             _error.value =
@@ -420,45 +437,6 @@ class ProfileViewModel @Inject constructor(
             }
         }
     }
-
-    private fun PostResponse.toProfileEntity(): PostEntity = PostEntity(
-        id = id,
-        authorId = authorId,
-        authorName = author?.displayName ?: "",
-        authorUsername = author?.username ?: "",
-        authorAvatar = author?.avatarUrl ?: "",
-        title = title,
-        slug = slug,
-        content = content,
-        excerpt = excerpt,
-        coverImageUrl = coverImageUrl,
-        audioUrl = audioUrl,
-        likeCount = resolvedLikeCount(),
-        commentCount = commentCount,
-        repostCount = repostCount,
-        viewCount = viewCount,
-        isLiked = resolvedIsLiked(),
-        isBookmarked = isBookmarked,
-        isReposted = isReposted,
-        reactionsJson = EmojiReactions.fromPostDto(reactions, viewerReactions),
-        createdAt = 0L,
-        quotedPostId = quotedPostId ?: quotedPost?.id,
-        quotedTitle = quotedPost?.title,
-        quotedSlug = quotedPost?.slug,
-        quotedExcerpt = quotedPost?.excerpt,
-        quotedAuthorName = quotedPost?.author?.displayName,
-        quotedAuthorUsername = quotedPost?.author?.username,
-        quotedAuthorAvatar = quotedPost?.author?.avatarUrl,
-        quotedCoverImageUrl = quotedPost?.coverImageUrl,
-        quotedCommentId = quotedCommentId ?: quotedComment?.id,
-        quotedCommentContent = quotedComment?.content,
-        quotedCommentAuthorName = quotedComment?.author?.displayName,
-        quotedCommentAuthorUsername = quotedComment?.author?.username,
-        quotedCommentAuthorAvatar = quotedComment?.author?.avatarUrl,
-        quotedCommentPostTitle = quotedComment?.postTitle,
-        quotedCommentPostSlug = quotedComment?.postSlug,
-        quotedCommentPostAuthorUsername = quotedComment?.postAuthorUsername,
-    )
 
     private fun CommentResponse.toReplyItem(): ProfileReplyItem = ProfileReplyItem(
         id = id,

@@ -37,12 +37,12 @@ func TestProcessAvatar_JPEG(t *testing.T) {
 
 func TestNormalizeMimeType_AudioExtensions(t *testing.T) {
 	cases := map[string]string{
-		"track.mp3":  "audio/mpeg",
-		"clip.m4a":   "audio/mp4",
-		"voice.aac":  "audio/aac",
-		"sound.ogg":  "audio/ogg",
-		"wave.wav":   "audio/wav",
-		"note.webm":  "audio/webm",
+		"track.mp3": "audio/mpeg",
+		"clip.m4a":  "audio/mp4",
+		"voice.aac": "audio/aac",
+		"sound.ogg": "audio/ogg",
+		"wave.wav":  "audio/wav",
+		"note.webm": "audio/webm",
 	}
 	for name, want := range cases {
 		got := normalizeMimeType("application/octet-stream", name)
@@ -59,8 +59,8 @@ func TestIsAllowedUploadMime_AudioAndImage(t *testing.T) {
 	if !isAllowedUploadMime("image/png") {
 		t.Fatal("expected image/png allowed")
 	}
-	if isAllowedUploadMime("video/mp4") {
-		t.Fatal("expected video/mp4 rejected")
+	if !isAllowedUploadMime("video/mp4") {
+		t.Fatal("expected video/mp4 allowed")
 	}
 	if isAllowedUploadMime("application/pdf") {
 		t.Fatal("expected application/pdf rejected")
@@ -71,8 +71,8 @@ func TestMaxUploadSize_ByKind(t *testing.T) {
 	if maxUploadSize("audio/mpeg") != maxAudioFileSize {
 		t.Fatalf("audio max = %d, want %d", maxUploadSize("audio/mpeg"), maxAudioFileSize)
 	}
-	if maxUploadSize("image/jpeg") != maxImageFileSize {
-		t.Fatalf("image max = %d, want %d", maxUploadSize("image/jpeg"), maxImageFileSize)
+	if maxUploadSize("video/mp4") != maxVideoFileSize {
+		t.Fatalf("video max = %d, want %d", maxUploadSize("video/mp4"), maxVideoFileSize)
 	}
 }
 

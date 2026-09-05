@@ -179,6 +179,7 @@
     <string name="profile_settings">Настройки</string>
     <string name="profile_tab_posts">Посты</string>
     <string name="profile_tab_archived">Архив</string>
+    <string name="profile_tab_drafts">Черновики</string>
     <string name="profile_tab_replies">Ответы</string>
     <string name="profile_tab_likes">Лайки</string>
     <string name="profile_add_post">Добавить пост</string>
@@ -195,6 +196,7 @@
     <string name="profile_share">Поделиться</string>
     <string name="profile_share_text">@%1$s в aile\n%2$s</string>
     <string name="profile_empty_archived">Архивных постов пока нет.</string>
+    <string name="profile_empty_drafts">Черновиков пока нет.</string>
     <string name="profile_empty_posts">Постов пока нет.</string>
     <string name="profile_empty_replies">Ответов пока нет.</string>
     <string name="profile_empty_likes">Лайкнутых постов пока нет.</string>
@@ -273,6 +275,7 @@
     <string name="quote_compose_title">Цитата</string>
     <string name="quote_compose_hint">Добавьте комментарий...</string>
     <string name="cd_like">Нравится</string>
+    <string name="cd_thumbs">Палец вверх</string>
     <string name="cd_bookmark">Закладка</string>
     <string name="cd_views">Просмотры</string>
     <string name="post_cover_untitled">Пост</string>
@@ -284,6 +287,14 @@
     <string name="compose_kind_article">Статья</string>
     <string name="compose_kind_quote">Цитата</string>
     <string name="compose_kind_audio">Аудио</string>
+    <string name="compose_kind_photo">Фото</string>
+    <string name="compose_kind_video">Видео</string>
+    <string name="compose_kind_link">Ссылка</string>
+    <string name="post_create_save_draft">Сохранить черновик</string>
+    <string name="post_link_url_placeholder">https://</string>
+    <string name="post_link_invalid">Ссылка должна начинаться с https</string>
+    <string name="post_photo_attach">Добавить фото</string>
+    <string name="post_video_attach">Добавить видео</string>
     <string name="feed_undo_action">Отмена</string>
     <string name="feed_undo_bookmarked">Сохранено</string>
     <string name="feed_undo_unbookmarked">Удалено из сохранённых</string>
@@ -292,6 +303,8 @@
     <string name="post_format_bold">Жирный</string>
     <string name="post_format_italic">Курсив</string>
     <string name="post_format_heading">Заголовок</string>
+    <string name="post_format_quote">Цитата</string>
+    <string name="post_format_code">Код</string>
     <string name="post_untitled_fallback">Пост</string>
     <string name="error_video_too_large">Видео не должно быть больше 100 МБ</string>
     <string name="error_image_too_large">Изображение не должно быть больше 10 МБ</string>

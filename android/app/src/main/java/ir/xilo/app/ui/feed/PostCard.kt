@@ -1,8 +1,6 @@
 package ir.xilo.app.ui.feed
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,26 +15,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import coil.request.ImageRequest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
 import ir.xilo.app.theme.XiloBlue
+import ir.xilo.app.theme.XiloMotion
 import ir.xilo.app.theme.XiloSpacing
-import ir.xilo.app.ui.components.ContentAwareText
 import ir.xilo.app.ui.components.HashtagAwareText
 import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
@@ -167,37 +162,18 @@ fun PostCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                if (post.title.isNotBlank()) {
-                    ContentAwareText(
-                        text = post.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(bottom = 4.dp),
-                    )
-                }
+                PostTitleBlock(
+                    post = post,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
 
-                val previewText = post.excerpt?.takeIf { it.isNotBlank() }
-                    ?: post.content.takeIf { !it.startsWith("{") && it.isNotBlank() }
-                    ?: ""
-                if (previewText.isNotBlank()) {
-                    if (onHashtagClick != null) {
-                        HashtagAwareText(
-                            text = previewText,
-                            onHashtagClick = onHashtagClick,
-                            onTextClick = { onPostClick(post.slug) },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 3,
-                        )
-                    } else {
-                        ContentAwareText(
-                            text = previewText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 3,
-                        )
-                    }
-                }
+                PostBodyBlock(
+                    post = post,
+                    onHashtagClick = onHashtagClick,
+                    onTextClick = { onPostClick(post.slug) },
+                    maxLines = 3,
+                    compact = post.postType == ComposeKind.MICRO,
+                )
             }
 
             DropdownMenu(
@@ -239,27 +215,20 @@ fun PostCard(
             }
         }
 
-        // Full-bleed cover with small equal side margins (not indented under avatar).
-        if (!post.coverImageUrl.isNullOrBlank()) {
+        val showTypeMedia = post.postType == ComposeKind.PHOTO ||
+            post.postType == ComposeKind.VIDEO ||
+            (post.postType == ComposeKind.LINK && !post.linkUrl.isNullOrBlank()) ||
+            !post.coverImageUrl.isNullOrBlank()
+        if (showTypeMedia) {
             Spacer(modifier = Modifier.height(10.dp))
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(post.coverImageUrl)
-                    .size(1080, 720)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = stringResource(R.string.cd_post_image),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = XiloSpacing.horizontal)
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
-                    .combinedClickable(
-                        role = Role.Button,
-                        onClick = { onPostClick(post.slug) },
-                        onDoubleClick = { likeWithHaptic() },
-                    ),
+            PostTypeMediaBlock(
+                post = post,
+                onClick = if (post.postType != ComposeKind.LINK) {
+                    { onPostClick(post.slug) }
+                } else {
+                    null
+                },
+                modifier = Modifier.padding(horizontal = XiloSpacing.horizontal),
             )
         }
 
@@ -288,7 +257,7 @@ fun PostCard(
         }
 
         val reactionPills = EmojiReactions.decode(post.reactionsJson)
-            .filter { !EmojiReactions.isLikeFamily(it.reaction) }
+            .filter { !EmojiReactions.isLikeFamily(it.reaction) && !EmojiReactions.isThumbsFamily(it.reaction) }
         if (reactionPills.isNotEmpty()) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -302,7 +271,7 @@ fun PostCard(
             ) {
                 reactionPills.forEach { pill ->
                     Text(
-                        text = "${pill.reaction} ${pill.count}",
+                        text = "${EmojiReactions.displayEmoji(pill.reaction)} ${pill.count}",
                         style = MaterialTheme.typography.labelMedium,
                         color = if (pill.reacted) XiloBlue else MaterialTheme.colorScheme.secondary,
                         modifier = Modifier
@@ -318,23 +287,24 @@ fun PostCard(
             }
         }
 
+        val thumbs = EmojiReactions.thumbsReaction(post.reactionsJson)
+        val actionSlot = Modifier.weight(1f)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    start = XiloSpacing.horizontal + 52.dp,
-                    end = XiloSpacing.horizontal,
-                    top = 8.dp,
-                    bottom = XiloSpacing.cardVertical
-                ),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                    horizontal = XiloSpacing.horizontal,
+                    vertical = 0.dp,
+                )
+                .padding(top = 8.dp, bottom = XiloSpacing.cardVertical),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             PostAction(
                 icon = XiloIcons.Message,
                 count = post.commentCount.toString(),
                 contentDescription = stringResource(R.string.cd_comments),
-                onClick = onCommentClick
+                onClick = onCommentClick,
+                modifier = actionSlot,
             )
             if (onRepostClick != null && onQuoteClick != null) {
                 RepostMenuButton(
@@ -342,6 +312,7 @@ fun PostCard(
                     isReposted = post.isReposted,
                     onRepostClick = onRepostClick,
                     onQuoteClick = onQuoteClick,
+                    modifier = actionSlot,
                 )
             } else if (onRepostClick != null) {
                 PostAction(
@@ -350,19 +321,17 @@ fun PostCard(
                     contentDescription = stringResource(R.string.cd_repost),
                     tint = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
                     countColor = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
-                    onClick = onRepostClick
+                    onClick = onRepostClick,
+                    modifier = actionSlot,
                 )
             }
 
             val likeScale by animateFloatAsState(
                 targetValue = if (post.isLiked) 1.15f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                ),
+                animationSpec = XiloMotion.heartBeat,
                 label = "likeScale"
             )
-            Box {
+            Box(modifier = actionSlot, contentAlignment = Alignment.Center) {
                 PostAction(
                     icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
                     count = post.likeCount.toString(),
@@ -399,24 +368,37 @@ fun PostCard(
             }
 
             PostAction(
+                icon = if (thumbs?.reacted == true) XiloIcons.ThumbUpFilled else XiloIcons.ThumbUp,
+                count = (thumbs?.count ?: 0L).toString(),
+                contentDescription = stringResource(R.string.cd_thumbs),
+                tint = if (thumbs?.reacted == true) XiloBlue else MaterialTheme.colorScheme.secondary,
+                countColor = if (thumbs?.reacted == true) XiloBlue else MaterialTheme.colorScheme.secondary,
+                onClick = { reactWithHaptic("👍") },
+                modifier = actionSlot,
+            )
+
+            PostAction(
                 icon = if (post.isBookmarked) XiloIcons.BookmarkFilled else XiloIcons.Bookmark,
                 count = null,
                 contentDescription = stringResource(R.string.cd_bookmark),
                 tint = if (post.isBookmarked) XiloBlue else MaterialTheme.colorScheme.secondary,
-                onClick = onBookmarkClick
+                onClick = onBookmarkClick,
+                modifier = actionSlot,
             )
 
             PostAction(
                 icon = XiloIcons.Chart,
                 count = formatViewCount(post.viewCount),
-                contentDescription = stringResource(R.string.cd_views)
+                contentDescription = stringResource(R.string.cd_views),
+                modifier = actionSlot,
             )
 
             PostAction(
                 icon = XiloIcons.Share,
                 count = null,
                 contentDescription = stringResource(R.string.cd_share),
-                onClick = sharePost
+                onClick = sharePost,
+                modifier = actionSlot,
             )
         }
 
@@ -458,8 +440,10 @@ private fun PostAction(
     }
 
     Row(
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             .then(clickableModifier)
             .padding(horizontal = 4.dp, vertical = 6.dp)
     ) {

@@ -10,6 +10,7 @@ import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.entity.toggledReaction
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.PostResponse
+import ir.xilo.app.data.remote.dto.toPostEntity
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.PostRepository
 import ir.xilo.app.util.ErrorMessageResolver
@@ -55,32 +56,7 @@ class TagFeedViewModel @Inject constructor(
                 val map = apiService.listPosts(limit = 30, tag = tag)
                 val data = map["data"]
                 val list = if (data != null) {
-                    json.decodeFromJsonElement<List<PostResponse>>(data).map { remote ->
-                        PostEntity(
-                            id = remote.id,
-                            authorId = remote.authorId,
-                            authorName = remote.author?.displayName ?: "",
-                            authorUsername = remote.author?.username ?: "",
-                            authorAvatar = remote.author?.avatarUrl ?: "",
-                            title = remote.title,
-                            slug = remote.slug,
-                            content = remote.content,
-                            excerpt = remote.excerpt,
-                            coverImageUrl = remote.coverImageUrl,
-                            likeCount = remote.resolvedLikeCount(),
-                            commentCount = remote.commentCount,
-                            repostCount = remote.repostCount,
-                            viewCount = remote.viewCount,
-                            isLiked = remote.resolvedIsLiked(),
-                            isBookmarked = remote.isBookmarked,
-                            isReposted = remote.isReposted,
-                            reactionsJson = ir.xilo.app.core.util.EmojiReactions.fromPostDto(
-                                remote.reactions,
-                                remote.viewerReactions,
-                            ),
-                            createdAt = System.currentTimeMillis(),
-                        )
-                    }
+                    json.decodeFromJsonElement<List<PostResponse>>(data).map { it.toPostEntity() }
                 } else {
                     emptyList()
                 }

@@ -148,16 +148,23 @@ func (h *ProfileHandler) ListUserPosts(c *fiber.Ctx) error {
 
 	status := "published"
 	mediaOnly := tab == "media"
-	if tab == "archived" {
+	if tab == "archived" || tab == "drafts" || tab == "draft" {
 		var authorID string
 		err := h.db.Get(&authorID, `SELECT id FROM users WHERE username = $1 AND deleted_at IS NULL`, username)
 		if err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
 		}
 		if viewerID == "" || viewerID != authorID {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "archived posts are private"})
+			if tab == "archived" {
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "archived posts are private"})
+			}
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "drafts are private"})
 		}
-		status = "archived"
+		if tab == "archived" {
+			status = "archived"
+		} else {
+			status = "draft"
+		}
 		mediaOnly = false
 	}
 
@@ -295,14 +302,14 @@ func (h *ProfileHandler) ListUserLikes(c *fiber.Ctx) error {
 }
 
 type followListUser struct {
-	ID          string `json:"id" db:"id"`
-	Username    string `json:"username" db:"username"`
-	DisplayName string `json:"display_name" db:"display_name"`
-	AvatarURL   string `json:"avatar_url" db:"avatar_url"`
-	Role        string `json:"-" db:"role"`
+	ID          string    `json:"id" db:"id"`
+	Username    string    `json:"username" db:"username"`
+	DisplayName string    `json:"display_name" db:"display_name"`
+	AvatarURL   string    `json:"avatar_url" db:"avatar_url"`
+	Role        string    `json:"-" db:"role"`
 	CreatedAt   time.Time `json:"-" db:"created_at"`
-	IsVerified  bool   `json:"is_verified"`
-	IsFollowing bool   `json:"is_following"`
+	IsVerified  bool      `json:"is_verified"`
+	IsFollowing bool      `json:"is_following"`
 }
 
 // ListUserFollowers lists users who follow the given username.
@@ -341,11 +348,11 @@ func (h *ProfileHandler) listFollowGraph(c *fiber.Ctx, kind followGraphKind) err
 	}
 
 	var (
-		joinOn        string
-		whereCol      string
-		whereCol2     string
-		edgeUserCol   string // listed user id on follows row
-		edgeUserCol2  string // same column with f2 alias for cursor subquery
+		joinOn       string
+		whereCol     string
+		whereCol2    string
+		edgeUserCol  string // listed user id on follows row
+		edgeUserCol2 string // same column with f2 alias for cursor subquery
 	)
 	switch kind {
 	case followGraphFollowers:

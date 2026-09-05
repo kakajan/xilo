@@ -8,6 +8,7 @@ class EmojiReactionsTest {
     @Test
     fun apiKey_mapsHeartToLike() {
         assertEquals("like", EmojiReactions.apiKey("❤️"))
+        assertEquals("thumbsup", EmojiReactions.apiKey("👍"))
         assertEquals("🔥", EmojiReactions.apiKey("🔥"))
     }
 
@@ -33,6 +34,41 @@ class EmojiReactionsTest {
             selfToggled = true,
         )
         assertTrue(EmojiReactions.decode(cleared).isEmpty())
+    }
+
+    @Test
+    fun displayEmoji_mapsLegacyWebKeys() {
+        assertEquals("👍", EmojiReactions.displayEmoji("thumbsup"))
+        assertEquals("😄", EmojiReactions.displayEmoji("laugh"))
+        assertEquals("🎉", EmojiReactions.displayEmoji("party"))
+        assertEquals("💡", EmojiReactions.displayEmoji("bulb"))
+        assertEquals("🔥", EmojiReactions.displayEmoji("flame"))
+        assertEquals("like", EmojiReactions.apiKey("❤️"))
+    }
+
+    @Test
+    fun isThumbsFamily_mapsLegacyAndGlyph() {
+        assertTrue(EmojiReactions.isThumbsFamily("thumbsup"))
+        assertTrue(EmojiReactions.isThumbsFamily("👍"))
+        val thumbs = EmojiReactions.thumbsReaction(
+            EmojiReactions.fromPostDto(mapOf("thumbsup" to 1), emptyList()),
+        )
+        assertEquals(1L, thumbs?.count)
+    }
+
+    @Test
+    fun fromPostDto_mapsThumbsupAliasAndKeepsHeartSeparate() {
+        val json = EmojiReactions.fromPostDto(
+            reactions = mapOf("like" to 6, "thumbsup" to 1),
+            viewer = emptyList(),
+        )
+        val decoded = EmojiReactions.decode(json)
+        assertEquals("👍", decoded.first { it.reaction == "👍" }.reaction)
+        assertEquals(1, decoded.first { it.reaction == "👍" }.count)
+        assertEquals(6, decoded.first { it.reaction == "❤️" }.count)
+        assertTrue(decoded.none { it.reaction == "thumbsup" })
+        val fromCache = EmojiReactions.decode("""[{"reaction":"thumbsup","count":1,"reacted":false}]""")
+        assertEquals(listOf("👍"), fromCache.map { it.reaction })
     }
 
     @Test

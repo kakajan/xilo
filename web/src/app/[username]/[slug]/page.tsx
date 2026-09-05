@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "@/components/comment/comment-section";
 import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
 import { StickyAudioPlayer } from "@/components/post/sticky-audio-player";
-import { PostBody } from "@/components/post/post-body";
+import { PostTypeContent } from "@/components/post/post-type-content";
 import { QuotedPostCard } from "@/components/post/quoted-post-card";
 import { QuotedCommentCard } from "@/components/post/quoted-comment-card";
 import { RecordPostView } from "@/components/post/record-post-view";
@@ -20,6 +20,7 @@ import {
 import { fetchPublishedPost } from "@/lib/posts-server";
 import { postShareUrl, publicSiteOrigin } from "@/lib/share-urls";
 import { getArticleJsonLd } from "@/lib/seo";
+import { linkHostname, postDisplayText, resolvePostType } from "@/lib/post-type";
 
 export async function generateMetadata({
   params,
@@ -29,9 +30,19 @@ export async function generateMetadata({
   const { username, slug } = await params;
   const post = await fetchPublishedPost(slug);
   if (!post) return { title: "پست پیدا نشد" };
+  const postType = resolvePostType(post);
   const url = postShareUrl(post.author?.username || username, post.slug);
-  const title = post.title;
-  const description = post.excerpt || undefined;
+  const title =
+    postType === "article"
+      ? post.title
+      : postType === "link" && post.link_url
+        ? linkHostname(post.link_url)
+        : post.title || postDisplayText(post).slice(0, 80) || "پست";
+  const description = post.excerpt || postDisplayText(post).slice(0, 160) || undefined;
+  const ogImage =
+    postType === "photo"
+      ? post.media?.[0]?.url || post.cover_image_url
+      : post.cover_image_url;
   return {
     title,
     description,
@@ -41,10 +52,10 @@ export async function generateMetadata({
       description,
       url,
       type: "article",
-      images: post.cover_image_url ? [post.cover_image_url] : undefined,
+      images: ogImage ? [ogImage] : undefined,
     },
     twitter: {
-      card: post.cover_image_url ? "summary_large_image" : "summary",
+      card: ogImage ? "summary_large_image" : "summary",
       title,
       description,
     },
@@ -63,9 +74,11 @@ export default async function PostPage({
   const post = await fetchPublishedPost(slug);
   if (!post) notFound();
 
+  const postType = resolvePostType(post);
   const authorName = post.author?.display_name || post.author?.username || "ناشناس";
   const shareUrl = postShareUrl(post.author?.username || username, post.slug);
   const jsonLd = getArticleJsonLd(post, publicSiteOrigin());
+  const showArticleTitle = postType === "article";
 
   return (
     <article className="mx-auto max-w-3xl">
@@ -74,7 +87,9 @@ export default async function PostPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <header className="mb-8">
-        <h1 className="mb-4 text-3xl font-bold md:text-4xl">{post.title}</h1>
+        {showArticleTitle ? (
+          <h1 className="mb-4 text-3xl font-bold md:text-4xl">{post.title}</h1>
+        ) : null}
 
         <div className="mb-4 flex items-center gap-3">
           <Link href={`/${post.author?.username || username}`}>
@@ -98,7 +113,7 @@ export default async function PostPage({
               timeLabel={post.published_at ? formatDate(post.published_at) : null}
               trailing={
                 <>
-                  {post.reading_time ? (
+                  {postType === "article" && post.reading_time ? (
                     <>
                       <span aria-hidden>·</span>
                       <TimeLabel>{readingTimeText(post.reading_time)}</TimeLabel>
@@ -136,23 +151,8 @@ export default async function PostPage({
           </div>
         )}
 
-        {post.cover_image_url ? (
-          <div className="mt-6 overflow-hidden rounded-xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={post.cover_image_url}
-              alt=""
-              className="max-h-[28rem] w-full object-cover"
-            />
-          </div>
-        ) : null}
+        <PostTypeContent post={post} />
       </header>
-
-      <PostBody
-        content={post.content}
-        content_md={post.content_md}
-        excerpt={post.excerpt}
-      />
 
       {post.quoted_post ? (
         <div className="mt-6">

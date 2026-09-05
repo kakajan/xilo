@@ -98,7 +98,7 @@ export function TiptapEditor({ content, onSave, contentRef }: TiptapEditorProps)
       formData.append("file", file);
 
       try {
-        const res = await apiUpload<{ url: string }>("/api/media/upload", formData);
+        const res = await apiUpload<{ id: string; url: string }>("/api/media/upload", formData);
         editor.chain().focus().setImage({ src: res.url }).run();
       } catch (err) {
         console.error("Image upload failed", err);
@@ -119,7 +119,7 @@ export function TiptapEditor({ content, onSave, contentRef }: TiptapEditorProps)
       formData.append("file", file);
 
       try {
-        const res = await apiUpload<{ url: string }>("/api/media/upload", formData);
+        const res = await apiUpload<{ id: string; url: string }>("/api/media/upload", formData);
         editor.chain().focus().setImage({ src: res.url }).run();
       } catch (err) {
         console.error("Image upload failed", err);

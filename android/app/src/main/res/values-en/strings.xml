@@ -200,6 +200,7 @@
     <string name="profile_settings">Settings</string>
     <string name="profile_tab_posts">Posts</string>
     <string name="profile_tab_archived">Archived Posts</string>
+    <string name="profile_tab_drafts">Drafts</string>
     <string name="profile_tab_replies">Replies</string>
     <string name="profile_tab_likes">Likes</string>
     <string name="profile_add_post">Add a post</string>
@@ -216,6 +217,7 @@
     <string name="profile_share">Share</string>
     <string name="profile_share_text">@%1$s on aile\n%2$s</string>
     <string name="profile_empty_archived">No archived posts yet.</string>
+    <string name="profile_empty_drafts">No drafts yet.</string>
     <string name="profile_empty_posts">No posts yet.</string>
     <string name="profile_empty_replies">No replies yet.</string>
     <string name="profile_empty_likes">No liked posts yet.</string>
@@ -295,6 +297,7 @@
     <string name="quote_compose_title">Quote</string>
     <string name="quote_compose_hint">Add a comment...</string>
     <string name="cd_like">Like</string>
+    <string name="cd_thumbs">Thumbs up</string>
     <string name="cd_bookmark">Bookmark</string>
     <string name="cd_views">Views</string>
     <string name="post_cover_untitled">Post</string>
@@ -306,6 +309,14 @@
     <string name="compose_kind_article">Article</string>
     <string name="compose_kind_quote">Quote</string>
     <string name="compose_kind_audio">Audio</string>
+    <string name="compose_kind_photo">Photo</string>
+    <string name="compose_kind_video">Video</string>
+    <string name="compose_kind_link">Link</string>
+    <string name="post_create_save_draft">Save draft</string>
+    <string name="post_link_url_placeholder">https://</string>
+    <string name="post_link_invalid">Link must start with https</string>
+    <string name="post_photo_attach">Add photos</string>
+    <string name="post_video_attach">Add video</string>
     <string name="feed_undo_action">Undo</string>
     <string name="feed_undo_bookmarked">Saved</string>
     <string name="feed_undo_unbookmarked">Removed from saved</string>
@@ -314,6 +325,8 @@
     <string name="post_format_bold">Bold</string>
     <string name="post_format_italic">Italic</string>
     <string name="post_format_heading">Heading</string>
+    <string name="post_format_quote">Quote</string>
+    <string name="post_format_code">Code</string>
     <string name="post_untitled_fallback">Post</string>
     <string name="error_video_too_large">Video must be 100 MB or smaller</string>
     <string name="error_image_too_large">Image must be 10 MB or smaller</string>

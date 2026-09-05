@@ -1,5 +1,6 @@
 package ir.xilo.app.data.local.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -105,6 +106,9 @@ interface PostDao {
 
     @Query("SELECT * FROM posts ORDER BY feedRank ASC, createdAt DESC, id DESC LIMIT 200")
     fun getFeedFlow(): Flow<List<PostEntity>>
+
+    @Query("SELECT * FROM posts ORDER BY feedRank ASC, createdAt DESC, id DESC")
+    fun feedPagingSource(): PagingSource<Int, PostEntity>
 
     @Query("SELECT COALESCE(MAX(feedRank), -1) FROM posts")
     suspend fun maxFeedRank(): Int

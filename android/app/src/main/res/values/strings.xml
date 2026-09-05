@@ -202,6 +202,7 @@
     <string name="profile_settings">تنظیمات</string>
     <string name="profile_tab_posts">پست‌ها</string>
     <string name="profile_tab_archived">پست‌های آرشیو</string>
+    <string name="profile_tab_drafts">پیش‌نویس‌ها</string>
     <string name="profile_tab_replies">نظرات</string>
     <string name="profile_tab_likes">پسندیده‌ها</string>
     <string name="profile_add_post">افزودن پست</string>
@@ -218,6 +219,7 @@
     <string name="profile_share">اشتراک</string>
     <string name="profile_share_text">پروفایل @%1$s در آیله\n%2$s</string>
     <string name="profile_empty_archived">پست آرشیو‌شده‌ای وجود ندارد.</string>
+    <string name="profile_empty_drafts">پیش‌نویسی وجود ندارد.</string>
     <string name="profile_empty_posts">هنوز پستی منتشر نشده است.</string>
     <string name="profile_empty_replies">هنوز نظری ثبت نشده است.</string>
     <string name="profile_empty_likes">هنوز پستی پسندیده نشده است.</string>
@@ -297,6 +299,7 @@
     <string name="quote_compose_title">نقل‌قول</string>
     <string name="quote_compose_hint">نظرتان را اضافه کنید...</string>
     <string name="cd_like">پسندیدن</string>
+    <string name="cd_thumbs">تأیید</string>
     <string name="cd_bookmark">ذخیره</string>
     <string name="cd_views">بازدید</string>
     <string name="post_cover_untitled">پست</string>
@@ -308,6 +311,14 @@
     <string name="compose_kind_article">مقاله</string>
     <string name="compose_kind_quote">نقل‌قول</string>
     <string name="compose_kind_audio">صوت</string>
+    <string name="compose_kind_photo">عکس</string>
+    <string name="compose_kind_video">ویدیو</string>
+    <string name="compose_kind_link">لینک</string>
+    <string name="post_create_save_draft">ذخیره پیش‌نویس</string>
+    <string name="post_link_url_placeholder">https://</string>
+    <string name="post_link_invalid">لینک باید با https شروع شود</string>
+    <string name="post_photo_attach">افزودن عکس</string>
+    <string name="post_video_attach">افزودن ویدیو</string>
     <string name="feed_undo_action">بازگردانی</string>
     <string name="feed_undo_bookmarked">ذخیره شد</string>
     <string name="feed_undo_unbookmarked">از ذخیره‌ها برداشته شد</string>
@@ -316,6 +327,8 @@
     <string name="post_format_bold">ضخیم</string>
     <string name="post_format_italic">کج</string>
     <string name="post_format_heading">عنوان</string>
+    <string name="post_format_quote">نقل‌قول</string>
+    <string name="post_format_code">کد</string>
     <string name="post_untitled_fallback">پست</string>
     <string name="error_video_too_large">حجم ویدئو نباید بیش از ۱۰۰ مگابایت باشد</string>
     <string name="error_image_too_large">حجم تصویر نباید بیش از ۱۰ مگابایت باشد</string>

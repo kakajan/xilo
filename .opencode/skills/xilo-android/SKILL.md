@@ -1,6 +1,6 @@
 ---
 name: xilo-android
-description: Use when writing native Android Kotlin/Compose code for Xilo (`android/`). Covers MVVM/StateFlow, Hilt, Room outbox, Navigation 3, Vazirmatn/Inter, and share URLs. Do not use the Flutter xilo-mobile skill.
+description: Use when writing native Android Kotlin/Compose code for Xilo (`android/`). Covers MVVM/StateFlow, Hilt, Room outbox, Navigation 3, Vazirmatn/Noto Sans Arabic/Inter, XiloMotion, and share URLs. Do not use the Flutter xilo-mobile skill.
 ---
 
 # Xilo Android (native)
@@ -29,14 +29,14 @@ android/app/src/main/java/ir/xilo/app/
 - Collect flows on screen with `collectAsStateWithLifecycle()`, never `collectAsState()`.
 - Lazy lists: always `key` and `contentType`. Size Coil requests (`size` + `crossfade`).
 - UI copy via `stringResource` / `strings.xml` (fa default + en/ar/ru/tr). No hardcoded Persian or English in composables.
-- Fonts: Vazirmatn for RTL (`fa`, `ar`); Inter for LTR. Primary color token `#1D9BF0`.
+- Fonts: Vazirmatn for Persian (`fa`); **Noto Sans Arabic** for Arabic (`ar`); Inter for LTR. Primary color token `#1D9BF0`. Motion tokens in `theme/Motion.kt` (`XiloMotion`).
 - Share URLs are absolute HTTPS: `https://aile.ir/{username}/{slug}` via `PublicWebUrls` / `ShareActions` and `BuildConfig.PUBLIC_WEB_URL`. Never share relative `/p/{slug}`.
-- Do not invent APIs. New post types (micro, gallery, video, link) need an OpenSpec change first.
+- Post types (`article`, `micro`, `photo`, `video`, `link`) per OpenSpec `feed-post-types` — wire UI once API returns `post_type`; do not invent client-only types.
 - Cosmetic filters that do not hit the API must be hidden, not shown as working chips.
 - Haptics on like; double-tap cover to like (`ui-ux-spec` §10.1).
 - Long-press the like control for the 10-emoji picker (REQ-POST-007). Heart still maps to backend `like`.
 - FAB opens a post-type sheet (text / article / quote / audio). Continue-draft chip appears when a local compose draft exists.
-- Feed pagination is cursor `loadMore` on Room (ANP-2.2 subset). Do not invent Paging 3 RemoteMediator unless tasks.md requires it.
+- Feed SHOULD use Paging 3 + `RemoteMediator` for home feed (ANP-2.2). Keep cursor `loadMore` on Room only as fallback until mediator is wired.
 - `applicationId` is `ir.xilo.app`. Emulator launch: `adb shell am start -n ir.xilo.app/.MainActivity`.
 
 ## Tests

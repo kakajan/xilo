@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/xilo-platform/xilo/internal/post/model"
@@ -143,6 +144,7 @@ func (h *PostHandler) Delete(c *fiber.Ctx) error {
 // @Param        tag query string false "Filter by tag"
 // @Param        author query string false "Filter by author"
 // @Param        language query string false "Filter by language"
+// @Param        status query string false "published (default), archived, or draft (own drafts, auth required)"
 // @Success      200  {object}  map[string]interface{}
 // @Router       /posts [get]
 func (h *PostHandler) List(c *fiber.Ctx) error {
@@ -152,8 +154,14 @@ func (h *PostHandler) List(c *fiber.Ctx) error {
 	tag := c.Query("tag")
 	author := c.Query("author")
 	language := c.Query("language")
+	status := strings.ToLower(strings.TrimSpace(c.Query("status")))
 
 	viewerID, _ := c.Locals("userID").(string)
+	if status == "draft" && viewerID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "authentication required to list drafts",
+		})
+	}
 
 	posts, nextCursor, err := h.svc.List(c.UserContext(), model.PostListParams{
 		Cursor:   cursor,
@@ -161,12 +169,13 @@ func (h *PostHandler) List(c *fiber.Ctx) error {
 		Category: category,
 		Tag:      tag,
 		Author:   author,
+		Status:   status,
 		Language: language,
 		ViewerID: viewerID,
 	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "failed to list posts",
+			"error":  "failed to list posts",
 			"detail": err.Error(),
 		})
 	}

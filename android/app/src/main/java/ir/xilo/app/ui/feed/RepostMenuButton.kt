@@ -45,7 +45,7 @@ fun RepostMenuButton(
     var menuExpanded by remember { mutableStateOf(false) }
     val tint = if (isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier

@@ -61,7 +61,8 @@ interface XiloApiService {
         @Query("cursor") cursor: String? = null,
         @Query("limit") limit: Int = 20,
         @Query("tag") tag: String? = null,
-        @Query("author") author: String? = null
+        @Query("author") author: String? = null,
+        @Query("status") status: String? = null,
     ): Map<String, kotlinx.serialization.json.JsonElement>
 
     @POST("api/posts")

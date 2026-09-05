@@ -12,6 +12,7 @@ import ir.xilo.app.data.local.entity.toggledReaction
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.DiscoverCommentDto
 import ir.xilo.app.data.remote.dto.InterestDto
+import ir.xilo.app.data.remote.dto.toPostEntity
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
@@ -481,32 +482,7 @@ class DiscoverViewModel @Inject constructor(
                 val dataElement = postsMap["data"]
                 if (dataElement != null) {
                     val postsDto = json.decodeFromJsonElement<List<ir.xilo.app.data.remote.dto.PostResponse>>(dataElement)
-                    _searchResults.value = postsDto.map { remote ->
-                        PostEntity(
-                            id = remote.id,
-                            authorId = remote.authorId,
-                            authorName = remote.author?.displayName ?: "",
-                            authorUsername = remote.author?.username ?: "",
-                            authorAvatar = remote.author?.avatarUrl ?: "",
-                            title = remote.title,
-                            slug = remote.slug,
-                            content = remote.content,
-                            excerpt = remote.excerpt,
-                            coverImageUrl = remote.coverImageUrl,
-                            likeCount = remote.resolvedLikeCount(),
-                            commentCount = remote.commentCount,
-                            repostCount = remote.repostCount,
-                            viewCount = remote.viewCount,
-                            isLiked = remote.resolvedIsLiked(),
-                            isBookmarked = remote.isBookmarked,
-                            isReposted = remote.isReposted,
-                            reactionsJson = ir.xilo.app.core.util.EmojiReactions.fromPostDto(
-                                remote.reactions,
-                                remote.viewerReactions,
-                            ),
-                            createdAt = System.currentTimeMillis()
-                        )
-                    }
+                    _searchResults.value = postsDto.map { it.toPostEntity() }
                 } else {
                     _searchResults.value = emptyList()
                 }

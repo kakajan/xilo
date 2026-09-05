@@ -172,6 +172,7 @@ fun ProfileScreen(
     val userReplies by viewModel.userReplies.collectAsStateWithLifecycle()
     val userLikes by viewModel.userLikes.collectAsStateWithLifecycle()
     val userArchived by viewModel.userArchived.collectAsStateWithLifecycle()
+    val userDrafts by viewModel.userDrafts.collectAsStateWithLifecycle()
     val isFollowing by viewModel.isFollowing.collectAsStateWithLifecycle()
     val isOwnProfile by viewModel.isOwnProfile.collectAsStateWithLifecycle()
     val canCreatePost by viewModel.canCreatePost.collectAsStateWithLifecycle()
@@ -263,6 +264,7 @@ fun ProfileScreen(
     val tabLabels = if (isOwnProfile) {
         listOf(
             stringResource(R.string.profile_tab_posts),
+            stringResource(R.string.profile_tab_drafts),
             stringResource(R.string.profile_tab_archived),
         )
     } else {
@@ -353,7 +355,8 @@ fun ProfileScreen(
     // Other empty tabs stay fixed (no bounce over empty content).
     val canScrollProfile = when {
         selectedTab == 0 -> userPosts.isNotEmpty() || isOwnProfile
-        isOwnProfile && selectedTab == 1 -> userArchived.isNotEmpty()
+        isOwnProfile && selectedTab == 1 -> userDrafts.isNotEmpty()
+        isOwnProfile && selectedTab == 2 -> userArchived.isNotEmpty()
         selectedTab == 1 -> userReplies.isNotEmpty()
         selectedTab == 2 -> userLikes.isNotEmpty()
         else -> false
@@ -565,7 +568,21 @@ fun ProfileScreen(
                                 }
                             }
                         }
-                        isOwnProfile -> {
+                        isOwnProfile && selectedTab == 1 -> {
+                            if (userDrafts.isEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    ProfileEmptyTab(text = stringResource(R.string.profile_empty_drafts))
+                                }
+                            } else {
+                                items(userDrafts, key = { it.id }, contentType = { "draft" }) { post ->
+                                    ProfileMediaCell(
+                                        post = post,
+                                        onClick = { onPostClick(post.slug) }
+                                    )
+                                }
+                            }
+                        }
+                        isOwnProfile && selectedTab == 2 -> {
                             if (userArchived.isEmpty()) {
                                 item(span = { GridItemSpan(maxLineSpan) }) {
                                     ProfileEmptyTab(text = stringResource(R.string.profile_empty_archived))

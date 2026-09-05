@@ -425,7 +425,7 @@ fun MessageBubble(
                 ) {
                     reactionPills.forEach { pill ->
                         Text(
-                            text = "${pill.reaction} ${pill.count}",
+                            text = "${EmojiReactions.displayEmoji(pill.reaction)} ${pill.count}",
                             style = MaterialTheme.typography.labelMedium,
                             color = if (pill.reacted) XiloBlue else contentColor,
                             modifier = Modifier

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/lib/pq"
-	pkgredis "github.com/xilo-platform/xilo/pkg/redis"
 	"github.com/xilo-platform/xilo/internal/post/model"
+	pkgredis "github.com/xilo-platform/xilo/pkg/redis"
 )
 
 type mockPostRepo struct {
@@ -40,6 +40,15 @@ func (m *mockPostRepo) Create(ctx context.Context, req *model.CreatePostRequest,
 		id := req.QuotedCommentID
 		post.QuotedCommentID = &id
 	}
+	post.PostType = req.PostType
+	if post.PostType == "" {
+		post.PostType = PostTypeArticle
+	}
+	if req.LinkURL != "" {
+		u := req.LinkURL
+		post.LinkURL = &u
+	}
+	post.MediaIDs = pq.StringArray(req.MediaIDs)
 	m.posts[post.ID] = post
 	return post, nil
 }
@@ -298,5 +307,17 @@ func TestCreatePost_RejectDualQuote(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for dual quote")
+	}
+}
+
+func TestCreatePost_UnknownType(t *testing.T) {
+	repo := newMockPostRepo()
+	svc := NewPostService(repo, nil)
+	_, err := svc.Create(context.Background(), "author-1", &model.CreatePostRequest{
+		Title:    "Nope",
+		PostType: "story",
+	})
+	if err == nil {
+		t.Fatal("expected unknown post_type error")
 	}
 }

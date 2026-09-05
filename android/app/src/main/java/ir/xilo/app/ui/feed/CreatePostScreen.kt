@@ -1,11 +1,13 @@
 package ir.xilo.app.ui.feed
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -83,7 +86,12 @@ fun CreatePostScreen(
     val content by viewModel.content.collectAsStateWithLifecycle()
     val audioUrl by viewModel.audioUrl.collectAsStateWithLifecycle()
     val coverImageUrl by viewModel.coverImageUrl.collectAsStateWithLifecycle()
+    val linkUrl by viewModel.linkUrl.collectAsStateWithLifecycle()
+    val photoMedia by viewModel.photoMedia.collectAsStateWithLifecycle()
+    val videoMedia by viewModel.videoMedia.collectAsStateWithLifecycle()
     val isUploadingCover by viewModel.isUploadingCover.collectAsStateWithLifecycle()
+    val isUploadingPhoto by viewModel.isUploadingPhoto.collectAsStateWithLifecycle()
+    val isUploadingVideo by viewModel.isUploadingVideo.collectAsStateWithLifecycle()
     val scheduledAtEpoch by viewModel.scheduledAtEpoch.collectAsStateWithLifecycle()
     val isUploadingAudio by viewModel.isUploadingAudio.collectAsStateWithLifecycle()
     val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
@@ -99,7 +107,22 @@ fun CreatePostScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val isEditing = !editPostId.isNullOrBlank()
     val isQuote = !quotedPostId.isNullOrBlank() || !quotedCommentId.isNullOrBlank()
-    val hideTitle = !isEditing && (composeKind == ComposeKind.TEXT || isQuote)
+    val hideTitle = !isEditing && (
+        composeKind == ComposeKind.TEXT ||
+            composeKind == ComposeKind.PHOTO ||
+            composeKind == ComposeKind.VIDEO ||
+            composeKind == ComposeKind.LINK ||
+            isQuote
+        )
+    val isArticleKind = composeKind == ComposeKind.ARTICLE
+    val isAudioKind = composeKind == ComposeKind.AUDIO
+    val isPhotoKind = composeKind == ComposeKind.PHOTO
+    val isVideoKind = composeKind == ComposeKind.VIDEO
+    val isLinkKind = composeKind == ComposeKind.LINK
+    val showCover = !isQuote && isArticleKind
+    val showAudio = !isQuote && isAudioKind
+    val showSchedule = !isQuote && (isArticleKind || isAudioKind)
+    val showMarkdown = !isQuote
 
     val audioPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -110,6 +133,16 @@ fun CreatePostScreen(
         contract = ActivityResultContracts.GetContent(),
     ) { uri ->
         if (uri != null) viewModel.uploadCover(uri)
+    }
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10),
+    ) { uris ->
+        uris.forEach { viewModel.uploadPhoto(it) }
+    }
+    val videoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri ->
+        if (uri != null) viewModel.uploadVideo(uri)
     }
     val context = LocalContext.current
     var audioPickerRequested by remember { mutableStateOf(false) }
@@ -144,6 +177,13 @@ fun CreatePostScreen(
         }
     }
 
+    LaunchedEffect(fieldErrors[PostField.Media]) {
+        fieldErrors[PostField.Media]?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearFieldError(PostField.Media)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -155,6 +195,9 @@ fun CreatePostScreen(
                                 isQuote -> R.string.quote_compose_title
                                 composeKind == ComposeKind.TEXT -> R.string.compose_kind_text
                                 composeKind == ComposeKind.AUDIO -> R.string.compose_kind_audio
+                                composeKind == ComposeKind.PHOTO -> R.string.compose_kind_photo
+                                composeKind == ComposeKind.VIDEO -> R.string.compose_kind_video
+                                composeKind == ComposeKind.LINK -> R.string.compose_kind_link
                                 else -> R.string.post_create_title
                             }
                         ),
@@ -167,9 +210,20 @@ fun CreatePostScreen(
                     }
                 },
                 actions = {
+                    if (!isQuote && !isEditing) {
+                        OutlinedButton(
+                            onClick = { viewModel.submitDraft() },
+                            enabled = !isSubmitting && !isLoadingEdit &&
+                                !isUploadingAudio && !isUploadingPhoto && !isUploadingVideo,
+                            modifier = Modifier.padding(end = 4.dp),
+                        ) {
+                            Text(stringResource(R.string.post_create_save_draft))
+                        }
+                    }
                     Button(
                         onClick = { viewModel.submit() },
-                        enabled = !isSubmitting && !isLoadingEdit && !isUploadingAudio,
+                        enabled = !isSubmitting && !isLoadingEdit &&
+                            !isUploadingAudio && !isUploadingPhoto && !isUploadingVideo,
                         colors = ButtonDefaults.buttonColors(containerColor = XiloBlue),
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
@@ -198,7 +252,7 @@ fun CreatePostScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
-            if (isSubmitting || isLoadingEdit || isUploadingAudio) {
+            if (isSubmitting || isLoadingEdit || isUploadingAudio || isUploadingPhoto || isUploadingVideo) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = XiloBlue)
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -215,7 +269,121 @@ fun CreatePostScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            if (!isQuote && coverImageUrl.isNotBlank()) {
+            if (isLinkKind && !isQuote) {
+                XiloTextField(
+                    value = linkUrl,
+                    onValueChange = viewModel::updateLinkUrl,
+                    placeholder = stringResource(R.string.post_link_url_placeholder),
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = fieldErrors.containsKey(PostField.LinkUrl),
+                    errorText = fieldErrors[PostField.LinkUrl],
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (isPhotoKind && !isQuote) {
+                OutlinedButton(
+                    onClick = {
+                        photoPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    enabled = !isUploadingPhoto && !isSubmitting && photoMedia.size < 10,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (isUploadingPhoto) R.string.post_cover_uploading else R.string.post_photo_attach
+                        ),
+                    )
+                }
+                if (photoMedia.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                    ) {
+                        itemsIndexed(photoMedia, key = { _, item -> item.id }) { index, media ->
+                            Box {
+                                AsyncImage(
+                                    model = media.url,
+                                    contentDescription = stringResource(R.string.cd_post_image),
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(72.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                )
+                                IconButton(
+                                    onClick = { viewModel.removePhoto(index) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(24.dp),
+                                ) {
+                                    XiloIcon(
+                                        icon = XiloIcons.Close,
+                                        contentDescription = stringResource(R.string.common_close),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isVideoKind && !isQuote) {
+                if (videoMedia != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                    ) {
+                        XiloIcon(
+                            icon = XiloIcons.Chart,
+                            contentDescription = null,
+                            tint = XiloBlue,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = videoMedia!!.url.substringAfterLast('/').ifBlank {
+                                stringResource(R.string.post_video_attach)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = viewModel::clearVideo) {
+                            XiloIcon(
+                                icon = XiloIcons.Close,
+                                contentDescription = stringResource(R.string.common_close),
+                            )
+                        }
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { videoPicker.launch("video/*") },
+                        enabled = !isUploadingVideo && !isSubmitting,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (isUploadingVideo) R.string.post_cover_uploading else R.string.post_video_attach
+                            ),
+                        )
+                    }
+                }
+            }
+
+            if (showCover && coverImageUrl.isNotBlank()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -243,7 +411,7 @@ fun CreatePostScreen(
                         )
                     }
                 }
-            } else if (!isQuote) {
+            } else if (showCover) {
                 OutlinedButton(
                     onClick = { coverPicker.launch("image/*") },
                     enabled = !isUploadingCover && !isSubmitting,
@@ -260,7 +428,7 @@ fun CreatePostScreen(
                 }
             }
 
-            if (!isQuote) {
+            if (showSchedule) {
                 OutlinedButton(
                     onClick = {
                         val now = Calendar.getInstance()
@@ -311,7 +479,7 @@ fun CreatePostScreen(
                 }
             }
 
-            if (!isQuote && audioUrl.isNotBlank()) {
+            if (showAudio && audioUrl.isNotBlank()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -341,7 +509,7 @@ fun CreatePostScreen(
                         )
                     }
                 }
-            } else if (!isQuote) {
+            } else if (showAudio) {
                 OutlinedButton(
                     onClick = { audioPicker.launch("audio/*") },
                     enabled = !isUploadingAudio && !isSubmitting,
@@ -388,7 +556,7 @@ fun CreatePostScreen(
                 }
             }
 
-            if (!isQuote) {
+            if (showMarkdown) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
@@ -407,6 +575,14 @@ fun CreatePostScreen(
                         onClick = { viewModel.wrapMarkdown("## ", "") },
                         label = { Text(stringResource(R.string.post_format_heading)) },
                     )
+                    AssistChip(
+                        onClick = { viewModel.wrapMarkdown("> ", "") },
+                        label = { Text(stringResource(R.string.post_format_quote)) },
+                    )
+                    AssistChip(
+                        onClick = { viewModel.wrapMarkdown("`") },
+                        label = { Text(stringResource(R.string.post_format_code)) },
+                    )
                 }
             }
 
@@ -414,7 +590,12 @@ fun CreatePostScreen(
                 value = content,
                 onValueChange = viewModel::updateContent,
                 placeholder = stringResource(
-                    if (isQuote) R.string.quote_compose_hint else R.string.post_body_placeholder
+                    when {
+                        isQuote -> R.string.quote_compose_hint
+                        isPhotoKind || isVideoKind -> R.string.post_body_placeholder
+                        isLinkKind -> R.string.post_body_placeholder
+                        else -> R.string.post_body_placeholder
+                    }
                 ),
                 modifier = Modifier
                     .fillMaxWidth()

@@ -3,10 +3,12 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
 	authmodel "github.com/xilo-platform/xilo/internal/auth/model"
+	mediamodel "github.com/xilo-platform/xilo/internal/media/model"
 	"github.com/xilo-platform/xilo/internal/post/model"
 	userutil "github.com/xilo-platform/xilo/internal/user/util"
 )
@@ -133,7 +135,75 @@ func (r *PostRepo) EnrichPosts(ctx context.Context, posts []*model.Post, viewerI
 	if err := r.EnrichQuotedComments(ctx, posts); err != nil {
 		return err
 	}
+	if err := r.enrichMedia(ctx, posts); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func (r *PostRepo) enrichMedia(ctx context.Context, posts []*model.Post) error {
+	ids := make([]string, 0)
+	seen := make(map[string]struct{})
+	for _, p := range posts {
+		for _, id := range p.MediaIDs {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	type mediaRow struct {
+		ID       string             `db:"id"`
+		MimeType string             `db:"mime_type"`
+		Variants mediamodel.JSONMap `db:"variants"`
+	}
+	var rows []mediaRow
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT id, mime_type, variants FROM media WHERE id = ANY($1)
+	`, pq.Array(ids))
+	if err != nil {
+		return fmt.Errorf("enrich media: %w", err)
+	}
+	byID := make(map[string]mediaRow, len(rows))
+	for _, row := range rows {
+		byID[row.ID] = row
+	}
+	for _, post := range posts {
+		if len(post.MediaIDs) == 0 {
+			continue
+		}
+		items := make([]model.MediaItem, 0, len(post.MediaIDs))
+		for _, id := range post.MediaIDs {
+			row, ok := byID[id]
+			if !ok {
+				continue
+			}
+			url := row.Variants["original"]
+			if url == "" {
+				for _, v := range row.Variants {
+					if v != "" {
+						url = v
+						break
+					}
+				}
+			}
+			items = append(items, model.MediaItem{ID: row.ID, URL: url, MimeType: row.MimeType})
+		}
+		post.Media = items
+		if post.CoverImageURL == nil && len(items) > 0 && strings.HasPrefix(items[0].MimeType, "image/") {
+			u := items[0].URL
+			post.CoverImageURL = &u
+		}
+	}
 	return nil
 }
 

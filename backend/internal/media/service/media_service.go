@@ -39,25 +39,36 @@ var allowedImageMimeTypes = map[string]bool{
 }
 
 var allowedAudioMimeTypes = map[string]bool{
-	"audio/mpeg": true,
-	"audio/mp4":  true,
-	"audio/aac":  true,
-	"audio/ogg":  true,
-	"audio/wav":  true,
-	"audio/webm": true,
+	"audio/mpeg":  true,
+	"audio/mp4":   true,
+	"audio/aac":   true,
+	"audio/ogg":   true,
+	"audio/wav":   true,
+	"audio/webm":  true,
 	"audio/x-wav": true,
 	"audio/wave":  true,
 }
 
+var allowedVideoMimeTypes = map[string]bool{
+	"video/mp4":       true,
+	"video/webm":      true,
+	"video/quicktime": true,
+	"video/ogg":       true,
+}
+
 var maxImageFileSize int64 = 10 * 1024 * 1024
 var maxAudioFileSize int64 = 50 * 1024 * 1024
+var maxVideoFileSize int64 = 100 * 1024 * 1024
 var maxImageDimension = 5000
 
 func isAllowedUploadMime(mimeType string) bool {
-	return allowedImageMimeTypes[mimeType] || allowedAudioMimeTypes[mimeType]
+	return allowedImageMimeTypes[mimeType] || allowedAudioMimeTypes[mimeType] || allowedVideoMimeTypes[mimeType]
 }
 
 func maxUploadSize(mimeType string) int64 {
+	if allowedVideoMimeTypes[mimeType] {
+		return maxVideoFileSize
+	}
 	if allowedAudioMimeTypes[mimeType] {
 		return maxAudioFileSize
 	}
@@ -78,6 +89,10 @@ func (s *MediaService) Upload(ctx context.Context, userID string, filename strin
 	if allowedAudioMimeTypes[mimeType] {
 		if ext == "" {
 			ext = audioExtForMime(mimeType)
+		}
+	} else if allowedVideoMimeTypes[mimeType] {
+		if ext == "" {
+			ext = videoExtForMime(mimeType)
 		}
 	} else if ext == ".jpeg" || ext == "" {
 		ext = ".jpg"
@@ -191,8 +206,12 @@ func normalizeMimeType(mimeType, filename string) string {
 		return "image/gif"
 	case ".mp3":
 		return "audio/mpeg"
-	case ".m4a", ".mp4":
+	case ".m4a":
 		return "audio/mp4"
+	case ".mp4", ".m4v":
+		return "video/mp4"
+	case ".mov":
+		return "video/quicktime"
 	case ".aac":
 		return "audio/aac"
 	case ".ogg", ".oga":
@@ -200,6 +219,12 @@ func normalizeMimeType(mimeType, filename string) string {
 	case ".wav":
 		return "audio/wav"
 	case ".webm":
+		if strings.HasPrefix(mimeType, "video/") {
+			return "video/webm"
+		}
+		if mimeType == "video/webm" {
+			return "video/webm"
+		}
 		return "audio/webm"
 	default:
 		if mimeType == "" {
@@ -225,6 +250,21 @@ func audioExtForMime(mimeType string) string {
 		return ".webm"
 	default:
 		return ".bin"
+	}
+}
+
+func videoExtForMime(mimeType string) string {
+	switch mimeType {
+	case "video/mp4":
+		return ".mp4"
+	case "video/webm":
+		return ".webm"
+	case "video/quicktime":
+		return ".mov"
+	case "video/ogg":
+		return ".ogv"
+	default:
+		return ".mp4"
 	}
 }
 

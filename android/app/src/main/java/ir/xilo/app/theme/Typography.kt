@@ -22,9 +22,21 @@ val InterFontFamily = FontFamily(
     Font(R.font.inter_bold, FontWeight.Bold),
 )
 
-fun xiloTypography(rtl: Boolean): Typography {
-    val display = if (rtl) VazirmatnFontFamily else InterFontFamily
-    val body = if (rtl) VazirmatnFontFamily else InterFontFamily
+val NotoSansArabicFontFamily = FontFamily(
+    Font(R.font.noto_sans_arabic, FontWeight.Normal),
+    Font(R.font.noto_sans_arabic, FontWeight.Medium),
+    Font(R.font.noto_sans_arabic, FontWeight.SemiBold),
+    Font(R.font.noto_sans_arabic, FontWeight.Bold),
+)
+
+fun xiloTypography(languageCode: String): Typography {
+    val code = languageCode.lowercase()
+    val display = when (code) {
+        "ar" -> NotoSansArabicFontFamily
+        "fa" -> VazirmatnFontFamily
+        else -> InterFontFamily
+    }
+    val body = display
     return Typography(
         displayLarge = TextStyle(
             fontFamily = display,
@@ -107,4 +119,4 @@ fun xiloTypography(rtl: Boolean): Typography {
 val YekanBakhFontFamily = VazirmatnFontFamily
 val IranSansXFontFamily = VazirmatnFontFamily
 
-val Typography = xiloTypography(rtl = true)
+val Typography = xiloTypography(languageCode = "fa")

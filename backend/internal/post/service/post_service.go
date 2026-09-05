@@ -82,8 +82,8 @@ func (s *PostService) Create(ctx context.Context, authorID string, req *model.Cr
 		applyQuoteDefaults(req)
 	}
 
-	if verr := validator.ValidateTitle(req.Title); verr != nil {
-		return nil, fmt.Errorf("%s: %s", verr.Field, verr.Message)
+	if err := ValidateTypedCreate(req); err != nil {
+		return nil, err
 	}
 	applyHashtagsCreate(req)
 	if len(req.Tags) > 0 {
@@ -238,6 +238,9 @@ func (s *PostService) Update(ctx context.Context, id string, userID string, req 
 	}
 
 	if err := applyHashtagsUpdate(post, req); err != nil {
+		return nil, err
+	}
+	if err := ValidateTypedUpdate(post, req); err != nil {
 		return nil, err
 	}
 

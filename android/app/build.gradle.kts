@@ -255,6 +255,7 @@ dependencies {
   // Room
   implementation(libs.room.runtime)
   implementation(libs.room.ktx)
+  implementation(libs.room.paging)
   ksp(libs.room.compiler)
   androidTestImplementation("androidx.room:room-testing:2.6.1")
 

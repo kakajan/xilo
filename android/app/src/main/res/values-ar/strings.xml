@@ -179,6 +179,7 @@
     <string name="profile_settings">الإعدادات</string>
     <string name="profile_tab_posts">المنشورات</string>
     <string name="profile_tab_archived">المنشورات المؤرشفة</string>
+    <string name="profile_tab_drafts">المسودات</string>
     <string name="profile_tab_replies">الردود</string>
     <string name="profile_tab_likes">الإعجابات</string>
     <string name="profile_add_post">إضافة منشور</string>
@@ -195,6 +196,7 @@
     <string name="profile_share">مشاركة</string>
     <string name="profile_share_text">ملف @%1$s على آيلة\n%2$s</string>
     <string name="profile_empty_archived">لا توجد منشورات مؤرشفة بعد.</string>
+    <string name="profile_empty_drafts">لا توجد مسودات بعد.</string>
     <string name="profile_empty_posts">لا توجد منشورات بعد.</string>
     <string name="profile_empty_replies">لا توجد ردود بعد.</string>
     <string name="profile_empty_likes">لا توجد منشورات مُعجب بها بعد.</string>
@@ -273,6 +275,7 @@
     <string name="quote_compose_title">اقتباس</string>
     <string name="quote_compose_hint">أضف تعليقك...</string>
     <string name="cd_like">إعجاب</string>
+    <string name="cd_thumbs">إعجاب بالإبهام</string>
     <string name="cd_bookmark">حفظ</string>
     <string name="cd_views">المشاهدات</string>
     <string name="post_cover_untitled">منشور</string>
@@ -284,6 +287,14 @@
     <string name="compose_kind_article">مقالة</string>
     <string name="compose_kind_quote">اقتباس</string>
     <string name="compose_kind_audio">صوت</string>
+    <string name="compose_kind_photo">صورة</string>
+    <string name="compose_kind_video">فيديو</string>
+    <string name="compose_kind_link">رابط</string>
+    <string name="post_create_save_draft">حفظ المسودة</string>
+    <string name="post_link_url_placeholder">https://</string>
+    <string name="post_link_invalid">يجب أن يبدأ الرابط بـ https</string>
+    <string name="post_photo_attach">إضافة صور</string>
+    <string name="post_video_attach">إضافة فيديو</string>
     <string name="feed_undo_action">تراجع</string>
     <string name="feed_undo_bookmarked">تم الحفظ</string>
     <string name="feed_undo_unbookmarked">أزيل من المحفوظات</string>
@@ -292,6 +303,8 @@
     <string name="post_format_bold">عريض</string>
     <string name="post_format_italic">مائل</string>
     <string name="post_format_heading">عنوان</string>
+    <string name="post_format_quote">اقتباس</string>
+    <string name="post_format_code">رمز</string>
     <string name="post_untitled_fallback">منشور</string>
     <string name="error_video_too_large">يجب ألا يتجاوز الفيديو ١٠٠ ميغابايت</string>
     <string name="error_image_too_large">يجب ألا تتجاوز الصورة ١٠ ميغابايت</string>

@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "banner-design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/banner-design/SKILL.md",
+      "computedHash": "0645bfc33632c7b332e649e35738ea807e1571436289cdaf86bebe6660c693ec"
+    },
+    "brand": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/brand/SKILL.md",
+      "computedHash": "c374869fbaaaee802f3e1d340324a178122a2d3dda92958502bf1f862dfbff25"
+    },
     "compose-animations": {
       "source": "chrisbanes/skills",
       "sourceType": "github",
@@ -36,6 +48,18 @@
       "sourceType": "github",
       "skillPath": "skills/compose-ui-testing-patterns/SKILL.md",
       "computedHash": "b52ba67d32e3425e1b2c69cdb4eb52e5d1f4b4eb78dbf9d0a94d8197225546b8"
+    },
+    "design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design/SKILL.md",
+      "computedHash": "c1314d3243143853fd52cd4030d21a7044c1344edaf8971f8432dedf86f4b99a"
+    },
+    "design-system": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design-system/SKILL.md",
+      "computedHash": "a8d1f1cd0f55979a872a2ce9717d3c33df23b0c378738b8d6adb574bfb266c77"
     },
     "gradle-run": {
       "source": "chrisbanes/skills",
@@ -85,11 +109,29 @@
       "skillPath": "skills/shepherd/SKILL.md",
       "computedHash": "8e5d98ac6f821244c46ce950acb2fabdf860e7b4b49d195b811d527ca353be50"
     },
+    "slides": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/slides/SKILL.md",
+      "computedHash": "c27a4e6f6101cb45f9a717888784aba649c1c516cd1a1e9871f630ab15ad1800"
+    },
     "to-plan": {
       "source": "chrisbanes/skills",
       "sourceType": "github",
       "skillPath": "skills/to-plan/SKILL.md",
       "computedHash": "26bf8e0f511a7e566a2dda76048f558045ae87b832c9d2a642a6af3b3212705d"
+    },
+    "ui-styling": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-styling/SKILL.md",
+      "computedHash": "0b5ee9163cc894c55e1ad1fec06fcffba2af85c8991cde03fbe93a2b72eff322"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "f355bea924675cc4b5b47ff83931cdc296ffe43f97795ecddc91f6fc78037017"
     },
     "using-chrisbanes-skills": {
       "source": "chrisbanes/skills",

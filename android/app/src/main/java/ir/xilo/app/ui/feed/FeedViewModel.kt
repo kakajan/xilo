@@ -3,6 +3,8 @@ package ir.xilo.app.ui.feed
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.util.Log
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import ir.xilo.app.R
 import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.NetworkMonitor
@@ -11,9 +13,12 @@ import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.PostRepository
 import ir.xilo.app.util.ErrorMessageResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -28,8 +33,8 @@ class FeedViewModel @Inject constructor(
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
-    val posts: StateFlow<List<PostEntity>> = postRepository.getFeed()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val posts: Flow<PagingData<PostEntity>> = postRepository.feedPager()
+        .cachedIn(viewModelScope)
 
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -47,12 +52,6 @@ class FeedViewModel @Inject constructor(
     private val _canRepost = MutableStateFlow(canRepost(authRepository.getRole()))
     val canRepost: StateFlow<Boolean> = _canRepost.asStateFlow()
 
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
-
-    private val _isInitialLoading = MutableStateFlow(true)
-    val isInitialLoading: StateFlow<Boolean> = _isInitialLoading.asStateFlow()
-
     /** In-content skeleton while switching category filters (not pull-to-refresh). */
     private val _isContentLoading = MutableStateFlow(false)
     val isContentLoading: StateFlow<Boolean> = _isContentLoading.asStateFlow()
@@ -65,7 +64,9 @@ class FeedViewModel @Inject constructor(
     private val _undoMessage = MutableStateFlow<Int?>(null)
     val undoMessage: StateFlow<Int?> = _undoMessage.asStateFlow()
     private var pendingUndo: FeedUndo? = null
-    private var loadingMore = false
+
+    private val _pagingRefreshRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val pagingRefreshRequests = _pagingRefreshRequests.asSharedFlow()
 
     val categoryResIds = listOf(
         R.string.feed_category_for_you,
@@ -76,44 +77,29 @@ class FeedViewModel @Inject constructor(
         R.string.feed_category_design,
     )
 
-    init {
-        refreshFeed()
-    }
-
     fun selectCategory(index: Int) {
         if (_selectedCategoryIndex.value == index) return
         _selectedCategoryIndex.value = index
-        refreshFeed(asPullToRefresh = false)
+        requestPagingRefresh(showContentLoading = true)
     }
 
-    fun refreshFeed(asPullToRefresh: Boolean = true) {
+    fun requestPagingRefresh(showContentLoading: Boolean = false) {
         viewModelScope.launch {
-            if (asPullToRefresh) {
-                _isRefreshing.value = true
-            } else {
+            if (showContentLoading) {
                 _isContentLoading.value = true
             }
-            postRepository.refreshFeed()
-                .onFailure { e ->
-                    Log.e("FeedViewModel", "refreshFeed failed: ${e.message}", e)
-                    _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_load_feed)
-                }
-            _isRefreshing.value = false
-            _isContentLoading.value = false
-            _isInitialLoading.value = false
+            _pagingRefreshRequests.emit(Unit)
         }
     }
 
-    fun loadMore() {
-        if (loadingMore || !postRepository.hasMoreFeed()) return
-        viewModelScope.launch {
-            loadingMore = true
-            postRepository.loadMoreFeed()
-                .onFailure { e ->
-                    Log.e("FeedViewModel", "loadMore failed: ${e.message}", e)
-                }
-            loadingMore = false
-        }
+    fun clearContentLoading() {
+        _isContentLoading.value = false
+    }
+
+    fun reportPagingRefreshError(throwable: Throwable) {
+        Log.e("FeedViewModel", "feed paging refresh failed: ${throwable.message}", throwable)
+        _errorMessage.value = errorMessageResolver.fromThrowable(throwable, R.string.error_load_feed)
+        clearContentLoading()
     }
 
     fun clearError() {
@@ -171,7 +157,7 @@ class FeedViewModel @Inject constructor(
 
     fun archivePost(postId: String) {
         viewModelScope.launch {
-            val snapshot = posts.value.firstOrNull { it.id == postId }
+            val snapshot = postRepository.getPostById(postId)
             postRepository.archivePost(postId)
                 .onSuccess {
                     pendingUndo = snapshot?.let { FeedUndo.Archive(it) }

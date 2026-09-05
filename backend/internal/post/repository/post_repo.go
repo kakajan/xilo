@@ -34,6 +34,21 @@ func (r *PostRepo) Create(ctx context.Context, req *model.CreatePostRequest, aut
 	if slug == "" {
 		slug = generateSlug(req.Title)
 	}
+	if slug == "" {
+		slug = generateSlug(req.ContentMD)
+	}
+	if slug == "" {
+		slug = fmt.Sprintf("p-%d", time.Now().UnixNano())
+	}
+	postType := strings.TrimSpace(req.PostType)
+	if postType == "" {
+		postType = "article"
+	}
+	linkURL := nullIfEmpty(req.LinkURL)
+	mediaIDs := req.MediaIDs
+	if mediaIDs == nil {
+		mediaIDs = []string{}
+	}
 
 	var post model.Post
 	audioURL := nullIfEmpty(req.AudioURL)
@@ -57,15 +72,17 @@ func (r *PostRepo) Create(ctx context.Context, req *model.CreatePostRequest, aut
 		INSERT INTO posts (author_id, title, slug, excerpt, content, content_md,
 		                   cover_image_url, audio_url, category, tags, status, is_premium,
 		                   word_count, reading_time, language, scheduled_at, published_at,
-		                   quoted_post_id, quoted_comment_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+		                   quoted_post_id, quoted_comment_id, post_type, link_url, media_ids)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22::uuid[])
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
 		          cover_image_url, audio_url, category, tags, status, is_premium,
 		          word_count, reading_time, language, view_count, scheduled_at, published_at,
-		          quoted_post_id, quoted_comment_id, created_at, updated_at
+		          quoted_post_id, quoted_comment_id, post_type, link_url, media_ids::text[] AS media_ids,
+		          created_at, updated_at
 	`, authorID, req.Title, slug, req.Excerpt, ensureJSON(req.Content), req.ContentMD,
 		coverImageURL, audioURL, req.Category, pq.Array(req.Tags), req.Status, req.IsPremium,
-		wordCount, readingTime, req.Language, req.ScheduledAt, publishedAt, quotedPostID, quotedCommentID)
+		wordCount, readingTime, req.Language, req.ScheduledAt, publishedAt, quotedPostID, quotedCommentID,
+		postType, linkURL, pq.Array(mediaIDs))
 	if err != nil {
 		return nil, fmt.Errorf("insert post: %w", err)
 	}
@@ -79,7 +96,8 @@ func (r *PostRepo) GetBySlug(ctx context.Context, slug string) (*model.Post, err
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.content::text, p.content_md,
 		       p.cover_image_url, p.audio_url, p.category, p.tags, p.status, p.is_premium,
 		       p.word_count, p.reading_time, p.language, p.view_count, p.scheduled_at, p.published_at,
-		       p.quoted_post_id, p.quoted_comment_id, p.created_at, p.updated_at
+		       p.quoted_post_id, p.quoted_comment_id, p.post_type, p.link_url,
+		       p.media_ids::text[] AS media_ids, p.created_at, p.updated_at
 		FROM posts p
 		WHERE p.slug = $1 AND p.deleted_at IS NULL AND p.status = 'published'
 	`, slug)
@@ -114,7 +132,8 @@ func (r *PostRepo) GetByID(ctx context.Context, id string) (*model.Post, error) 
 		SELECT id, author_id, title, slug, excerpt, content::text, content_md,
 		       cover_image_url, audio_url, category, tags, status, is_premium,
 		       word_count, reading_time, language, view_count, scheduled_at, published_at,
-		       quoted_post_id, quoted_comment_id, created_at, updated_at
+		       quoted_post_id, quoted_comment_id, post_type, link_url,
+		       media_ids::text[] AS media_ids, created_at, updated_at
 		FROM posts
 		WHERE id = $1 AND deleted_at IS NULL
 	`, id)
@@ -145,6 +164,18 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 	audioURL := coalesceOptionalURL(req.AudioURL, existing.AudioURL)
 	category := coalescePtr(req.Category, existing.Category)
 	language := coalesceStr(req.Language, existing.Language)
+	postType := existing.PostType
+	if postType == "" {
+		postType = "article"
+	}
+	if req.PostType != nil && strings.TrimSpace(*req.PostType) != "" {
+		postType = strings.TrimSpace(*req.PostType)
+	}
+	linkURL := coalesceOptionalURL(req.LinkURL, existing.LinkURL)
+	mediaIDs := existing.MediaIDs
+	if req.MediaIDs != nil {
+		mediaIDs = pq.StringArray(*req.MediaIDs)
+	}
 
 	content := existing.Content
 	if req.Content != nil {
@@ -184,14 +215,16 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 		SET title = $2, slug = $3, excerpt = $4, content = $5, content_md = $6,
 		    cover_image_url = $7, audio_url = $8, category = $9, tags = $10, status = $11, is_premium = $12,
 		    word_count = $13, reading_time = $14, language = $15, scheduled_at = $16,
-		    published_at = COALESCE($17, published_at), updated_at = NOW()
+		    published_at = COALESCE($17, published_at), post_type = $18, link_url = $19, media_ids = $20::uuid[],
+		    updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
 		          cover_image_url, audio_url, category, tags, status, is_premium,
 		          word_count, reading_time, language, view_count, scheduled_at, published_at,
-		          quoted_post_id, quoted_comment_id, created_at, updated_at
+		          quoted_post_id, quoted_comment_id, post_type, link_url, media_ids::text[] AS media_ids,
+		          created_at, updated_at
 	`, id, title, slug, excerpt, content, contentMD, coverImageURL, audioURL, category, tags, status, isPremium,
-		wordCount, readingTime, language, req.ScheduledAt, publishedAt)
+		wordCount, readingTime, language, req.ScheduledAt, publishedAt, postType, linkURL, pq.Array(mediaIDs))
 	if err != nil {
 		return nil, fmt.Errorf("update post: %w", err)
 	}
@@ -310,21 +343,32 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 	if status == "" {
 		status = "published"
 	}
-	// Only published (public) and archived (owner-scoped via handler) are listable.
-	if status != "published" && status != "archived" {
+	switch status {
+	case "published", "archived", "draft":
+	default:
 		status = "published"
+	}
+	if status == "draft" && strings.TrimSpace(params.ViewerID) == "" {
+		return []*model.Post{}, "", nil
 	}
 
 	query := `
 		SELECT p.id, p.author_id, p.title, p.slug, p.excerpt, p.cover_image_url, p.audio_url,
 		       p.category, p.tags, p.status, p.is_premium,
 		       p.word_count, p.reading_time, p.language, p.view_count, p.published_at,
-		       p.quoted_post_id, p.quoted_comment_id, p.created_at, p.updated_at
+		       p.quoted_post_id, p.quoted_comment_id, p.post_type, p.link_url,
+		       p.media_ids::text[] AS media_ids, p.created_at, p.updated_at
 		FROM posts p
 		WHERE p.status = $1 AND p.deleted_at IS NULL
 	`
 	args := []interface{}{status}
 	argIdx := 2
+
+	if status == "draft" {
+		query += fmt.Sprintf(" AND p.author_id = $%d", argIdx)
+		args = append(args, params.ViewerID)
+		argIdx++
+	}
 
 	if params.Category != "" {
 		query += fmt.Sprintf(" AND p.category = $%d", argIdx)
@@ -350,8 +394,8 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 		query += " AND p.cover_image_url IS NOT NULL AND p.cover_image_url != ''"
 	}
 	if params.Cursor != "" {
-		if status == "archived" {
-			// Archived posts may lack published_at; page by updated_at.
+		if status == "archived" || status == "draft" {
+			// Drafts and archived posts may lack published_at; page by updated_at.
 			query += ` AND p.updated_at <= (SELECT updated_at FROM posts WHERE id = $` + fmt.Sprint(argIdx) + `)`
 		} else {
 			query += ` AND p.published_at <= (SELECT published_at FROM posts WHERE id = $` + fmt.Sprint(argIdx) + `)`
@@ -360,7 +404,7 @@ func (r *PostRepo) List(ctx context.Context, params model.PostListParams) ([]*mo
 		argIdx++
 	}
 
-	if status == "archived" {
+	if status == "archived" || status == "draft" {
 		query += " ORDER BY p.updated_at DESC, p.id DESC"
 	} else {
 		query += " ORDER BY p.published_at DESC, p.id DESC"

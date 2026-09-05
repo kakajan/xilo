@@ -9,41 +9,45 @@ import (
 )
 
 type Post struct {
-	ID           string     `json:"id" db:"id"`
-	AuthorID     string     `json:"author_id" db:"author_id"`
-	Title        string     `json:"title" db:"title"`
-	Slug         string     `json:"slug" db:"slug"`
-	Excerpt      string     `json:"excerpt" db:"excerpt"`
-	Content      string     `json:"content" db:"content"`
-	ContentMD    string     `json:"content_md" db:"content_md"`
-	CoverImageURL *string   `json:"cover_image_url,omitempty" db:"cover_image_url"`
-	AudioURL     *string    `json:"audio_url,omitempty" db:"audio_url"`
-	Category     *string    `json:"category,omitempty" db:"category"`
-	Tags         pq.StringArray `json:"tags" db:"tags"`
-	Status       string     `json:"status" db:"status"`
-	IsPremium    bool       `json:"is_premium" db:"is_premium"`
-	WordCount    int        `json:"word_count" db:"word_count"`
-	ReadingTime  int        `json:"reading_time" db:"reading_time"`
-	Language     string     `json:"language" db:"language"`
-	ViewCount    int64      `json:"view_count" db:"view_count"`
-	ScheduledAt  *time.Time `json:"scheduled_at,omitempty" db:"scheduled_at"`
-	PublishedAt  *time.Time `json:"published_at,omitempty" db:"published_at"`
-	CreatedAt    time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at" db:"updated_at"`
-	DeletedAt    *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	ID            string         `json:"id" db:"id"`
+	AuthorID      string         `json:"author_id" db:"author_id"`
+	Title         string         `json:"title" db:"title"`
+	Slug          string         `json:"slug" db:"slug"`
+	Excerpt       string         `json:"excerpt" db:"excerpt"`
+	Content       string         `json:"content" db:"content"`
+	ContentMD     string         `json:"content_md" db:"content_md"`
+	CoverImageURL *string        `json:"cover_image_url,omitempty" db:"cover_image_url"`
+	AudioURL      *string        `json:"audio_url,omitempty" db:"audio_url"`
+	Category      *string        `json:"category,omitempty" db:"category"`
+	Tags          pq.StringArray `json:"tags" db:"tags"`
+	Status        string         `json:"status" db:"status"`
+	IsPremium     bool           `json:"is_premium" db:"is_premium"`
+	WordCount     int            `json:"word_count" db:"word_count"`
+	ReadingTime   int            `json:"reading_time" db:"reading_time"`
+	Language      string         `json:"language" db:"language"`
+	ViewCount     int64          `json:"view_count" db:"view_count"`
+	ScheduledAt   *time.Time     `json:"scheduled_at,omitempty" db:"scheduled_at"`
+	PublishedAt   *time.Time     `json:"published_at,omitempty" db:"published_at"`
+	CreatedAt     time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at" db:"updated_at"`
+	DeletedAt     *time.Time     `json:"deleted_at,omitempty" db:"deleted_at"`
 
-	QuotedPostID     *string           `json:"quoted_post_id,omitempty" db:"quoted_post_id"`
-	QuotedCommentID  *string           `json:"quoted_comment_id,omitempty" db:"quoted_comment_id"`
+	QuotedPostID    *string        `json:"quoted_post_id,omitempty" db:"quoted_post_id"`
+	QuotedCommentID *string        `json:"quoted_comment_id,omitempty" db:"quoted_comment_id"`
+	PostType        string         `json:"post_type" db:"post_type"`
+	LinkURL         *string        `json:"link_url,omitempty" db:"link_url"`
+	MediaIDs        pq.StringArray `json:"media_ids" db:"media_ids"`
 
-	Author            *authmodel.User      `json:"author,omitempty" db:"-"`
-	QuotedPost        *QuotedPostSummary   `json:"quoted_post,omitempty" db:"-"`
-	QuotedComment     *QuotedCommentSummary `json:"quoted_comment,omitempty" db:"-"`
-	CommentCount      int                  `json:"comment_count" db:"-"`
-	RepostCount       int                  `json:"repost_count" db:"-"`
-	Reactions         map[string]int       `json:"reactions,omitempty" db:"-"`
-	ViewerReactions   []string             `json:"viewer_reactions,omitempty" db:"-"`
-	IsBookmarked      bool                 `json:"is_bookmarked" db:"-"`
-	IsReposted        bool                 `json:"is_reposted" db:"-"`
+	Author          *authmodel.User       `json:"author,omitempty" db:"-"`
+	Media           []MediaItem           `json:"media,omitempty" db:"-"`
+	QuotedPost      *QuotedPostSummary    `json:"quoted_post,omitempty" db:"-"`
+	QuotedComment   *QuotedCommentSummary `json:"quoted_comment,omitempty" db:"-"`
+	CommentCount    int                   `json:"comment_count" db:"-"`
+	RepostCount     int                   `json:"repost_count" db:"-"`
+	Reactions       map[string]int        `json:"reactions,omitempty" db:"-"`
+	ViewerReactions []string              `json:"viewer_reactions,omitempty" db:"-"`
+	IsBookmarked    bool                  `json:"is_bookmarked" db:"-"`
+	IsReposted      bool                  `json:"is_reposted" db:"-"`
 }
 
 // QuotedPostSummary is a one-level embed of the original post being quoted.
@@ -67,6 +71,13 @@ type QuotedCommentSummary struct {
 	PostSlug           string          `json:"post_slug"`
 	PostAuthorUsername string          `json:"post_author_username"`
 	CreatedAt          *time.Time      `json:"created_at,omitempty"`
+}
+
+// MediaItem is an enriched media row attached to typed photo/video posts.
+type MediaItem struct {
+	ID       string `json:"id"`
+	URL      string `json:"url"`
+	MimeType string `json:"mime_type"`
 }
 
 var ErrInvalidViewSession = errors.New("session_id is required for anonymous views")
@@ -93,44 +104,50 @@ type PostVersion struct {
 }
 
 type CreatePostRequest struct {
-	Title         string     `json:"title"`
-	Slug          string     `json:"slug"`
-	Excerpt       string     `json:"excerpt"`
-	Content       string     `json:"content"`
-	ContentMD     string     `json:"content_md"`
-	CoverImageURL string     `json:"cover_image_url"`
-	AudioURL      string     `json:"audio_url"`
-	Category      string     `json:"category"`
-	Tags          []string   `json:"tags"`
-	Status        string     `json:"status"`
-	IsPremium     bool       `json:"is_premium"`
-	Language      string     `json:"language"`
-	ScheduledAt      *time.Time `json:"scheduled_at"`
-	QuotedPostID     string     `json:"quoted_post_id,omitempty"`
-	QuotedCommentID  string     `json:"quoted_comment_id,omitempty"`
+	Title           string     `json:"title"`
+	Slug            string     `json:"slug"`
+	Excerpt         string     `json:"excerpt"`
+	Content         string     `json:"content"`
+	ContentMD       string     `json:"content_md"`
+	CoverImageURL   string     `json:"cover_image_url"`
+	AudioURL        string     `json:"audio_url"`
+	Category        string     `json:"category"`
+	Tags            []string   `json:"tags"`
+	Status          string     `json:"status"`
+	IsPremium       bool       `json:"is_premium"`
+	Language        string     `json:"language"`
+	ScheduledAt     *time.Time `json:"scheduled_at"`
+	QuotedPostID    string     `json:"quoted_post_id,omitempty"`
+	QuotedCommentID string     `json:"quoted_comment_id,omitempty"`
+	PostType        string     `json:"post_type,omitempty"`
+	LinkURL         string     `json:"link_url,omitempty"`
+	MediaIDs        []string   `json:"media_ids,omitempty"`
 }
 
 type UpdatePostRequest struct {
-	Title        *string   `json:"title"`
-	Slug         *string   `json:"slug"`
-	Excerpt      *string   `json:"excerpt"`
-	Content      *string   `json:"content"`
-	ContentMD    *string   `json:"content_md"`
-	CoverImageURL *string  `json:"cover_image_url"`
-	AudioURL     *string   `json:"audio_url"`
-	Category     *string   `json:"category"`
-	Tags         *[]string `json:"tags"`
-	Status       *string   `json:"status"`
-	IsPremium    *bool     `json:"is_premium"`
-	Language     *string   `json:"language"`
-	ScheduledAt  *time.Time `json:"scheduled_at"`
+	Title         *string    `json:"title"`
+	Slug          *string    `json:"slug"`
+	Excerpt       *string    `json:"excerpt"`
+	Content       *string    `json:"content"`
+	ContentMD     *string    `json:"content_md"`
+	CoverImageURL *string    `json:"cover_image_url"`
+	AudioURL      *string    `json:"audio_url"`
+	Category      *string    `json:"category"`
+	Tags          *[]string  `json:"tags"`
+	Status        *string    `json:"status"`
+	IsPremium     *bool      `json:"is_premium"`
+	Language      *string    `json:"language"`
+	ScheduledAt   *time.Time `json:"scheduled_at"`
+	PostType      *string    `json:"post_type"`
+	LinkURL       *string    `json:"link_url"`
+	MediaIDs      *[]string  `json:"media_ids"`
 }
 
 type PostListParams struct {
-	Cursor   string
-	Limit    int
-	Category string
-	Tag      string
+	Cursor    string
+	Limit     int
+	Category  string
+	Tag       string
 	Author    string
 	Status    string
 	Language  string

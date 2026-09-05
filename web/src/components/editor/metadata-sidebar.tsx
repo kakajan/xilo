@@ -18,10 +18,12 @@ export function MetadataSidebar() {
     tags,
     status,
     isPremium,
+    postType,
     setTitle,
     setSlug,
     setExcerpt,
     setCoverImageUrl,
+    setCoverMediaId,
     setAudioUrl,
     setCategory,
     addTag,
@@ -29,6 +31,8 @@ export function MetadataSidebar() {
     setStatus,
     setIsPremium,
   } = useEditorStore();
+
+  const isArticle = postType === "article";
 
   const [tagInput, setTagInput] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -65,8 +69,9 @@ export function MetadataSidebar() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await apiUpload<{ url: string }>("/api/media/upload", formData);
+      const res = await apiUpload<{ id: string; url: string }>("/api/media/upload", formData);
       setCoverImageUrl(res.url);
+      if (res.id) setCoverMediaId(res.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       setCoverError(
@@ -92,7 +97,7 @@ export function MetadataSidebar() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await apiUpload<{ url: string }>("/api/media/upload", formData);
+      const res = await apiUpload<{ id: string; url: string }>("/api/media/upload", formData);
       setAudioUrl(res.url);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
@@ -118,42 +123,46 @@ export function MetadataSidebar() {
     <div className="space-y-5">
       <h3 className="text-sm font-semibold">تنظیمات پست</h3>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">عنوان</label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          placeholder="عنوان پست"
-          maxLength={200}
-          className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
-        />
-      </div>
+      {isArticle ? (
+        <>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">عنوان</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              placeholder="عنوان پست"
+              maxLength={200}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+            />
+          </div>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">نامک (اسلاگ)</label>
-        <input
-          type="text"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          placeholder="namak-post"
-          maxLength={250}
-          className="w-full rounded-lg border bg-background px-3 py-2 font-mono text-sm"
-          dir="ltr"
-        />
-      </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">نامک (اسلاگ)</label>
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="namak-post"
+              maxLength={250}
+              className="w-full rounded-lg border bg-background px-3 py-2 font-mono text-sm"
+              dir="ltr"
+            />
+          </div>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">خلاصه</label>
-        <textarea
-          value={excerpt}
-          onChange={(e) => setExcerpt(e.target.value)}
-          placeholder="توضیح کوتاه..."
-          rows={3}
-          maxLength={500}
-          className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm"
-        />
-      </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">خلاصه</label>
+            <textarea
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              placeholder="توضیح کوتاه..."
+              rows={3}
+              maxLength={500}
+              className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm"
+            />
+          </div>
+        </>
+      ) : null}
 
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">دسته‌بندی</label>
@@ -198,32 +207,37 @@ export function MetadataSidebar() {
         </div>
       </div>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">تصویر کاور</label>
-        {coverImageUrl ? (
-          <div className="relative">
-            <img src={coverImageUrl} alt="کاور" className="h-32 w-full rounded-lg object-cover" />
-            <button
-              type="button"
-              onClick={() => setCoverImageUrl("")}
-              className="absolute top-2 end-2 rounded-full bg-background/80 p-1"
-              aria-label="حذف تصویر کاور"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <label className="flex h-20 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed text-sm text-muted-foreground hover:bg-accent/50">
-            {uploading ? "در حال آپلود..." : "برای آپلود کلیک کنید"}
-            <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
-          </label>
-        )}
-        {coverError ? (
-          <p className="mt-1 text-xs text-destructive" role="alert">
-            {coverError}
-          </p>
-        ) : null}
-      </div>
+      {isArticle ? (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">تصویر کاور</label>
+          {coverImageUrl ? (
+            <div className="relative">
+              <img src={coverImageUrl} alt="کاور" className="h-32 w-full rounded-lg object-cover" />
+              <button
+                type="button"
+                onClick={() => {
+                  setCoverImageUrl("");
+                  setCoverMediaId("");
+                }}
+                className="absolute top-2 end-2 rounded-full bg-background/80 p-1"
+                aria-label="حذف تصویر کاور"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex h-20 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed text-sm text-muted-foreground hover:bg-accent/50">
+              {uploading ? "در حال آپلود..." : "برای آپلود کلیک کنید"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+            </label>
+          )}
+          {coverError ? (
+            <p className="mt-1 text-xs text-destructive" role="alert">
+              {coverError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">فایل صوتی پست</label>

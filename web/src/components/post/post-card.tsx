@@ -11,11 +11,19 @@ import { QuotedPostCard } from "@/components/post/quoted-post-card";
 import { QuotedCommentCard } from "@/components/post/quoted-comment-card";
 import { PostOwnerMenu } from "@/components/post/post-owner-menu";
 import { HashtagText } from "@/components/post/hashtag-text";
+import { PostMediaCarousel } from "@/components/post/post-media-carousel";
+import { PostLinkCard } from "@/components/post/post-link-card";
 import { AuthorHandleMeta, TimeLabel } from "@/components/user/username-handle";
 import { useFormatDate } from "@/hooks/use-format-date";
 import { bookmarkPost, unbookmarkPost } from "@/lib/api/bookmarks";
 import { apiFetch } from "@/lib/api-client";
 import { postShareUrl, shareOrCopy } from "@/lib/share-urls";
+import {
+  postDisplayText,
+  postMediaUrls,
+  postPrimaryVideoUrl,
+  resolvePostType,
+} from "@/lib/post-type";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Post } from "@/types/post";
 
@@ -30,6 +38,7 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
   const formatDate = useFormatDate();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const postType = resolvePostType(post);
   const isOwner =
     !!user &&
     (user.id === post.author_id ||
@@ -48,6 +57,9 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
     : `/p/${post.slug}`;
 
   const shareUrl = postShareUrl(post.author?.username || "", post.slug);
+  const displayText = postDisplayText(post);
+  const mediaUrls = postMediaUrls(post);
+  const videoUrl = postPrimaryVideoUrl(post);
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -87,7 +99,7 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
   const share = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    await shareOrCopy(shareUrl, post.title);
+    await shareOrCopy(shareUrl, post.title || displayText);
   };
 
   return (
@@ -112,7 +124,7 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
             username={post.author?.username}
             timeLabel={post.published_at ? formatDate(post.published_at) : null}
             trailing={
-              post.reading_time ? (
+              postType === "article" && post.reading_time ? (
                 <>
                   <span aria-hidden>·</span>
                   <TimeLabel>
@@ -134,26 +146,82 @@ export function PostCard({ post, onRemoved }: { post: Post; onRemoved?: () => vo
         ) : null}
       </div>
 
-      <Link href={href} className="block">
-        <h2 className="mb-2 text-xl font-bold transition-colors group-hover:text-primary">
-          {post.title}
-        </h2>
-      </Link>
-      {post.cover_image_url ? (
-        <Link href={href} className="mb-3 block overflow-hidden rounded-xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={post.cover_image_url}
-            alt=""
-            className="max-h-72 w-full object-cover"
-          />
+      {postType === "article" ? (
+        <>
+          <Link href={href} className="block">
+            <h2 className="mb-2 text-xl font-bold transition-colors group-hover:text-primary">
+              {post.title}
+            </h2>
+          </Link>
+          {post.cover_image_url ? (
+            <Link href={href} className="mb-3 block overflow-hidden rounded-xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={post.cover_image_url}
+                alt=""
+                className="max-h-72 w-full object-cover"
+              />
+            </Link>
+          ) : null}
+          {post.excerpt ? (
+            <p className="mb-3 line-clamp-2 text-muted-foreground">
+              <HashtagText text={post.excerpt} />
+            </p>
+          ) : null}
+        </>
+      ) : null}
+
+      {postType === "micro" && displayText ? (
+        <Link href={href} className="mb-3 block">
+          <p className="whitespace-pre-wrap text-[15px] leading-relaxed">
+            <HashtagText text={displayText} />
+          </p>
         </Link>
       ) : null}
-      {post.excerpt && (
-        <p className="mb-3 line-clamp-2 text-muted-foreground">
-          <HashtagText text={post.excerpt} />
-        </p>
-      )}
+
+      {postType === "photo" ? (
+        <div className="mb-3 space-y-2">
+          <Link href={href} className="block">
+            <PostMediaCarousel urls={mediaUrls} />
+          </Link>
+          {displayText ? (
+            <Link href={href} className="block">
+              <p className="line-clamp-3 text-sm text-muted-foreground">
+                <HashtagText text={displayText} />
+              </p>
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
+      {postType === "video" && videoUrl ? (
+        <div className="mb-3 space-y-2">
+          <Link href={href} className="block overflow-hidden rounded-xl">
+            <video src={videoUrl} controls className="max-h-72 w-full bg-black" />
+          </Link>
+          {displayText ? (
+            <Link href={href} className="block">
+              <p className="line-clamp-3 text-sm text-muted-foreground">
+                <HashtagText text={displayText} />
+              </p>
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
+      {postType === "link" && post.link_url ? (
+        <div className="mb-3 space-y-2">
+          <PostLinkCard url={post.link_url} />
+          {displayText ? (
+            <Link href={href} className="block">
+              <p className="line-clamp-3 text-sm text-muted-foreground">
+                <HashtagText text={displayText} />
+              </p>
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
       {post.quoted_post ? <QuotedPostCard quote={post.quoted_post} /> : null}
       {post.quoted_comment ? <QuotedCommentCard quote={post.quoted_comment} /> : null}
 

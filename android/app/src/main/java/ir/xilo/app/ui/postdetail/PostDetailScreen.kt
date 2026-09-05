@@ -1,8 +1,6 @@
 package ir.xilo.app.ui.postdetail
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,6 +39,7 @@ import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
 import ir.xilo.app.theme.XiloBlue
+import ir.xilo.app.theme.XiloMotion
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.ui.components.ContentAwareText
 import ir.xilo.app.ui.components.HashtagAwareText
@@ -56,6 +55,8 @@ import ir.xilo.app.ui.components.forRelativeTime
 import ir.xilo.app.ui.components.forUsernameHandle
 import ir.xilo.app.ui.components.usernameHandle
 import ir.xilo.app.ui.feed.PostOwnerMenu
+import ir.xilo.app.ui.feed.PostTitleBlock
+import ir.xilo.app.ui.feed.PostTypeMediaBlock
 import ir.xilo.app.ui.feed.QuotedCommentEmbed
 import ir.xilo.app.ui.feed.QuotedPostEmbed
 import ir.xilo.app.ui.feed.RepostMenuButton
@@ -637,13 +638,10 @@ fun PostDetailHeader(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (post.title.isNotBlank()) {
-            ContentAwareText(
-                text = post.title,
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
+        PostTitleBlock(
+            post = post,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
 
         val displayContent = remember(post.content) {
             extractPlainText(post.content).ifBlank { post.excerpt ?: "" }
@@ -657,18 +655,10 @@ fun PostDetailHeader(
             )
         }
 
-        if (!post.coverImageUrl.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            AsyncImage(
-                model = post.coverImageUrl,
-                contentDescription = stringResource(R.string.cd_post_image),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
-            )
-        }
+        PostTypeMediaBlock(
+            post = post,
+            modifier = Modifier.padding(top = 12.dp),
+        )
 
         if (post.hasQuotedPost()) {
             Spacer(modifier = Modifier.height(12.dp))
@@ -688,9 +678,10 @@ fun PostDetailHeader(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        val thumbs = EmojiReactions.thumbsReaction(post.reactionsJson)
+        val actionSlot = Modifier.weight(1f)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             DetailAction(
@@ -698,6 +689,7 @@ fun PostDetailHeader(
                 count = post.commentCount.toString(),
                 description = stringResource(R.string.cd_comments),
                 onClick = onReplyClick,
+                modifier = actionSlot,
             )
             if (onRepostClick != null && onQuoteClick != null) {
                 RepostMenuButton(
@@ -706,6 +698,7 @@ fun PostDetailHeader(
                     onRepostClick = onRepostClick,
                     onQuoteClick = onQuoteClick,
                     compact = false,
+                    modifier = actionSlot,
                 )
             } else if (onRepostClick != null) {
                 DetailAction(
@@ -714,18 +707,16 @@ fun PostDetailHeader(
                     description = stringResource(R.string.cd_repost),
                     tint = if (post.isReposted) ColorSuccess else MaterialTheme.colorScheme.secondary,
                     onClick = onRepostClick,
+                    modifier = actionSlot,
                 )
             }
             val likeScale by animateFloatAsState(
                 targetValue = if (post.isLiked) 1.15f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium,
-                ),
+                animationSpec = XiloMotion.heartBeat,
                 label = "detailLikeScale",
             )
             var showReactionPicker by remember { mutableStateOf(false) }
-            Box {
+            Box(modifier = actionSlot, contentAlignment = Alignment.Center) {
                 DetailAction(
                     icon = if (post.isLiked) XiloIcons.HeartFilled else XiloIcons.Heart,
                     count = post.likeCount.toString(),
@@ -761,22 +752,33 @@ fun PostDetailHeader(
                 }
             }
             DetailAction(
+                icon = if (thumbs?.reacted == true) XiloIcons.ThumbUpFilled else XiloIcons.ThumbUp,
+                count = (thumbs?.count ?: 0L).toString(),
+                description = stringResource(R.string.cd_thumbs),
+                tint = if (thumbs?.reacted == true) XiloBlue else MaterialTheme.colorScheme.secondary,
+                onClick = { onReact?.invoke("👍") },
+                modifier = actionSlot,
+            )
+            DetailAction(
                 icon = if (post.isBookmarked) XiloIcons.BookmarkFilled else XiloIcons.Bookmark,
                 count = null,
                 description = stringResource(R.string.cd_bookmark),
                 tint = if (post.isBookmarked) XiloBlue else MaterialTheme.colorScheme.secondary,
                 onClick = onBookmarkClick,
+                modifier = actionSlot,
             )
             DetailAction(
                 icon = XiloIcons.Chart,
                 count = formatDetailViewCount(post.viewCount),
                 description = stringResource(R.string.cd_views),
+                modifier = actionSlot,
             )
             DetailAction(
                 icon = XiloIcons.Share,
                 count = null,
                 description = stringResource(R.string.cd_share),
                 onClick = sharePost,
+                modifier = actionSlot,
             )
         }
     }
@@ -811,8 +813,10 @@ private fun DetailAction(
         else -> Modifier
     }
     Row(
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             .then(rowModifier)
             .padding(horizontal = 4.dp, vertical = 4.dp),
     ) {

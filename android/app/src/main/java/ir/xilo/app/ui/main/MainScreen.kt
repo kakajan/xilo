@@ -460,6 +460,27 @@ fun MainScreen(
                         },
                     )
                     ComposeKindRow(
+                        label = stringResource(R.string.compose_kind_photo),
+                        onClick = {
+                            showComposeSheet = false
+                            onItemClick(CreatePostKey(composeKind = ComposeKind.PHOTO))
+                        },
+                    )
+                    ComposeKindRow(
+                        label = stringResource(R.string.compose_kind_video),
+                        onClick = {
+                            showComposeSheet = false
+                            onItemClick(CreatePostKey(composeKind = ComposeKind.VIDEO))
+                        },
+                    )
+                    ComposeKindRow(
+                        label = stringResource(R.string.compose_kind_link),
+                        onClick = {
+                            showComposeSheet = false
+                            onItemClick(CreatePostKey(composeKind = ComposeKind.LINK))
+                        },
+                    )
+                    ComposeKindRow(
                         label = stringResource(R.string.compose_kind_quote),
                         onClick = {
                             showComposeSheet = false
