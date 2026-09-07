@@ -2,7 +2,6 @@ package ir.xilo.app.ui.postdetail
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -19,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -494,20 +492,6 @@ fun PostDetailScreen(
                     audioUrl = audioUrl,
                     title = post?.title.orEmpty(),
                     modifier = Modifier.align(Alignment.BottomCenter),
-                )
-            } else {
-                // Match player frosted fill over the system navigation inset.
-                val frosted = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
-                    Color.White.copy(alpha = 0.95f)
-                } else {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .windowInsetsBottomHeight(WindowInsets.navigationBars)
-                        .background(frosted),
                 )
             }
         }

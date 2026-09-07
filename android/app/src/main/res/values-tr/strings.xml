@@ -287,6 +287,10 @@
     <string name="compose_kind_article">Makale</string>
     <string name="compose_kind_quote">Alıntı</string>
     <string name="compose_kind_audio">Ses</string>
+    <string name="post_audio_required">Ses dosyası gerekli</string>
+    <string name="quote_search_hint">Alıntı için gönderi ara…</string>
+    <string name="quote_search_empty">Gönderi bulunamadı</string>
+    <string name="quote_source_required">Alıntı için bir gönderi seçin</string>
     <string name="compose_kind_photo">Fotoğraf</string>
     <string name="compose_kind_video">Video</string>
     <string name="compose_kind_link">Bağlantı</string>

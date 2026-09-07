@@ -13,7 +13,9 @@ import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.prefs.ComposeDraftStore
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.remote.dto.PostSearchHit
 import ir.xilo.app.data.remote.dto.TagSuggestion
+import ir.xilo.app.data.remote.dto.decodePostMedia
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
@@ -113,10 +115,23 @@ class CreatePostViewModel @Inject constructor(
     private val _quotedCommentPostTitle = MutableStateFlow<String?>(null)
     val quotedCommentPostTitle: StateFlow<String?> = _quotedCommentPostTitle.asStateFlow()
 
+    private val _composeKind = MutableStateFlow(ComposeKind.ARTICLE)
+    val composeKind: StateFlow<String> = _composeKind.asStateFlow()
+
+    private val _quoteQuery = MutableStateFlow("")
+    val quoteQuery: StateFlow<String> = _quoteQuery.asStateFlow()
+
+    private val _quoteResults = MutableStateFlow<List<PostSearchHit>>(emptyList())
+    val quoteResults: StateFlow<List<PostSearchHit>> = _quoteResults.asStateFlow()
+
+    private val _isSearchingQuote = MutableStateFlow(false)
+    val isSearchingQuote: StateFlow<Boolean> = _isSearchingQuote.asStateFlow()
+
     private var quotedPostId: String? = null
     private var quotedCommentId: String? = null
-    private var composeKind: String = ComposeKind.ARTICLE
+    private var audioCleared: Boolean = false
     private var suggestJob: Job? = null
+    private var quoteSearchJob: Job? = null
     private var draftSaveJob: Job? = null
     private var draftKey: String = ComposeDraftStore.KEY_NEW
     private var restoreDoneForKey: String? = null
@@ -153,7 +168,14 @@ class CreatePostViewModel @Inject constructor(
         _quotedPost.value = null
         _quotedComment.value = null
         _quotedCommentPostTitle.value = null
-        this.composeKind = composeKind.ifBlank { ComposeKind.ARTICLE }
+        _quoteQuery.value = ""
+        _quoteResults.value = emptyList()
+        audioCleared = false
+        val initialKind = when {
+            !this.quotedCommentId.isNullOrBlank() || !this.quotedPostId.isNullOrBlank() -> ComposeKind.QUOTE
+            else -> composeKind.ifBlank { ComposeKind.ARTICLE }
+        }
+        _composeKind.value = initialKind
         draftKey = composeDraftStore.draftKey(
             when {
                 !editPostId.isNullOrBlank() -> editPostId
@@ -206,27 +228,75 @@ class CreatePostViewModel @Inject constructor(
         _success.value = false
         viewModelScope.launch {
             _isLoadingEdit.value = true
-            val post = postRepository.getPostById(postId)
-                ?: postRepository.getPostBySlug(postId).getOrNull()
+            val post = postRepository.loadPostForEdit(postId)
             val local = composeDraftStore.load(draftKey)
-            if (local != null) {
-                _title.value = local.title
-                _content.value = local.content
-                _audioUrl.value = local.audioUrl
-                _coverImageUrl.value = local.coverImageUrl
-                restoreDoneForKey = draftKey
-            } else if (post != null) {
-                _title.value = post.title
-                _content.value = extractPlainText(post.content).ifBlank {
-                    post.excerpt.orEmpty()
-                }
-                _audioUrl.value = post.audioUrl.orEmpty()
-                _coverImageUrl.value = post.coverImageUrl.orEmpty()
-                restoreDoneForKey = draftKey
-            } else {
+            if (post == null && local == null) {
                 _error.value = errorMessageResolver.string(R.string.error_load_post)
+                _isLoadingEdit.value = false
+                return@launch
             }
+            applyLoadedPost(post)
+            if (local != null) {
+                _title.value = local.title.ifBlank { _title.value }
+                _content.value = local.content.ifBlank { _content.value }
+                if (local.audioUrl.isNotBlank()) {
+                    _audioUrl.value = local.audioUrl
+                    audioCleared = false
+                } else if (_audioUrl.value.isNotBlank()) {
+                    // Keep server audio when a stale empty draft would wipe it.
+                } else {
+                    _audioUrl.value = ""
+                }
+                if (local.coverImageUrl.isNotBlank()) {
+                    _coverImageUrl.value = local.coverImageUrl
+                }
+            }
+            restoreDoneForKey = draftKey
             _isLoadingEdit.value = false
+        }
+    }
+
+    private fun applyLoadedPost(post: PostEntity?) {
+        if (post == null) return
+        _title.value = post.title
+        _content.value = extractPlainText(post.content).ifBlank {
+            post.excerpt.orEmpty()
+        }
+        _audioUrl.value = post.audioUrl.orEmpty()
+        audioCleared = false
+        _coverImageUrl.value = post.coverImageUrl.orEmpty()
+        _linkUrl.value = post.linkUrl.orEmpty()
+        quotedPostId = post.quotedPostId
+        quotedCommentId = post.quotedCommentId
+        _composeKind.value = ComposeKind.fromPost(
+            postType = post.postType,
+            audioUrl = post.audioUrl,
+            quotedPostId = post.quotedPostId,
+            quotedCommentId = post.quotedCommentId,
+        )
+        val media = decodePostMedia(post.mediaJson).mapNotNull { item ->
+            val id = item.id.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val url = item.url.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            AttachedMedia(id = id, url = url)
+        }
+        when (_composeKind.value) {
+            ComposeKind.PHOTO -> {
+                _photoMedia.value = media
+                _videoMedia.value = null
+            }
+            ComposeKind.VIDEO -> {
+                _videoMedia.value = media.firstOrNull()
+                _photoMedia.value = emptyList()
+            }
+            else -> {
+                _photoMedia.value = emptyList()
+                _videoMedia.value = null
+            }
+        }
+        if (!post.quotedCommentId.isNullOrBlank()) {
+            loadQuotedComment(post.quotedCommentId)
+        } else if (!post.quotedPostId.isNullOrBlank()) {
+            loadQuotedPost(post.quotedPostId)
         }
     }
 
@@ -265,7 +335,83 @@ class CreatePostViewModel @Inject constructor(
 
     fun clearAudio() {
         _audioUrl.value = ""
+        audioCleared = true
         scheduleDraftSave()
+    }
+
+    fun setComposeKind(kind: String) {
+        val next = kind.ifBlank { ComposeKind.ARTICLE }
+        if (_composeKind.value == next) return
+        _composeKind.value = next
+        _fieldErrors.value = emptyMap()
+        if (next != ComposeKind.QUOTE) {
+            quotedPostId = null
+            quotedCommentId = null
+            _quotedPost.value = null
+            _quotedComment.value = null
+            _quoteQuery.value = ""
+            _quoteResults.value = emptyList()
+        }
+        scheduleDraftSave()
+    }
+
+    fun updateQuoteQuery(value: String) {
+        _quoteQuery.value = value
+        quoteSearchJob?.cancel()
+        val q = value.trim()
+        if (q.length < 2) {
+            _quoteResults.value = emptyList()
+            _isSearchingQuote.value = false
+            return
+        }
+        quoteSearchJob = viewModelScope.launch {
+            delay(250)
+            _isSearchingQuote.value = true
+            postRepository.searchPosts(q)
+                .onSuccess { _quoteResults.value = it }
+                .onFailure {
+                    _quoteResults.value = emptyList()
+                    _error.value = errorMessageResolver.fromThrowable(it, R.string.error_load_post)
+                }
+            _isSearchingQuote.value = false
+        }
+    }
+
+    fun selectQuotedPost(hit: PostSearchHit) {
+        quotedPostId = hit.id
+        quotedCommentId = null
+        _quotedComment.value = null
+        _quoteQuery.value = ""
+        _quoteResults.value = emptyList()
+        viewModelScope.launch {
+            val post = postRepository.getPostById(hit.id)
+                ?: postRepository.getPostBySlug(hit.slug).getOrNull()
+                ?: PostEntity(
+                    id = hit.id,
+                    authorId = "",
+                    authorName = hit.authorName,
+                    authorUsername = hit.authorUsername,
+                    authorAvatar = null,
+                    title = hit.title,
+                    slug = hit.slug,
+                    content = "",
+                    excerpt = hit.excerpt,
+                    coverImageUrl = hit.coverImageUrl,
+                    createdAt = 0L,
+                )
+            quotedPostId = post.id
+            _quotedPost.value = post
+        }
+        clearFieldError(PostField.Media)
+    }
+
+    private fun audioUrlForUpdate(): String? {
+        val kind = _composeKind.value
+        if (kind != ComposeKind.AUDIO && kind != ComposeKind.ARTICLE && kind != ComposeKind.MICRO) {
+            return ""
+        }
+        if (audioCleared) return ""
+        return _audioUrl.value.takeIf { it.isNotBlank() }
     }
 
     fun clearCover() {
@@ -432,7 +578,7 @@ class CreatePostViewModel @Inject constructor(
     fun submit() {
         val editingId = _editPostId.value
         if (editingId != null) {
-            updatePost(editingId, _title.value, _content.value, _audioUrl.value)
+            updatePost(editingId, _title.value, _content.value)
         } else {
             createPost(_title.value, _content.value, _audioUrl.value)
         }
@@ -457,7 +603,9 @@ class CreatePostViewModel @Inject constructor(
             _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
             return
         }
-        val quoting = !quotedPostId.isNullOrBlank() || !quotedCommentId.isNullOrBlank()
+        val quoting = _composeKind.value == ComposeKind.QUOTE ||
+            !quotedPostId.isNullOrBlank() ||
+            !quotedCommentId.isNullOrBlank()
         val errors = validate(title, content, _linkUrl.value, quoting = quoting)
         if (errors.isNotEmpty()) {
             _fieldErrors.value = errors
@@ -471,14 +619,16 @@ class CreatePostViewModel @Inject constructor(
             _fieldErrors.value = emptyMap()
 
             val untitled = errorMessageResolver.string(R.string.post_untitled_fallback)
+            val kind = _composeKind.value
             val resolvedTitle = when {
-                composeKind == ComposeKind.TEXT -> content.take(80).ifBlank { untitled }
-                composeKind == ComposeKind.PHOTO -> content.take(80).ifBlank { untitled }
-                composeKind == ComposeKind.VIDEO -> content.take(80).ifBlank { untitled }
-                composeKind == ComposeKind.LINK -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.TEXT -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.PHOTO -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.VIDEO -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.LINK -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.QUOTE -> content.take(80).ifBlank { untitled }
                 else -> title.ifBlank { content.take(80).ifBlank { untitled } }
             }
-            val mediaIds = when (composeKind) {
+            val mediaIds = when (kind) {
                 ComposeKind.PHOTO -> _photoMedia.value.map { it.id }
                 ComposeKind.VIDEO -> _videoMedia.value?.let { listOf(it.id) }
                 else -> null
@@ -491,9 +641,9 @@ class CreatePostViewModel @Inject constructor(
                 scheduledAt = isoScheduledAt(),
                 quotedPostId = quotedPostId,
                 quotedCommentId = quotedCommentId,
-                postType = ComposeKind.apiPostType(composeKind),
+                postType = ComposeKind.apiPostType(kind),
                 linkUrl = _linkUrl.value.takeIf {
-                    composeKind == ComposeKind.LINK && it.isNotBlank()
+                    kind == ComposeKind.LINK && it.isNotBlank()
                 },
                 mediaIds = mediaIds,
                 status = status,
@@ -520,13 +670,12 @@ class CreatePostViewModel @Inject constructor(
         postId: String,
         title: String,
         content: String,
-        audioUrl: String = _audioUrl.value,
     ) {
         if (!canCreatePost(authRepository.getRole())) {
             _error.value = errorMessageResolver.string(R.string.error_create_post_forbidden)
             return
         }
-        val errors = validate(title, content, _linkUrl.value, quoting = false, editing = true)
+        val errors = validate(title, content, _linkUrl.value, quoting = _composeKind.value == ComposeKind.QUOTE)
         if (errors.isNotEmpty()) {
             _fieldErrors.value = errors
             _error.value = null
@@ -538,12 +687,33 @@ class CreatePostViewModel @Inject constructor(
             _error.value = null
             _fieldErrors.value = emptyMap()
 
+            val kind = _composeKind.value
+            val untitled = errorMessageResolver.string(R.string.post_untitled_fallback)
+            val resolvedTitle = when {
+                kind == ComposeKind.TEXT -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.PHOTO -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.VIDEO -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.LINK -> content.take(80).ifBlank { untitled }
+                kind == ComposeKind.QUOTE -> content.take(80).ifBlank { untitled }
+                else -> title.ifBlank { content.take(80).ifBlank { untitled } }
+            }
+            val mediaIds = when (kind) {
+                ComposeKind.PHOTO -> _photoMedia.value.map { it.id }
+                ComposeKind.VIDEO -> _videoMedia.value?.let { listOf(it.id) } ?: emptyList()
+                else -> emptyList()
+            }
+            val clearQuote = kind != ComposeKind.QUOTE
             postRepository.updatePost(
                 postId,
-                title,
+                resolvedTitle,
                 content,
-                audioUrl,
+                audioUrl = audioUrlForUpdate(),
                 coverImageUrl = _coverImageUrl.value.takeIf { it.isNotBlank() },
+                postType = ComposeKind.apiPostType(kind),
+                linkUrl = if (kind == ComposeKind.LINK) _linkUrl.value else "",
+                mediaIds = mediaIds,
+                quotedPostId = if (clearQuote) "" else quotedPostId,
+                quotedCommentId = if (clearQuote) "" else quotedCommentId,
             )
                 .onSuccess {
                     clearLocalDraft()
@@ -567,18 +737,10 @@ class CreatePostViewModel @Inject constructor(
         content: String,
         linkUrl: String,
         quoting: Boolean,
-        editing: Boolean = false,
     ): Map<String, String> = buildMap {
-        when {
-            quoting || editing -> {
-                if (requireTitle(quoting) && title.isBlank()) {
-                    put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))
-                }
-                if (content.isBlank()) {
-                    put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
-                }
-            }
-            composeKind == ComposeKind.TEXT -> {
+        val kind = if (quoting) ComposeKind.QUOTE else _composeKind.value
+        when (kind) {
+            ComposeKind.TEXT -> {
                 if (content.isBlank()) {
                     put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
                 } else if (content.codePointCount(0, content.length) > MICRO_MAX_RUNES) {
@@ -588,27 +750,38 @@ class CreatePostViewModel @Inject constructor(
                     )
                 }
             }
-            composeKind == ComposeKind.PHOTO -> {
+            ComposeKind.PHOTO -> {
                 if (_photoMedia.value.isEmpty()) {
                     put(PostField.Media, errorMessageResolver.string(R.string.validation_content_required))
                 }
             }
-            composeKind == ComposeKind.VIDEO -> {
+            ComposeKind.VIDEO -> {
                 if (_videoMedia.value == null) {
                     put(PostField.Media, errorMessageResolver.string(R.string.validation_content_required))
                 }
             }
-            composeKind == ComposeKind.LINK -> {
+            ComposeKind.LINK -> {
                 if (!isValidHttpsUrl(linkUrl)) {
                     put(PostField.LinkUrl, errorMessageResolver.string(R.string.post_link_invalid))
                 }
             }
-            composeKind == ComposeKind.AUDIO -> {
+            ComposeKind.QUOTE -> {
+                if (content.isBlank()) {
+                    put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
+                }
+                if (quotedPostId.isNullOrBlank() && quotedCommentId.isNullOrBlank()) {
+                    put(PostField.Media, errorMessageResolver.string(R.string.quote_source_required))
+                }
+            }
+            ComposeKind.AUDIO -> {
                 if (title.isBlank()) {
                     put(PostField.Title, errorMessageResolver.string(R.string.validation_title_required))
                 }
                 if (content.isBlank()) {
                     put(PostField.Content, errorMessageResolver.string(R.string.validation_content_required))
+                }
+                if (_audioUrl.value.isBlank()) {
+                    put(PostField.Media, errorMessageResolver.string(R.string.post_audio_required))
                 }
             }
             else -> {
@@ -621,9 +794,6 @@ class CreatePostViewModel @Inject constructor(
             }
         }
     }
-
-    private fun requireTitle(quoting: Boolean): Boolean =
-        !quoting && composeKind != ComposeKind.TEXT
 
     private fun isValidHttpsUrl(url: String): Boolean =
         url.startsWith("https://", ignoreCase = true) && url.length > "https://".length
@@ -642,7 +812,9 @@ class CreatePostViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        flushDraftNow()
+        if (!_isLoadingEdit.value) {
+            flushDraftNow()
+        }
         super.onCleared()
     }
 

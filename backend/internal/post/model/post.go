@@ -138,9 +138,11 @@ type UpdatePostRequest struct {
 	IsPremium     *bool      `json:"is_premium"`
 	Language      *string    `json:"language"`
 	ScheduledAt   *time.Time `json:"scheduled_at"`
-	PostType      *string    `json:"post_type"`
-	LinkURL       *string    `json:"link_url"`
-	MediaIDs      *[]string  `json:"media_ids"`
+	PostType        *string    `json:"post_type"`
+	LinkURL         *string    `json:"link_url"`
+	MediaIDs        *[]string  `json:"media_ids"`
+	QuotedPostID    *string    `json:"quoted_post_id"`
+	QuotedCommentID *string    `json:"quoted_comment_id"`
 }
 
 type PostListParams struct {

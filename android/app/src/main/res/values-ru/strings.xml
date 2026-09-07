@@ -287,6 +287,10 @@
     <string name="compose_kind_article">Статья</string>
     <string name="compose_kind_quote">Цитата</string>
     <string name="compose_kind_audio">Аудио</string>
+    <string name="post_audio_required">Нужен аудиофайл</string>
+    <string name="quote_search_hint">Найдите пост для цитаты…</string>
+    <string name="quote_search_empty">Посты не найдены</string>
+    <string name="quote_source_required">Выберите пост для цитаты</string>
     <string name="compose_kind_photo">Фото</string>
     <string name="compose_kind_video">Видео</string>
     <string name="compose_kind_link">Ссылка</string>

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/lib/pq"
@@ -111,6 +112,22 @@ func (m *mockPostRepo) Update(ctx context.Context, id string, req *model.UpdateP
 		} else {
 			u := *req.AudioURL
 			p.AudioURL = &u
+		}
+	}
+	if req.QuotedPostID != nil {
+		if strings.TrimSpace(*req.QuotedPostID) == "" {
+			p.QuotedPostID = nil
+		} else {
+			id := strings.TrimSpace(*req.QuotedPostID)
+			p.QuotedPostID = &id
+		}
+	}
+	if req.QuotedCommentID != nil {
+		if strings.TrimSpace(*req.QuotedCommentID) == "" {
+			p.QuotedCommentID = nil
+		} else {
+			id := strings.TrimSpace(*req.QuotedCommentID)
+			p.QuotedCommentID = &id
 		}
 	}
 	return p, nil
@@ -275,6 +292,46 @@ func TestCreatePost_QuoteAutoTitle(t *testing.T) {
 	}
 	if post.QuotedPostID == nil || *post.QuotedPostID != "orig-1" {
 		t.Fatalf("expected quoted_post_id, got %v", post.QuotedPostID)
+	}
+}
+
+func TestUpdatePost_QuotedPostID(t *testing.T) {
+	repo := newMockPostRepo()
+	repo.posts["orig-1"] = &model.Post{
+		ID: "orig-1", AuthorID: "author-2", Title: "Original", Status: "published",
+	}
+	repo.posts["mine"] = &model.Post{
+		ID: "mine", AuthorID: "author-1", Title: "Mine", Status: "published", ContentMD: "hi",
+	}
+	svc := NewPostService(repo, nil)
+	quoted := "orig-1"
+	updated, err := svc.Update(context.Background(), "mine", "author-1", &model.UpdatePostRequest{
+		QuotedPostID: &quoted,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if updated.QuotedPostID == nil || *updated.QuotedPostID != "orig-1" {
+		t.Fatalf("expected quoted_post_id, got %v", updated.QuotedPostID)
+	}
+}
+
+func TestUpdatePost_OmittingAudioKeepsExisting(t *testing.T) {
+	repo := newMockPostRepo()
+	audio := "https://cdn.example/keep.mp3"
+	repo.posts["mine"] = &model.Post{
+		ID: "mine", AuthorID: "author-1", Title: "Mine", Status: "published", ContentMD: "hi", AudioURL: &audio,
+	}
+	svc := NewPostService(repo, nil)
+	title := "Mine updated"
+	updated, err := svc.Update(context.Background(), "mine", "author-1", &model.UpdatePostRequest{
+		Title: &title,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if updated.AudioURL == nil || *updated.AudioURL != audio {
+		t.Fatalf("expected audio kept, got %v", updated.AudioURL)
 	}
 }
 

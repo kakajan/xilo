@@ -6,6 +6,7 @@ import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.prefs.AnalyticsSessionStore
 import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.CreatePostRequest
+import ir.xilo.app.data.remote.dto.PostSearchHit
 import ir.xilo.app.data.remote.dto.PostResponse
 import ir.xilo.app.data.remote.dto.toPostEntity
 import ir.xilo.app.data.remote.dto.RecordViewRequest
@@ -467,12 +468,35 @@ class PostRepository @Inject constructor(
 
     suspend fun getPostById(id: String): PostEntity? = postDao.getPostById(id)
 
+    suspend fun loadPostForEdit(postId: String): PostEntity? {
+        val local = postDao.getPostById(postId)
+        val slug = local?.slug?.takeIf { it.isNotBlank() }
+        if (!slug.isNullOrBlank()) {
+            return getPostBySlug(slug).getOrNull() ?: local
+        }
+        return getPostBySlug(postId).getOrNull() ?: local
+    }
+
+    suspend fun searchPosts(query: String, limit: Int = 8): Result<List<PostSearchHit>> {
+        return try {
+            val res = apiService.searchPosts(query = query, limit = limit)
+            Result.success(res.data)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updatePost(
         postId: String,
         title: String,
         content: String,
         audioUrl: String? = null,
         coverImageUrl: String? = null,
+        postType: String? = null,
+        linkUrl: String? = null,
+        mediaIds: List<String>? = null,
+        quotedPostId: String? = null,
+        quotedCommentId: String? = null,
     ): Result<PostEntity> {
         return try {
             val tiptapJson = buildTiptapDoc(content)
@@ -485,9 +509,14 @@ class PostRepository @Inject constructor(
                     content = tiptapJson,
                     contentMd = content,
                     excerpt = content.take(100),
-                    audioUrl = audioUrl ?: "",
+                    audioUrl = audioUrl,
                     tags = tags,
                     coverImageUrl = coverImageUrl,
+                    postType = postType,
+                    linkUrl = linkUrl,
+                    mediaIds = mediaIds,
+                    quotedPostId = quotedPostId,
+                    quotedCommentId = quotedCommentId,
                 ),
             )
             val local = postDao.getPostById(postId)

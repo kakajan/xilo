@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { apiUpload } from "@/lib/api-client";
 import { mediaItemFromUpload } from "@/lib/post-type";
 import { useEditorStore } from "@/stores/editor-store";
-import type { PostType } from "@/types/post";
+import { QuoteSourcePicker } from "@/components/editor/quote-source-picker";
+import type { EditorPostKind } from "@/lib/post-type";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 
 interface TypedPostFieldsProps {
-  postType: PostType;
+  postType: EditorPostKind;
   microText: string;
   onMicroTextChange: (text: string) => void;
 }
@@ -23,6 +24,32 @@ export function TypedPostFields({ postType, microText, onMicroTextChange }: Type
   const [uploading, setUploading] = useState(false);
 
   if (postType === "article") return null;
+
+  if (postType === "quote") {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">متن نقل‌قول</label>
+          <textarea
+            value={microText}
+            onChange={(e) => onMicroTextChange(e.target.value)}
+            rows={5}
+            placeholder="نظرتان را اضافه کنید..."
+            className="w-full resize-none rounded-xl border bg-background px-4 py-3 text-sm leading-relaxed"
+          />
+        </div>
+        <QuoteSourcePicker />
+      </div>
+    );
+  }
+
+  if (postType === "audio") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        فایل صوتی را از ستون تنظیمات پیوست کنید. عنوان و متن در ویرایشگر نوشته می‌شود.
+      </p>
+    );
+  }
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);

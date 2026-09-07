@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
-import { POST_TYPE_LABELS, resolvePostType } from "@/lib/post-type";
+import { COMPOSE_KIND_LABELS, composeKindFromPost } from "@/lib/post-type";
 import type { Post, PostListResponse } from "@/types/post";
 
 export function DraftsList() {
@@ -54,12 +54,12 @@ export function DraftsList() {
       <h2 className="mb-3 text-sm font-semibold">پیش‌نویس‌های من</h2>
       <ul className="space-y-2">
         {drafts.map((draft) => {
-          const type = resolvePostType(draft);
+          const kind = composeKindFromPost(draft);
           const label =
             draft.title?.trim() ||
             draft.content_md?.slice(0, 60) ||
             draft.excerpt?.slice(0, 60) ||
-            POST_TYPE_LABELS[type];
+            COMPOSE_KIND_LABELS[kind];
           return (
             <li key={draft.id}>
               <Link
@@ -69,7 +69,7 @@ export function DraftsList() {
                 <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                 <span className="min-w-0 flex-1 truncate">{label}</span>
                 <span className="shrink-0 text-xs text-muted-foreground">
-                  {POST_TYPE_LABELS[type]}
+                  {COMPOSE_KIND_LABELS[kind]}
                 </span>
               </Link>
             </li>

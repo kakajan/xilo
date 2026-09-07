@@ -291,6 +291,8 @@ data class UpdatePostRequest(
     val postType: String? = null,
     val linkUrl: String? = null,
     val mediaIds: List<String>? = null,
+    val quotedPostId: String? = null,
+    val quotedCommentId: String? = null,
 )
 
 @Serializable
@@ -354,6 +356,23 @@ data class PostMediaDto(
     val id: String = "",
     val url: String = "",
     val mimeType: String = "",
+)
+
+@Serializable
+data class PostSearchHit(
+    val id: String = "",
+    val title: String = "",
+    val slug: String = "",
+    val excerpt: String = "",
+    val coverImageUrl: String? = null,
+    val authorName: String = "",
+    val authorUsername: String = "",
+)
+
+@Serializable
+data class PostSearchResponse(
+    val data: List<PostSearchHit> = emptyList(),
+    val total: Int = 0,
 )
 
 @Serializable

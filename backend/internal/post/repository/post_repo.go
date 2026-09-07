@@ -172,6 +172,8 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 		postType = strings.TrimSpace(*req.PostType)
 	}
 	linkURL := coalesceOptionalURL(req.LinkURL, existing.LinkURL)
+	quotedPostID := coalesceOptionalURL(req.QuotedPostID, existing.QuotedPostID)
+	quotedCommentID := coalesceOptionalURL(req.QuotedCommentID, existing.QuotedCommentID)
 	mediaIDs := existing.MediaIDs
 	if req.MediaIDs != nil {
 		mediaIDs = pq.StringArray(*req.MediaIDs)
@@ -216,6 +218,7 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 		    cover_image_url = $7, audio_url = $8, category = $9, tags = $10, status = $11, is_premium = $12,
 		    word_count = $13, reading_time = $14, language = $15, scheduled_at = $16,
 		    published_at = COALESCE($17, published_at), post_type = $18, link_url = $19, media_ids = $20::uuid[],
+		    quoted_post_id = $21, quoted_comment_id = $22,
 		    updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, author_id, title, slug, excerpt, content::text, content_md,
@@ -224,7 +227,8 @@ func (r *PostRepo) Update(ctx context.Context, id string, req *model.UpdatePostR
 		          quoted_post_id, quoted_comment_id, post_type, link_url, media_ids::text[] AS media_ids,
 		          created_at, updated_at
 	`, id, title, slug, excerpt, content, contentMD, coverImageURL, audioURL, category, tags, status, isPremium,
-		wordCount, readingTime, language, req.ScheduledAt, publishedAt, postType, linkURL, pq.Array(mediaIDs))
+		wordCount, readingTime, language, req.ScheduledAt, publishedAt, postType, linkURL, pq.Array(mediaIDs),
+		quotedPostID, quotedCommentID)
 	if err != nil {
 		return nil, fmt.Errorf("update post: %w", err)
 	}

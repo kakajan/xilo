@@ -77,6 +77,12 @@ interface XiloApiService {
     @DELETE("api/posts/{id}")
     suspend fun deletePost(@Path("id") id: String): Map<String, String>
 
+    @GET("api/search/posts")
+    suspend fun searchPosts(
+        @Query("q") query: String,
+        @Query("limit") limit: Int = 8,
+    ): PostSearchResponse
+
     @GET("api/posts/{slug}")
     suspend fun getPostBySlug(@Path("slug") slug: String): PostResponse
 

@@ -2,14 +2,12 @@
 
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { POST_TYPE_LABELS } from "@/lib/post-type";
-import type { PostType } from "@/types/post";
-
-const TYPES: PostType[] = ["article", "micro", "photo", "video", "link"];
+import { COMPOSE_KIND_LABELS, EDITOR_POST_KINDS } from "@/lib/post-type";
+import type { EditorPostKind } from "@/lib/post-type";
 
 interface PostTypePickerProps {
-  value: PostType;
-  onChange: (type: PostType) => void;
+  value: EditorPostKind;
+  onChange: (type: EditorPostKind) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -36,7 +34,7 @@ export function PostTypePicker({ value, onChange, open, onOpenChange }: PostType
         </h2>
         <p className="mb-4 text-sm text-muted-foreground">نوع محتوایی که می‌خواهید منتشر کنید را انتخاب کنید.</p>
         <ul className="space-y-1">
-          {TYPES.map((type) => {
+          {EDITOR_POST_KINDS.map((type) => {
             const selected = value === type;
             return (
               <li key={type}>
@@ -51,7 +49,7 @@ export function PostTypePicker({ value, onChange, open, onOpenChange }: PostType
                     onOpenChange(false);
                   }}
                 >
-                  <span className="font-medium">{POST_TYPE_LABELS[type]}</span>
+                  <span className="font-medium">{COMPOSE_KIND_LABELS[type]}</span>
                   {selected ? <Check className="h-4 w-4 shrink-0" aria-hidden /> : null}
                 </button>
               </li>
@@ -64,7 +62,7 @@ export function PostTypePicker({ value, onChange, open, onOpenChange }: PostType
 }
 
 interface PostTypeBadgeProps {
-  value: PostType;
+  value: EditorPostKind;
   onClick: () => void;
 }
 
@@ -75,7 +73,7 @@ export function PostTypeBadge({ value, onClick }: PostTypeBadgeProps) {
       onClick={onClick}
       className="rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent"
     >
-      {POST_TYPE_LABELS[value]}
+      {COMPOSE_KIND_LABELS[value]}
     </button>
   );
 }

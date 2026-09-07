@@ -16,7 +16,8 @@ import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
 import { extractHashtags, mergeTags } from "@/lib/hashtag";
 import { buildCreatePostPayload, validatePostPayload } from "@/lib/post-type";
 import { Button } from "@/components/ui/button";
-import type { Post, PostType } from "@/types/post";
+import type { Post } from "@/types/post";
+import type { EditorPostKind } from "@/lib/post-type";
 
 export default function WritePage() {
   const router = useRouter();
@@ -38,6 +39,8 @@ export default function WritePage() {
     linkUrl,
     mediaIds,
     contentJson,
+    quotedPostId,
+    quotedCommentId,
     setContentJson,
     setPostType,
     reset,
@@ -51,7 +54,7 @@ export default function WritePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (postType === "micro" && contentJson && contentJson !== "{}") {
+    if ((postType === "micro" || postType === "quote") && contentJson && contentJson !== "{}") {
       const plain = extractTextFromTipTapJSON(contentJson);
       if (plain) setMicroText(plain);
     }
@@ -60,7 +63,7 @@ export default function WritePage() {
   const { schedule } = useDraftAutosave({
     persist: setContentJson,
     contentRef,
-    enabled: hydrated && isAuthenticated && postType !== "micro",
+    enabled: hydrated && isAuthenticated && postType !== "micro" && postType !== "quote",
   });
 
   const handleSave = useCallback(
@@ -71,13 +74,13 @@ export default function WritePage() {
     [schedule]
   );
 
-  const handlePostTypeChange = (next: PostType) => {
+  const handlePostTypeChange = (next: EditorPostKind) => {
     setPostType(next);
     setError("");
   };
 
   const resolveContentJson = () => {
-    if (postType === "micro") {
+    if (postType === "micro" || postType === "quote") {
       if (!microText.trim()) return "{}";
       return JSON.stringify({
         type: "doc",
@@ -108,6 +111,8 @@ export default function WritePage() {
       isPremium,
       linkUrl,
       mediaIds,
+      quotedPostId,
+      quotedCommentId,
     });
 
     if (validationError) {
@@ -120,7 +125,7 @@ export default function WritePage() {
 
     try {
       const contentMd =
-        postType === "micro"
+        postType === "micro" || postType === "quote"
           ? microText.trim()
           : extractTextFromTipTapJSON(payloadJson);
       const mergedTags = mergeTags(extractHashtags(contentMd), tags);
@@ -138,6 +143,8 @@ export default function WritePage() {
         isPremium,
         linkUrl,
         mediaIds,
+        quotedPostId,
+        quotedCommentId,
       });
 
       const post = await apiFetch<Post>("/api/posts", {
@@ -190,7 +197,11 @@ export default function WritePage() {
     );
   }
 
-  const showTiptap = postType === "article" || postType === "photo" || postType === "link";
+  const showTiptap =
+    postType === "article" ||
+    postType === "photo" ||
+    postType === "link" ||
+    postType === "audio";
 
   return (
     <>

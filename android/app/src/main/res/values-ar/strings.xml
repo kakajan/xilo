@@ -287,6 +287,10 @@
     <string name="compose_kind_article">مقالة</string>
     <string name="compose_kind_quote">اقتباس</string>
     <string name="compose_kind_audio">صوت</string>
+    <string name="post_audio_required">ملف صوتي مطلوب</string>
+    <string name="quote_search_hint">ابحث عن منشور للاقتباس…</string>
+    <string name="quote_search_empty">لا توجد منشورات</string>
+    <string name="quote_source_required">اختر منشوراً للاقتباس</string>
     <string name="compose_kind_photo">صورة</string>
     <string name="compose_kind_video">فيديو</string>
     <string name="compose_kind_link">رابط</string>

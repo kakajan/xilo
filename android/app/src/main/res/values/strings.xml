@@ -61,6 +61,10 @@
     <string name="post_audio_uploading">در حال آپلود صوت…</string>
     <string name="post_audio_attached">صوت پیوست‌شده</string>
     <string name="post_audio_remove">حذف صوت</string>
+    <string name="post_audio_required">فایل صوتی لازم است</string>
+    <string name="quote_search_hint">جستجوی پست برای نقل‌قول…</string>
+    <string name="quote_search_empty">پستی پیدا نشد</string>
+    <string name="quote_source_required">پست مورد نقل‌قول را انتخاب کنید</string>
     <string name="post_audio_title">صوت این پست</string>
     <string name="post_audio_play">پخش</string>
     <string name="post_audio_pause">توقف</string>

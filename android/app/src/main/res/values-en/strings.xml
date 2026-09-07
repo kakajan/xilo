@@ -61,6 +61,10 @@
     <string name="post_audio_uploading">Uploading audio…</string>
     <string name="post_audio_attached">Audio attached</string>
     <string name="post_audio_remove">Remove audio</string>
+    <string name="post_audio_required">An audio file is required</string>
+    <string name="quote_search_hint">Search a post to quote…</string>
+    <string name="quote_search_empty">No posts found</string>
+    <string name="quote_source_required">Choose a post to quote</string>
     <string name="post_audio_title">Post audio</string>
     <string name="post_audio_play">Play</string>
     <string name="post_audio_pause">Pause</string>

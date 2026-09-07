@@ -484,7 +484,7 @@ fun MainScreen(
                         label = stringResource(R.string.compose_kind_quote),
                         onClick = {
                             showComposeSheet = false
-                            onItemClick(CreatePostKey(composeKind = ComposeKind.ARTICLE))
+                            onItemClick(CreatePostKey(composeKind = ComposeKind.QUOTE))
                         },
                     )
                     ComposeKindRow(

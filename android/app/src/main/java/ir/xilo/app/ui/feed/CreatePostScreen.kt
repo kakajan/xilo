@@ -35,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -42,6 +43,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.data.remote.dto.PostSearchHit
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.PostField
 import ir.xilo.app.ui.components.XiloAvatar
@@ -79,7 +82,7 @@ fun CreatePostScreen(
     composeKind: String = ComposeKind.ARTICLE,
     modifier: Modifier = Modifier,
     viewModel: CreatePostViewModel = hiltViewModel(
-        key = "create-post-${editPostId.orEmpty()}-${quotedPostId.orEmpty()}-${quotedCommentId.orEmpty()}-$composeKind",
+        key = "create-post-${editPostId.orEmpty()}-${quotedPostId.orEmpty()}-${quotedCommentId.orEmpty()}",
     ),
 ) {
     val title by viewModel.title.collectAsStateWithLifecycle()
@@ -104,25 +107,30 @@ fun CreatePostScreen(
     val quotedPost by viewModel.quotedPost.collectAsStateWithLifecycle()
     val quotedComment by viewModel.quotedComment.collectAsStateWithLifecycle()
     val quotedCommentPostTitle by viewModel.quotedCommentPostTitle.collectAsStateWithLifecycle()
+    val selectedKind by viewModel.composeKind.collectAsStateWithLifecycle()
+    val quoteQuery by viewModel.quoteQuery.collectAsStateWithLifecycle()
+    val quoteResults by viewModel.quoteResults.collectAsStateWithLifecycle()
+    val isSearchingQuote by viewModel.isSearchingQuote.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val isEditing = !editPostId.isNullOrBlank()
-    val isQuote = !quotedPostId.isNullOrBlank() || !quotedCommentId.isNullOrBlank()
+    val isQuote = selectedKind == ComposeKind.QUOTE
     val hideTitle = !isEditing && (
-        composeKind == ComposeKind.TEXT ||
-            composeKind == ComposeKind.PHOTO ||
-            composeKind == ComposeKind.VIDEO ||
-            composeKind == ComposeKind.LINK ||
+        selectedKind == ComposeKind.TEXT ||
+            selectedKind == ComposeKind.PHOTO ||
+            selectedKind == ComposeKind.VIDEO ||
+            selectedKind == ComposeKind.LINK ||
             isQuote
         )
-    val isArticleKind = composeKind == ComposeKind.ARTICLE
-    val isAudioKind = composeKind == ComposeKind.AUDIO
-    val isPhotoKind = composeKind == ComposeKind.PHOTO
-    val isVideoKind = composeKind == ComposeKind.VIDEO
-    val isLinkKind = composeKind == ComposeKind.LINK
+    val isArticleKind = selectedKind == ComposeKind.ARTICLE
+    val isAudioKind = selectedKind == ComposeKind.AUDIO
+    val isPhotoKind = selectedKind == ComposeKind.PHOTO
+    val isVideoKind = selectedKind == ComposeKind.VIDEO
+    val isLinkKind = selectedKind == ComposeKind.LINK
     val showCover = !isQuote && isArticleKind
-    val showAudio = !isQuote && isAudioKind
+    val showAudio = !isQuote && (isAudioKind || isArticleKind || audioUrl.isNotBlank())
     val showSchedule = !isQuote && (isArticleKind || isAudioKind)
     val showMarkdown = !isQuote
+    var typePickerOpen by remember { mutableStateOf(false) }
 
     val audioPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -146,8 +154,12 @@ fun CreatePostScreen(
     }
     val context = LocalContext.current
     var audioPickerRequested by remember { mutableStateOf(false) }
-    LaunchedEffect(composeKind) {
-        if (composeKind == ComposeKind.AUDIO && !audioPickerRequested && audioUrl.isBlank()) {
+    LaunchedEffect(selectedKind, isEditing, audioUrl) {
+        if (selectedKind == ComposeKind.AUDIO &&
+            !isEditing &&
+            !audioPickerRequested &&
+            audioUrl.isBlank()
+        ) {
             audioPickerRequested = true
             audioPicker.launch("audio/*")
         }
@@ -188,21 +200,29 @@ fun CreatePostScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = stringResource(
-                            when {
-                                isEditing -> R.string.post_edit_title
-                                isQuote -> R.string.quote_compose_title
-                                composeKind == ComposeKind.TEXT -> R.string.compose_kind_text
-                                composeKind == ComposeKind.AUDIO -> R.string.compose_kind_audio
-                                composeKind == ComposeKind.PHOTO -> R.string.compose_kind_photo
-                                composeKind == ComposeKind.VIDEO -> R.string.compose_kind_video
-                                composeKind == ComposeKind.LINK -> R.string.compose_kind_link
-                                else -> R.string.post_create_title
-                            }
-                        ),
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Column {
+                        Text(
+                            text = stringResource(
+                                when {
+                                    isEditing -> R.string.post_edit_title
+                                    isQuote -> R.string.quote_compose_title
+                                    selectedKind == ComposeKind.TEXT -> R.string.compose_kind_text
+                                    selectedKind == ComposeKind.AUDIO -> R.string.compose_kind_audio
+                                    selectedKind == ComposeKind.PHOTO -> R.string.compose_kind_photo
+                                    selectedKind == ComposeKind.VIDEO -> R.string.compose_kind_video
+                                    selectedKind == ComposeKind.LINK -> R.string.compose_kind_link
+                                    else -> R.string.post_create_title
+                                }
+                            ),
+                            fontWeight = FontWeight.Bold,
+                        )
+                        AssistChip(
+                            onClick = { typePickerOpen = true },
+                            label = {
+                                Text(stringResource(composeKindLabel(selectedKind)))
+                            },
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -608,15 +628,46 @@ fun CreatePostScreen(
 
             if (isQuote) {
                 Spacer(modifier = Modifier.height(12.dp))
-                if (!quotedCommentId.isNullOrBlank()) {
-                    QuotedCommentPreview(
-                        comment = quotedComment,
-                        postTitle = quotedCommentPostTitle,
-                    )
-                } else {
-                    QuotedPostPreview(post = quotedPost)
-                }
+                QuoteSourceSection(
+                    quotedPost = quotedPost,
+                    quotedComment = quotedComment,
+                    quotedCommentPostTitle = quotedCommentPostTitle,
+                    quotedCommentId = quotedCommentId,
+                    query = quoteQuery,
+                    results = quoteResults,
+                    searching = isSearchingQuote,
+                    onQueryChange = viewModel::updateQuoteQuery,
+                    onSelect = viewModel::selectQuotedPost,
+                )
             }
+        }
+    }
+
+    if (typePickerOpen) {
+        ModalBottomSheet(
+            onDismissRequest = { typePickerOpen = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            Text(
+                text = stringResource(R.string.compose_type_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+            ComposeKind.all.forEach { kind ->
+                Text(
+                    text = stringResource(composeKindLabel(kind)),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            viewModel.setComposeKind(kind)
+                            typePickerOpen = false
+                        }
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    color = if (kind == selectedKind) XiloBlue else MaterialTheme.colorScheme.onBackground,
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -673,6 +724,89 @@ private fun QuotedPostPreview(post: PostEntity?) {
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private fun composeKindLabel(kind: String): Int = when (kind) {
+    ComposeKind.TEXT -> R.string.compose_kind_text
+    ComposeKind.AUDIO -> R.string.compose_kind_audio
+    ComposeKind.PHOTO -> R.string.compose_kind_photo
+    ComposeKind.VIDEO -> R.string.compose_kind_video
+    ComposeKind.LINK -> R.string.compose_kind_link
+    ComposeKind.QUOTE -> R.string.compose_kind_quote
+    else -> R.string.compose_kind_article
+}
+
+@Composable
+private fun QuoteSourceSection(
+    quotedPost: PostEntity?,
+    quotedComment: ir.xilo.app.data.local.entity.CommentEntity?,
+    quotedCommentPostTitle: String?,
+    quotedCommentId: String?,
+    query: String,
+    results: List<PostSearchHit>,
+    searching: Boolean,
+    onQueryChange: (String) -> Unit,
+    onSelect: (PostSearchHit) -> Unit,
+) {
+    if (!quotedCommentId.isNullOrBlank()) {
+        QuotedCommentPreview(
+            comment = quotedComment,
+            postTitle = quotedCommentPostTitle,
+        )
+        return
+    }
+    if (quotedPost != null) {
+        QuotedPostPreview(post = quotedPost)
+        return
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        XiloTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = stringResource(R.string.quote_search_hint),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (searching) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                color = XiloBlue,
+            )
+        }
+        results.forEach { hit ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(hit) }
+                    .padding(vertical = 10.dp),
+            ) {
+                Text(
+                    text = hit.title.ifBlank { hit.slug },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val subtitle = hit.authorName.ifBlank { hit.authorUsername }
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+            }
+        }
+        if (!searching && query.trim().length >= 2 && results.isEmpty()) {
+            Text(
+                text = stringResource(R.string.quote_search_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
     }

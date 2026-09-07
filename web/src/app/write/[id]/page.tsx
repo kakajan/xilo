@@ -13,10 +13,11 @@ import { apiFetch } from "@/lib/api-client";
 import { fetchPostForEdit } from "@/lib/api/posts";
 import { extractTextFromTipTapJSON } from "@/lib/tiptap-content";
 import { extractHashtags, mergeTags } from "@/lib/hashtag";
-import { buildCreatePostPayload, validatePostPayload } from "@/lib/post-type";
+import { buildCreatePostPayload, composeKindFromPost, validatePostPayload } from "@/lib/post-type";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Post, PostType } from "@/types/post";
+import type { Post } from "@/types/post";
+import type { EditorPostKind } from "@/lib/post-type";
 
 export default function EditPage() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function EditPage() {
       store.setEditDraft(postId, nextJson);
     },
     contentRef,
-    enabled: hydrated && isAuthenticated && !!postId && store.postType !== "micro",
+    enabled: hydrated && isAuthenticated && !!postId && store.postType !== "micro" && store.postType !== "quote",
   });
 
   useEffect(() => {
@@ -66,7 +67,9 @@ export default function EditPage() {
         store.setTags(post.tags || []);
         store.setStatus(post.status as "draft" | "published");
         store.setIsPremium(post.is_premium);
-        store.setPostType((post.post_type ?? "article") as PostType);
+        store.setQuotedPost(post.quoted_post ?? null);
+        store.setQuotedComment(post.quoted_comment ?? null);
+        store.setPostType(composeKindFromPost(post));
         store.setLinkUrl(post.link_url || "");
         store.setMedia(post.media ?? []);
 
@@ -78,7 +81,7 @@ export default function EditPage() {
             : "";
         const initial = localEdit || serverContent;
         setJson(initial);
-        if ((post.post_type ?? "article") === "micro") {
+        if (composeKindFromPost(post) === "micro" || composeKindFromPost(post) === "quote") {
           setMicroText(post.content_md?.trim() || extractTextFromTipTapJSON(initial));
         }
         store.setHasUnsaved(Boolean(localEdit));
@@ -102,7 +105,7 @@ export default function EditPage() {
   );
 
   const resolveContentJson = () => {
-    if (store.postType === "micro") {
+    if (store.postType === "micro" || store.postType === "quote") {
       if (!microText.trim()) return "{}";
       return JSON.stringify({
         type: "doc",
@@ -133,6 +136,9 @@ export default function EditPage() {
       isPremium: store.isPremium,
       linkUrl: store.linkUrl,
       mediaIds: store.mediaIds,
+      quotedPostId: store.quotedPostId,
+      quotedCommentId: store.quotedCommentId,
+      clearQuote: store.postType !== "quote",
     });
 
     if (validationError) {
@@ -150,7 +156,7 @@ export default function EditPage() {
 
     try {
       const contentMd =
-        store.postType === "micro"
+        store.postType === "micro" || store.postType === "quote"
           ? microText.trim()
           : extractTextFromTipTapJSON(payloadJson);
       const mergedTags = mergeTags(extractHashtags(contentMd), store.tags);
@@ -168,6 +174,9 @@ export default function EditPage() {
         isPremium: store.isPremium,
         linkUrl: store.linkUrl,
         mediaIds: store.mediaIds,
+        quotedPostId: store.quotedPostId,
+        quotedCommentId: store.quotedCommentId,
+        clearQuote: store.postType !== "quote",
       });
 
       const post = await apiFetch<Post>(`/api/posts/${postId}`, {
@@ -208,7 +217,10 @@ export default function EditPage() {
   }
 
   const showTiptap =
-    store.postType === "article" || store.postType === "photo" || store.postType === "link";
+    store.postType === "article" ||
+    store.postType === "photo" ||
+    store.postType === "link" ||
+    store.postType === "audio";
 
   return (
     <>
@@ -252,7 +264,7 @@ export default function EditPage() {
 
       <PostTypePicker
         value={store.postType}
-        onChange={(type) => {
+        onChange={(type: EditorPostKind) => {
           store.setPostType(type);
           setError("");
         }}

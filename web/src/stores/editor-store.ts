@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PostMedia, PostType } from "@/types/post";
+import type { PostMedia, QuotedCommentSummary, QuotedPostSummary } from "@/types/post";
+import type { EditorPostKind } from "@/lib/post-type";
 
 interface EditorState {
   title: string;
@@ -14,10 +15,14 @@ interface EditorState {
   status: "draft" | "published";
   isPremium: boolean;
   hasUnsaved: boolean;
-  postType: PostType;
+  postType: EditorPostKind;
   linkUrl: string;
   mediaIds: string[];
   media: PostMedia[];
+  quotedPostId: string;
+  quotedCommentId: string;
+  quotedPost: QuotedPostSummary | null;
+  quotedComment: QuotedCommentSummary | null;
   /** TipTap JSON for the new-post composer (local draft). */
   contentJson: string;
   /** In-progress edit recovery keyed by post id. */
@@ -37,12 +42,14 @@ interface EditorState {
   setStatus: (status: "draft" | "published") => void;
   setIsPremium: (v: boolean) => void;
   setHasUnsaved: (v: boolean) => void;
-  setPostType: (postType: PostType) => void;
+  setPostType: (postType: EditorPostKind) => void;
   setLinkUrl: (url: string) => void;
   setMedia: (media: PostMedia[]) => void;
   addMedia: (item: PostMedia) => void;
   removeMedia: (id: string) => void;
   clearMedia: () => void;
+  setQuotedPost: (post: QuotedPostSummary | null) => void;
+  setQuotedComment: (comment: QuotedCommentSummary | null) => void;
   setContentJson: (json: string) => void;
   setEditDraft: (postId: string, json: string) => void;
   clearEditDraft: () => void;
@@ -61,10 +68,14 @@ const initial = {
   status: "draft" as const,
   isPremium: false,
   hasUnsaved: false,
-  postType: "article" as PostType,
+  postType: "article" as EditorPostKind,
   linkUrl: "",
   mediaIds: [] as string[],
   media: [] as PostMedia[],
+  quotedPostId: "",
+  quotedCommentId: "",
+  quotedPost: null as QuotedPostSummary | null,
+  quotedComment: null as QuotedCommentSummary | null,
   contentJson: "",
   editDraftId: null as string | null,
   editContentJson: "",
@@ -94,7 +105,19 @@ export const useEditorStore = create<EditorState>()(
       setStatus: (status) => set({ status, hasUnsaved: true }),
       setIsPremium: (isPremium) => set({ isPremium, hasUnsaved: true }),
       setHasUnsaved: (hasUnsaved) => set({ hasUnsaved }),
-      setPostType: (postType) => set({ postType, hasUnsaved: true }),
+      setPostType: (postType) =>
+        set(
+          postType === "quote"
+            ? { postType, hasUnsaved: true }
+            : {
+                postType,
+                hasUnsaved: true,
+                quotedPostId: "",
+                quotedCommentId: "",
+                quotedPost: null,
+                quotedComment: null,
+              }
+        ),
       setLinkUrl: (linkUrl) => set({ linkUrl, hasUnsaved: true }),
       setMedia: (media) =>
         set({ media, mediaIds: syncMediaIds(media), hasUnsaved: true }),
@@ -109,6 +132,30 @@ export const useEditorStore = create<EditorState>()(
           return { media, mediaIds: syncMediaIds(media), hasUnsaved: true };
         }),
       clearMedia: () => set({ media: [], mediaIds: [], hasUnsaved: true }),
+      setQuotedPost: (quotedPost) =>
+        set(
+          quotedPost
+            ? {
+                quotedPost,
+                quotedPostId: quotedPost.id,
+                quotedCommentId: "",
+                quotedComment: null,
+                hasUnsaved: true,
+              }
+            : { quotedPost: null, quotedPostId: "", hasUnsaved: true },
+        ),
+      setQuotedComment: (quotedComment) =>
+        set(
+          quotedComment
+            ? {
+                quotedComment,
+                quotedCommentId: quotedComment.id,
+                quotedPostId: "",
+                quotedPost: null,
+                hasUnsaved: true,
+              }
+            : { quotedComment: null, quotedCommentId: "", hasUnsaved: true },
+        ),
       setContentJson: (contentJson) => set({ contentJson, hasUnsaved: true }),
       setEditDraft: (postId, json) =>
         set({ editDraftId: postId, editContentJson: json, hasUnsaved: true }),

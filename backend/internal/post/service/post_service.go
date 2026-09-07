@@ -139,6 +139,44 @@ func applyQuoteDefaults(req *model.CreatePostRequest) {
 	}
 }
 
+func applyQuoteUpdate(ctx context.Context, s *PostService, existing *model.Post, req *model.UpdatePostRequest) error {
+	postID := ""
+	commentID := ""
+	if req.QuotedPostID != nil {
+		postID = strings.TrimSpace(*req.QuotedPostID)
+		trimmed := postID
+		req.QuotedPostID = &trimmed
+	}
+	if req.QuotedCommentID != nil {
+		commentID = strings.TrimSpace(*req.QuotedCommentID)
+		trimmed := commentID
+		req.QuotedCommentID = &trimmed
+	}
+	if postID != "" && commentID != "" {
+		return fmt.Errorf("cannot quote both a post and a comment")
+	}
+	if postID != "" {
+		if postID == existing.ID {
+			return fmt.Errorf("cannot quote this post")
+		}
+		quoted, err := s.repo.GetByID(ctx, postID)
+		if err != nil || quoted == nil || quoted.Status != "published" || quoted.DeletedAt != nil {
+			return fmt.Errorf("quoted post not found")
+		}
+		empty := ""
+		req.QuotedCommentID = &empty
+	}
+	if commentID != "" {
+		summary, _, err := s.repo.GetCommentQuoteTarget(ctx, commentID)
+		if err != nil || summary == nil {
+			return fmt.Errorf("quoted comment not found")
+		}
+		empty := ""
+		req.QuotedPostID = &empty
+	}
+	return nil
+}
+
 func (s *PostService) notifyCommentQuoted(ctx context.Context, post *model.Post, actorID, commentID, commentAuthorID string) {
 	if s.notif == nil || post == nil || commentAuthorID == "" || commentAuthorID == actorID {
 		return
@@ -235,6 +273,10 @@ func (s *PostService) Update(ctx context.Context, id string, userID string, req 
 	}
 	if post.AuthorID != userID {
 		return nil, fmt.Errorf("only the author can edit this post")
+	}
+
+	if err := applyQuoteUpdate(ctx, s, post, req); err != nil {
+		return nil, err
 	}
 
 	if err := applyHashtagsUpdate(post, req); err != nil {

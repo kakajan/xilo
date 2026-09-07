@@ -1,6 +1,18 @@
 import type { CreatePostRequest, Post, PostMedia, PostType } from "@/types/post";
 import { extractTextFromTipTapJSON, isEmptyTipTapJSON } from "@/lib/tiptap-content";
 
+export const EDITOR_POST_KINDS = [
+  "article",
+  "micro",
+  "photo",
+  "video",
+  "link",
+  "quote",
+  "audio",
+] as const;
+
+export type EditorPostKind = (typeof EDITOR_POST_KINDS)[number];
+
 export const POST_TYPE_LABELS: Record<PostType, string> = {
   article: "مقاله",
   micro: "متن کوتاه",
@@ -9,10 +21,34 @@ export const POST_TYPE_LABELS: Record<PostType, string> = {
   link: "لینک",
 };
 
+export const COMPOSE_KIND_LABELS: Record<EditorPostKind, string> = {
+  ...POST_TYPE_LABELS,
+  quote: "نقل‌قول",
+  audio: "صوت",
+};
+
 export const MICRO_MAX_CHARS = 500;
 
 export function resolvePostType(post: Pick<Post, "post_type">): PostType {
   return post.post_type ?? "article";
+}
+
+export function apiPostType(kind: EditorPostKind): PostType {
+  if (kind === "audio" || kind === "quote") return "article";
+  return kind;
+}
+
+export function isArticleLike(kind: EditorPostKind): boolean {
+  return kind === "article" || kind === "audio";
+}
+
+export function composeKindFromPost(post: Post): EditorPostKind {
+  if (post.quoted_post_id || post.quoted_comment_id || post.quoted_post || post.quoted_comment) {
+    return "quote";
+  }
+  const type = resolvePostType(post);
+  if (type === "article" && post.audio_url) return "audio";
+  return type;
 }
 
 export function linkHostname(url: string): string {
@@ -54,7 +90,7 @@ export function postDisplayText(post: Post): string {
 }
 
 export interface BuildPostPayloadInput {
-  postType: PostType;
+  postType: EditorPostKind;
   title: string;
   slug?: string;
   excerpt?: string;
@@ -67,16 +103,31 @@ export interface BuildPostPayloadInput {
   isPremium: boolean;
   linkUrl?: string;
   mediaIds?: string[];
+  quotedPostId?: string;
+  quotedCommentId?: string;
+  clearQuote?: boolean;
 }
 
 export function validatePostPayload(input: BuildPostPayloadInput): string | null {
-  const { postType, title, contentJson, linkUrl, mediaIds } = input;
+  const { postType, title, contentJson, linkUrl, mediaIds, audioUrl, quotedPostId, quotedCommentId } =
+    input;
 
   switch (postType) {
     case "article":
       if (!title.trim()) return "عنوان لازم است";
       if (isEmptyTipTapJSON(contentJson)) return "متن پست خالی است";
       return null;
+    case "audio":
+      if (!title.trim()) return "عنوان لازم است";
+      if (isEmptyTipTapJSON(contentJson)) return "متن پست خالی است";
+      if (!audioUrl?.trim()) return "فایل صوتی لازم است";
+      return null;
+    case "quote": {
+      const body = extractMicroBody(contentJson);
+      if (!body) return "متن نقل‌قول را بنویسید";
+      if (!quotedPostId?.trim() && !quotedCommentId?.trim()) return "پست مورد نقل‌قول را انتخاب کنید";
+      return null;
+    }
     case "micro": {
       const body = extractMicroBody(contentJson);
       if (!body) return "متن کوتاه خالی است";
@@ -112,6 +163,7 @@ function extractMicroBody(contentJson: string): string {
 export function buildCreatePostPayload(input: BuildPostPayloadInput): CreatePostRequest {
   const contentMd = extractMicroBody(input.contentJson);
   const hasEditorContent = !isEmptyTipTapJSON(input.contentJson);
+  const apiType = apiPostType(input.postType);
 
   const base: CreatePostRequest = {
     title: input.title.trim(),
@@ -120,24 +172,42 @@ export function buildCreatePostPayload(input: BuildPostPayloadInput): CreatePost
     content: hasEditorContent ? input.contentJson : "{}",
     content_md: contentMd || undefined,
     cover_image_url: input.coverImageUrl || undefined,
-    audio_url: input.audioUrl || undefined,
+    audio_url: input.audioUrl ?? "",
     category: input.category || undefined,
     tags: input.tags?.length ? input.tags : undefined,
     status: input.status,
     is_premium: input.isPremium,
-    post_type: input.postType,
+    post_type: apiType,
   };
 
-  if (input.postType === "link") {
+  if (apiType === "link") {
     base.link_url = input.linkUrl?.trim();
   }
 
-  if (input.postType === "photo" || input.postType === "video") {
+  if (apiType === "photo" || apiType === "video") {
     base.media_ids = input.mediaIds;
   }
 
-  if (input.postType === "micro" && !base.title) {
-    base.title = contentMd.slice(0, 80) || "متن کوتاه";
+  if (input.postType === "quote") {
+    if (input.quotedCommentId?.trim()) {
+      base.quoted_comment_id = input.quotedCommentId.trim();
+    } else if (input.quotedPostId?.trim()) {
+      base.quoted_post_id = input.quotedPostId.trim();
+    }
+    if (!base.title) {
+      base.title = contentMd.slice(0, 80) || "نقل‌قول";
+    }
+  } else if (input.clearQuote) {
+    base.quoted_post_id = "";
+    base.quoted_comment_id = "";
+  }
+
+  if ((input.postType === "micro" || input.postType === "quote") && !base.title) {
+    base.title = contentMd.slice(0, 80) || (input.postType === "quote" ? "نقل‌قول" : "متن کوتاه");
+  }
+
+  if (input.postType === "audio" && !base.title) {
+    base.title = contentMd.slice(0, 80) || "صوت";
   }
 
   return base;

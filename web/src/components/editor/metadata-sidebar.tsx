@@ -6,6 +6,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { Button } from "@/components/ui/button";
 import { apiUpload } from "@/lib/api-client";
 import { normalizeTag } from "@/lib/hashtag";
+import { isArticleLike } from "@/lib/post-type";
 
 export function MetadataSidebar() {
   const {
@@ -32,7 +33,9 @@ export function MetadataSidebar() {
     setIsPremium,
   } = useEditorStore();
 
-  const isArticle = postType === "article";
+  const isArticle = isArticleLike(postType);
+  const isQuote = postType === "quote";
+  const audioRequired = postType === "audio";
 
   const [tagInput, setTagInput] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -239,8 +242,11 @@ export function MetadataSidebar() {
         </div>
       ) : null}
 
+      {isQuote ? null : (
       <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">فایل صوتی پست</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          {audioRequired ? "فایل صوتی پست (لازم)" : "فایل صوتی پست"}
+        </label>
         {audioUrl ? (
           <div className="flex items-center gap-2 rounded-lg border bg-secondary/40 px-3 py-2">
             <Music2 className="h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -263,7 +269,11 @@ export function MetadataSidebar() {
           <label className="flex h-14 cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed text-sm text-muted-foreground hover:bg-accent/50">
             <Music2 className="h-4 w-4 shrink-0" aria-hidden />
             <span className="min-w-0">
-              {uploadingAudio ? "در حال آپلود صوت..." : "آپلود فایل صوتی (اختیاری، تا ۵۰ مگابایت)"}
+              {uploadingAudio
+                ? "در حال آپلود صوت..."
+                : audioRequired
+                  ? "آپلود فایل صوتی (تا ۵۰ مگابایت)"
+                  : "آپلود فایل صوتی (اختیاری، تا ۵۰ مگابایت)"}
             </span>
             <input
               type="file"
@@ -279,6 +289,7 @@ export function MetadataSidebar() {
           </p>
         ) : null}
       </div>
+      )}
 
       <div className="flex items-center justify-between">
         <label className="text-xs font-medium">ویژه (پرمیوم)</label>
