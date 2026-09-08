@@ -20,6 +20,7 @@ describe("share-urls", () => {
   it("uses NEXT_PUBLIC_URL for absolute links", () => {
     vi.stubEnv("NEXT_PUBLIC_URL", "https://aile.ir/");
     expect(publicSiteOrigin()).toBe("https://aile.ir");
+    expect(profileShareUrl("$")).toBe("https://aile.ir");
     expect(postShareUrl("usher", "hello-world")).toBe(
       "https://aile.ir/usher/hello-world",
     );

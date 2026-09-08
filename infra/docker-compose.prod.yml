@@ -51,6 +51,8 @@ services:
     image: xilo/web:${XILO_IMAGE_TAG:-latest}
     pull_policy: missing
     restart: unless-stopped
+    environment:
+      INTERNAL_API_URL: http://api-gateway:8000
     ports:
       - "127.0.0.1:13000:3000"
     depends_on:

@@ -86,6 +86,7 @@ import (
 	"github.com/xilo-platform/xilo/pkg/contacthash"
 	"github.com/xilo-platform/xilo/pkg/i18n"
 	"github.com/xilo-platform/xilo/pkg/jwt"
+	"github.com/xilo-platform/xilo/pkg/norobots"
 	"github.com/xilo-platform/xilo/pkg/payment/zarinpal"
 	pkgrealtime "github.com/xilo-platform/xilo/pkg/realtime"
 	pkgredis "github.com/xilo-platform/xilo/pkg/redis"
@@ -213,6 +214,8 @@ func main() {
 	})
 
 	app.Use(logger.New())
+	app.Use(norobots.Middleware)
+	app.Get("/robots.txt", norobots.Robots)
 	app.Use(cors.New(cors.Config{
 		AllowOriginsFunc: func(origin string) bool {
 			switch origin {

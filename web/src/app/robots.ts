@@ -1,11 +1,27 @@
 import type { MetadataRoute } from "next";
+import { canonicalSiteOrigin } from "@/lib/public-url";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+  const origin = canonicalSiteOrigin();
   return {
     rules: [
-      { userAgent: "*", allow: "/", disallow: ["/api/", "/dashboard/", "/write/"] },
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: [
+          "/api/",
+          "/dashboard/",
+          "/write/",
+          "/settings",
+          "/chat",
+          "/notifications",
+          "/bookmarks",
+          "/saved",
+          "/quote",
+        ],
+      },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: `${origin}/sitemap.xml`,
+    host: origin.replace(/^https?:\/\//, ""),
   };
 }

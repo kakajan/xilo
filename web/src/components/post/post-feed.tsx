@@ -4,15 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import { PostCard } from "./post-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { PostListResponse } from "@/types/post";
+import type { Post, PostListResponse } from "@/types/post";
 
-export function PostFeed() {
+export function PostFeed({ initialPosts = [] }: { initialPosts?: Post[] }) {
   const { data, isLoading } = useQuery({
     queryKey: ["feed"],
     queryFn: async () => {
       const res = await apiFetch<PostListResponse>("/api/posts?limit=10");
       return res.data;
     },
+    initialData: initialPosts.length > 0 ? initialPosts : undefined,
+    staleTime: 60_000,
   });
 
   if (isLoading) {

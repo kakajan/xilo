@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -19,14 +19,11 @@ import type { ContactUser } from "@/types/chat";
 export default function ContactsPage() {
   const t = useTranslations("common.contacts");
   const tNav = useTranslations("common.nav");
+  const tErrors = useTranslations("common.errors");
   const router = useRouter();
   const { isAuthenticated, authChecked } = useAuthStore();
   const [q, setQ] = useState("");
   const [messagingId, setMessagingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (authChecked && !isAuthenticated) router.replace("/login");
-  }, [authChecked, isAuthenticated, router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["contacts"],
@@ -54,8 +51,20 @@ export default function ContactsPage() {
     onSettled: () => setMessagingId(null),
   });
 
-  if (!authChecked || !isAuthenticated) {
+  if (!authChecked) {
     return <Skeleton className="h-64 w-full" />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto w-full max-w-xl py-20 text-center">
+        <h1 className="text-xl font-bold">{tNav("contacts")}</h1>
+        <p className="mt-2 text-muted-foreground">{tErrors("unauthorized")}</p>
+        <Button asChild className="mt-4 min-h-11">
+          <Link href="/login">{tNav("login")}</Link>
+        </Button>
+      </div>
+    );
   }
 
   return (

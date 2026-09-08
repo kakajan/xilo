@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { formatDate, readingTimeText, getInitials } from "@/lib/utils";
@@ -18,20 +18,25 @@ import {
   TimeLabel,
 } from "@/components/user/username-handle";
 import { fetchPublishedPost } from "@/lib/posts-server";
-import { postShareUrl, publicSiteOrigin } from "@/lib/share-urls";
-import { getArticleJsonLd } from "@/lib/seo";
+import { getArticleJsonLd, jsonLdString, noIndexMetadata } from "@/lib/seo";
+import { postPath, postShareUrl } from "@/lib/share-urls";
+import { decodePathSegment, isValidPublicUsername } from "@/lib/public-url";
 import { linkHostname, postDisplayText, resolvePostType } from "@/lib/post-type";
+
+export const revalidate = 60;
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ username: string; slug: string }>;
 }): Promise<Metadata> {
-  const { username, slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = decodePathSegment(rawSlug);
   const post = await fetchPublishedPost(slug);
-  if (!post) return { title: "پست پیدا نشد" };
+  if (!post) return { title: "پست پیدا نشد", ...noIndexMetadata };
   const postType = resolvePostType(post);
-  const url = postShareUrl(post.author?.username || username, post.slug);
+  const author = post.author?.username || "";
+  const url = postShareUrl(isValidPublicUsername(author) ? author : "", post.slug);
   const title =
     postType === "article"
       ? post.title
@@ -52,8 +57,13 @@ export async function generateMetadata({
       description,
       url,
       type: "article",
+      locale: "fa_IR",
+      publishedTime: post.published_at || undefined,
+      modifiedTime: post.updated_at || undefined,
+      authors: author ? [post.author?.display_name || author] : undefined,
       images: ogImage ? [ogImage] : undefined,
     },
+    robots: { index: true, follow: true },
     twitter: {
       card: ogImage ? "summary_large_image" : "summary",
       title,
@@ -69,22 +79,31 @@ export default async function PostPage({
   params: Promise<{ username: string; slug: string }>;
   searchParams: Promise<{ reply?: string }>;
 }) {
-  const { username, slug } = await params;
+  const { username: rawUsername, slug: rawSlug } = await params;
+  const username = decodePathSegment(rawUsername);
+  const slug = decodePathSegment(rawSlug);
   const { reply } = await searchParams;
   const post = await fetchPublishedPost(slug);
   if (!post) notFound();
+  const authorUsername = post.author?.username || "";
+  if (isValidPublicUsername(authorUsername) && authorUsername !== username) {
+    redirect(postPath(authorUsername, post.slug));
+  }
 
   const postType = resolvePostType(post);
   const authorName = post.author?.display_name || post.author?.username || "ناشناس";
-  const shareUrl = postShareUrl(post.author?.username || username, post.slug);
-  const jsonLd = getArticleJsonLd(post, publicSiteOrigin());
+  const shareUrl = postShareUrl(
+    isValidPublicUsername(authorUsername) ? authorUsername : "",
+    post.slug,
+  );
+  const jsonLd = getArticleJsonLd(post);
   const showArticleTitle = postType === "article";
 
   return (
     <article className="mx-auto max-w-3xl">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }}
       />
       <header className="mb-8">
         {showArticleTitle ? (

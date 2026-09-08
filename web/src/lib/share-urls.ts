@@ -1,23 +1,30 @@
-const DEFAULT_ORIGIN = "https://aile.ir";
+import { canonicalSiteOrigin, isValidPublicUsername } from "@/lib/public-url";
 
 export function publicSiteOrigin(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_URL?.trim().replace(/\/$/, "");
-  if (fromEnv) return fromEnv;
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return window.location.origin.replace(/\/$/, "");
+  if (process.env.NEXT_PUBLIC_URL?.trim()) {
+    return canonicalSiteOrigin();
   }
-  return DEFAULT_ORIGIN;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return canonicalSiteOrigin(window.location.origin);
+  }
+  return canonicalSiteOrigin();
 }
 
 function encSegment(value: string): string {
   return encodeURIComponent(value.trim());
 }
 
+export function profilePath(username: string): string {
+  const u = username.trim();
+  if (!isValidPublicUsername(u)) return "/";
+  return `/${encSegment(u)}`;
+}
+
 export function postPath(username: string, slug: string): string {
   const s = slug.trim();
   if (!s) return "/";
   const u = username.trim();
-  if (!u) return `/p/${encSegment(s)}`;
+  if (!isValidPublicUsername(u)) return `/p/${encSegment(s)}`;
   return `/${encSegment(u)}/${encSegment(s)}`;
 }
 
@@ -35,9 +42,9 @@ export function commentShareUrl(
 }
 
 export function profileShareUrl(username: string): string {
-  const u = username.trim();
-  if (!u) return publicSiteOrigin();
-  return `${publicSiteOrigin()}/${encSegment(u)}`;
+  const path = profilePath(username);
+  if (path === "/") return publicSiteOrigin();
+  return `${publicSiteOrigin()}${path}`;
 }
 
 export async function shareOrCopy(
