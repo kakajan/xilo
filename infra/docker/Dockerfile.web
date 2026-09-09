@@ -11,7 +11,11 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_URL=$NEXT_PUBLIC_URL
 
 COPY package.json package-lock.json* ./
-RUN npm ci --production=false
+RUN --mount=type=cache,target=/root/.npm \
+    npm config set fetch-retries 8 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm ci
 COPY . .
 RUN npm run build
 
