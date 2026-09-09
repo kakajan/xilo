@@ -16,6 +16,7 @@ import (
 	postmodel "github.com/xilo-platform/xilo/internal/post/model"
 	postrepo "github.com/xilo-platform/xilo/internal/post/repository"
 	userutil "github.com/xilo-platform/xilo/internal/user/util"
+	"github.com/xilo-platform/xilo/pkg/jsonutil"
 	pkgredis "github.com/xilo-platform/xilo/pkg/redis"
 )
 
@@ -181,7 +182,7 @@ func (h *ProfileHandler) ListUserPosts(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"data":        posts,
+		"data":        jsonutil.OrEmpty(posts),
 		"next_cursor": nextCursor,
 		"has_more":    nextCursor != "",
 	})
@@ -200,7 +201,7 @@ func (h *ProfileHandler) ListUserReplies(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"data":        comments,
+		"data":        jsonutil.OrEmpty(comments),
 		"next_cursor": nextCursor,
 		"has_more":    nextCursor != "",
 	})
@@ -295,7 +296,7 @@ func (h *ProfileHandler) ListUserLikes(c *fiber.Ctx) error {
 	_ = h.postRepo.EnrichPosts(ctx, posts, viewerID)
 
 	return c.JSON(fiber.Map{
-		"data":        posts,
+		"data":        jsonutil.OrEmpty(posts),
 		"next_cursor": nextCursor,
 		"has_more":    nextCursor != "",
 	})
@@ -428,7 +429,7 @@ func (h *ProfileHandler) listFollowGraph(c *fiber.Ctx, kind followGraphKind) err
 	}
 
 	return c.JSON(fiber.Map{
-		"data":        rows,
+		"data":        jsonutil.OrEmpty(rows),
 		"next_cursor": nextCursor,
 		"has_more":    nextCursor != "",
 	})

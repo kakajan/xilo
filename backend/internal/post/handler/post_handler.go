@@ -9,6 +9,7 @@ import (
 	"github.com/xilo-platform/xilo/internal/post/model"
 	"github.com/xilo-platform/xilo/internal/post/repository"
 	"github.com/xilo-platform/xilo/internal/post/service"
+	"github.com/xilo-platform/xilo/pkg/jsonutil"
 )
 
 type PostHandler struct {
@@ -181,7 +182,7 @@ func (h *PostHandler) List(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"data":        posts,
+		"data":        jsonutil.OrEmpty(posts),
 		"next_cursor": nextCursor,
 		"has_more":    nextCursor != "",
 	})

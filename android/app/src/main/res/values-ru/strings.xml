@@ -41,6 +41,7 @@
     <string name="error_too_many_requests">Слишком много запросов. Подождите немного.</string>
     <string name="error_load_feed">Не удалось загрузить ленту</string>
     <string name="error_load_post">Не удалось загрузить пост</string>
+    <string name="error_load_comments">Не удалось загрузить комментарии</string>
     <string name="error_load_profile">Не удалось загрузить профиль</string>
     <string name="error_create_post">Не удалось создать пост</string>
     <string name="error_update_post">Не удалось обновить пост</string>

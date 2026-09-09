@@ -53,27 +53,27 @@ func (r *CommentRepo) Create(ctx context.Context, postID, authorID string, req *
 
 func (r *CommentRepo) GetByID(ctx context.Context, id string) (*model.Comment, error) {
 	var row struct {
-		ID          string    `db:"id"`
-		PostID      string    `db:"post_id"`
-		AuthorID    string    `db:"author_id"`
-		ParentID    *string   `db:"parent_id"`
-		RootID      *string   `db:"root_id"`
-		Depth       int       `db:"depth"`
-		Content     string    `db:"content"`
-		ContentHTML string    `db:"content_html"`
-		MediaURL    string    `db:"media_url"`
-		IsPinned    bool      `db:"is_pinned"`
-		IsSpam      bool      `db:"is_spam"`
-		RepostCount int       `db:"repost_count"`
-		CreatedAt   time.Time `db:"created_at"`
-		UpdatedAt   time.Time `db:"updated_at"`
-		UserID      string    `db:"user_id"`
-		Username    string    `db:"username"`
-		DisplayName string    `db:"display_name"`
-		AvatarURL   string    `db:"avatar_url"`
-		PostTitle          string `db:"post_title"`
-		PostSlug           string `db:"post_slug"`
-		PostAuthorUsername string `db:"post_author_username"`
+		ID                 string    `db:"id"`
+		PostID             string    `db:"post_id"`
+		AuthorID           string    `db:"author_id"`
+		ParentID           *string   `db:"parent_id"`
+		RootID             *string   `db:"root_id"`
+		Depth              int       `db:"depth"`
+		Content            string    `db:"content"`
+		ContentHTML        string    `db:"content_html"`
+		MediaURL           string    `db:"media_url"`
+		IsPinned           bool      `db:"is_pinned"`
+		IsSpam             bool      `db:"is_spam"`
+		RepostCount        int       `db:"repost_count"`
+		CreatedAt          time.Time `db:"created_at"`
+		UpdatedAt          time.Time `db:"updated_at"`
+		UserID             string    `db:"user_id"`
+		Username           string    `db:"username"`
+		DisplayName        string    `db:"display_name"`
+		AvatarURL          string    `db:"avatar_url"`
+		PostTitle          string    `db:"post_title"`
+		PostSlug           string    `db:"post_slug"`
+		PostAuthorUsername string    `db:"post_author_username"`
 	}
 
 	err := r.db.GetContext(ctx, &row, `
@@ -204,6 +204,9 @@ func (r *CommentRepo) ListByPost(ctx context.Context, postID string, cursor stri
 	if len(roots) > limit {
 		roots = roots[:limit]
 		nextCursor = roots[len(roots)-1].ID
+	}
+	if roots == nil {
+		roots = []*model.Comment{}
 	}
 
 	return roots, nextCursor, nil

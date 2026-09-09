@@ -41,6 +41,7 @@
     <string name="error_too_many_requests">تم إرسال طلبات كثيرة. يرجى الانتظار قليلًا.</string>
     <string name="error_load_feed">فشل تحميل الموجز</string>
     <string name="error_load_post">فشل تحميل المنشور</string>
+    <string name="error_load_comments">فشل تحميل التعليقات</string>
     <string name="error_load_profile">فشل تحميل الملف الشخصي</string>
     <string name="error_create_post">فشل إنشاء المنشور</string>
     <string name="error_update_post">فشل تحديث المنشور</string>

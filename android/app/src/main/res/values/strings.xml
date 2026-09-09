@@ -41,6 +41,7 @@
     <string name="error_too_many_requests">درخواست‌های زیادی ارسال شده. لطفاً کمی صبر کنید.</string>
     <string name="error_load_feed">بارگذاری فید با خطا مواجه شد</string>
     <string name="error_load_post">خطا در بارگذاری پست</string>
+    <string name="error_load_comments">خطا در بارگذاری دیدگاه‌ها</string>
     <string name="error_load_profile">بارگذاری پروفایل با خطا مواجه شد</string>
     <string name="error_create_post">ایجاد پست انجام نشد</string>
     <string name="error_update_post">ویرایش پست انجام نشد</string>

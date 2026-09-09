@@ -41,6 +41,7 @@
     <string name="error_too_many_requests">Too many requests. Please wait a moment.</string>
     <string name="error_load_feed">Failed to load feed</string>
     <string name="error_load_post">Failed to load post</string>
+    <string name="error_load_comments">Failed to load comments</string>
     <string name="error_load_profile">Failed to load profile</string>
     <string name="error_create_post">Failed to create post</string>
     <string name="error_update_post">Failed to update post</string>

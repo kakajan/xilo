@@ -5,6 +5,7 @@ import ir.xilo.app.data.local.dao.PostDao
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.prefs.AnalyticsSessionStore
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.remote.decodeListOrEmpty
 import ir.xilo.app.data.remote.dto.CreatePostRequest
 import ir.xilo.app.data.remote.dto.PostSearchHit
 import ir.xilo.app.data.remote.dto.PostResponse
@@ -24,7 +25,6 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.text.SimpleDateFormat
@@ -68,11 +68,7 @@ class PostRepository @Inject constructor(
         return try {
             val responseMap = apiService.listPosts(limit = limit, status = "draft")
             val data = responseMap["data"]
-            val list = if (data != null) {
-                json.decodeFromJsonElement<List<PostResponse>>(data).map { it.toPostEntity() }
-            } else {
-                emptyList()
-            }
+            val list = json.decodeListOrEmpty<PostResponse>(data).map { it.toPostEntity() }
             Result.success(list)
         } catch (e: Exception) {
             Result.failure(e)
@@ -99,8 +95,7 @@ class PostRepository @Inject constructor(
     suspend fun refreshFeed(): Result<Unit> {
         return try {
             val responseMap = apiService.listPosts(limit = 20)
-            val dataElement = responseMap["data"] ?: throw Exception("Invalid response structure")
-            val postsList = json.decodeFromJsonElement<List<PostResponse>>(dataElement)
+            val postsList = json.decodeListOrEmpty<PostResponse>(responseMap["data"])
             feedNextCursor = nextCursorOf(responseMap)
 
             val entities = postsList.mapIndexed { index, dto ->
@@ -119,8 +114,7 @@ class PostRepository @Inject constructor(
         val cursor = feedNextCursor ?: return Result.success(Unit)
         return try {
             val responseMap = apiService.listPosts(cursor = cursor, limit = 20)
-            val dataElement = responseMap["data"] ?: throw Exception("Invalid response structure")
-            val postsList = json.decodeFromJsonElement<List<PostResponse>>(dataElement)
+            val postsList = json.decodeListOrEmpty<PostResponse>(responseMap["data"])
             feedNextCursor = nextCursorOf(responseMap)
             val rankBase = postDao.maxFeedRank() + 1
             val entities = postsList.mapIndexed { index, dto ->

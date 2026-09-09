@@ -49,12 +49,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLdString(getWebsiteJsonLd()) }}
-        />
         <Providers>
-          <AppShell>{children}</AppShell>
+          <AppShell>
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: jsonLdString(getWebsiteJsonLd()) }}
+            />
+            {children}
+          </AppShell>
         </Providers>
       </body>
     </html>

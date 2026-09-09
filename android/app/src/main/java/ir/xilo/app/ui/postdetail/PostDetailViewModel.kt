@@ -112,7 +112,7 @@ class PostDetailViewModel @Inject constructor(
                 commentRepository.refreshComments(postEntity.id)
                     .onFailure { e ->
                         _errorMessage.value =
-                            errorMessageResolver.fromThrowable(e, R.string.error_load_post)
+                            errorMessageResolver.fromThrowable(e, R.string.error_load_comments)
                     }
                 if (recordViewOnSuccess) {
                     recordView(postEntity.id)

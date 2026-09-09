@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/xilo-platform/xilo/internal/comment/model"
 	"github.com/xilo-platform/xilo/internal/comment/service"
+	"github.com/xilo-platform/xilo/pkg/jsonutil"
 )
 
 type CommentHandler struct {
@@ -40,7 +41,7 @@ func (h *CommentHandler) List(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"data":        comments,
+		"data":        jsonutil.OrEmpty(comments),
 		"next_cursor": nextCursor,
 		"has_more":    nextCursor != "",
 	})

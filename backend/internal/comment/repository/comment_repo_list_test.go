@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -169,6 +170,51 @@ func TestListByPost_SkipsViewerReactionsWhenAnonymous(t *testing.T) {
 	}
 	if len(comments[0].ViewerReactions) != 0 {
 		t.Fatalf("expected empty ViewerReactions, got %#v", comments[0].ViewerReactions)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
+func TestListByPost_EmptyReturnsNonNilSlice(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock: %v", err)
+	}
+	defer db.Close()
+
+	sqlxDB := sqlx.NewDb(db, "sqlmock")
+	repo := NewCommentRepo(sqlxDB)
+	postID := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+	mock.ExpectQuery(`SELECT c.id, c.post_id, c.author_id`).
+		WithArgs(postID).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "post_id", "author_id", "parent_id", "root_id", "depth",
+			"content", "content_html", "media_url", "is_pinned", "is_spam",
+			"repost_count", "created_at", "updated_at", "deleted_at",
+			"user_id", "username", "display_name", "avatar_url",
+		}))
+
+	comments, nextCursor, err := repo.ListByPost(context.Background(), postID, "", 20, "newest", "")
+	if err != nil {
+		t.Fatalf("ListByPost: %v", err)
+	}
+	if comments == nil {
+		t.Fatal("nil comments slice; JSON would encode data as null")
+	}
+	if len(comments) != 0 {
+		t.Fatalf("len=%d, want 0", len(comments))
+	}
+	if nextCursor != "" {
+		t.Fatalf("next_cursor=%q", nextCursor)
+	}
+	raw, err := json.Marshal(map[string]any{"data": comments})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != `{"data":[]}` {
+		t.Fatalf("json=%s", raw)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("unmet expectations: %v", err)

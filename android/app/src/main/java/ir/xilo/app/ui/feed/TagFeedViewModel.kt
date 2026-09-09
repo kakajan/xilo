@@ -9,6 +9,7 @@ import ir.xilo.app.core.util.canRepost
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.entity.toggledReaction
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.remote.decodeListOrEmpty
 import ir.xilo.app.data.remote.dto.PostResponse
 import ir.xilo.app.data.remote.dto.toPostEntity
 import ir.xilo.app.data.repository.AuthRepository
@@ -19,7 +20,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
 import javax.inject.Inject
 
 @HiltViewModel
@@ -54,12 +54,7 @@ class TagFeedViewModel @Inject constructor(
             _error.value = null
             try {
                 val map = apiService.listPosts(limit = 30, tag = tag)
-                val data = map["data"]
-                val list = if (data != null) {
-                    json.decodeFromJsonElement<List<PostResponse>>(data).map { it.toPostEntity() }
-                } else {
-                    emptyList()
-                }
+                val list = json.decodeListOrEmpty<PostResponse>(map["data"]).map { it.toPostEntity() }
                 _posts.value = list
             } catch (e: Exception) {
                 _error.value = errorMessageResolver.fromThrowable(e, R.string.error_load_feed)

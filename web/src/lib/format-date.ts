@@ -47,10 +47,41 @@ export function defaultDatePattern(calendar: CalendarSystem): string {
   return calendar === "jalali" ? "d MMMM yyyy" : "MMM d, yyyy";
 }
 
+/** Display clock for UI dates — matches next-intl and Iranian users. */
+export const DISPLAY_TIME_ZONE = "Asia/Tehran";
+
+/**
+ * Build a Date whose local wall clock equals `timeZone`, so date-fns/jalali
+ * format the same string on UTC servers and Tehran (or any) clients.
+ */
+export function zonedWallClockDate(date: Date, timeZone: string = DISPLAY_TIME_ZONE): Date {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const num = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
+  return new Date(
+    num("year"),
+    num("month") - 1,
+    num("day"),
+    num("hour"),
+    num("minute"),
+    num("second"),
+  );
+}
+
 export function formatDateString(date: string | Date | null | undefined, options: FormatDateOptions = {}): string {
   if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (Number.isNaN(d.getTime())) return "-";
+  const instant = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(instant.getTime())) return "-";
+  const d = zonedWallClockDate(instant);
 
   const locale = options.locale ?? "fa";
   const calendar = options.calendar ?? resolveCalendar("auto", locale);

@@ -41,6 +41,7 @@
     <string name="error_too_many_requests">Çok fazla istek. Lütfen bekleyin.</string>
     <string name="error_load_feed">Akış yüklenemedi</string>
     <string name="error_load_post">Gönderi yüklenemedi</string>
+    <string name="error_load_comments">Yorumlar yüklenemedi</string>
     <string name="error_load_profile">Profil yüklenemedi</string>
     <string name="error_create_post">Gönderi oluşturulamadı</string>
     <string name="error_update_post">Gönderi güncellenemedi</string>

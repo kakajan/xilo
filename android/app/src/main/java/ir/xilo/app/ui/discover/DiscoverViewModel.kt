@@ -10,6 +10,7 @@ import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.local.entity.toggledReaction
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.remote.decodeListOrEmpty
 import ir.xilo.app.data.remote.dto.DiscoverCommentDto
 import ir.xilo.app.data.remote.dto.InterestDto
 import ir.xilo.app.data.remote.dto.toPostEntity
@@ -26,7 +27,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -168,12 +168,11 @@ class DiscoverViewModel @Inject constructor(
                 if (_apiComments.value == null) {
                     try {
                         val postsMap = apiService.listPosts(limit = 10)
-                        val dataElement = postsMap["data"]
-                        if (dataElement != null) {
-                            val posts = json.decodeFromJsonElement<List<ir.xilo.app.data.remote.dto.PostResponse>>(dataElement)
-                            posts.forEach { post ->
-                                commentRepository.refreshComments(post.id)
-                            }
+                        val posts = json.decodeListOrEmpty<ir.xilo.app.data.remote.dto.PostResponse>(
+                            postsMap["data"],
+                        )
+                        posts.forEach { post ->
+                            commentRepository.refreshComments(post.id)
                         }
                     } catch (_: Exception) {
                         // Keep Room cache via discoverComments combine
@@ -479,13 +478,10 @@ class DiscoverViewModel @Inject constructor(
             _isSearching.value = true
             try {
                 val postsMap = apiService.listPosts(limit = 20, tag = query)
-                val dataElement = postsMap["data"]
-                if (dataElement != null) {
-                    val postsDto = json.decodeFromJsonElement<List<ir.xilo.app.data.remote.dto.PostResponse>>(dataElement)
-                    _searchResults.value = postsDto.map { it.toPostEntity() }
-                } else {
-                    _searchResults.value = emptyList()
-                }
+                val postsDto = json.decodeListOrEmpty<ir.xilo.app.data.remote.dto.PostResponse>(
+                    postsMap["data"],
+                )
+                _searchResults.value = postsDto.map { it.toPostEntity() }
             } catch (e: Exception) {
                 _searchResults.value = emptyList()
                 _errorMessage.value = errorMessageResolver.fromThrowable(e, R.string.error_search)

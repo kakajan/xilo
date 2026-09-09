@@ -3,6 +3,7 @@ package ir.xilo.app.data.repository
 import ir.xilo.app.data.local.dao.CommentDao
 import ir.xilo.app.data.local.entity.CommentEntity
 import ir.xilo.app.data.remote.api.XiloApiService
+import ir.xilo.app.data.remote.decodeListOrEmpty
 import ir.xilo.app.data.remote.dto.BookmarkedCommentResponse
 import ir.xilo.app.data.remote.dto.CommentResponse
 import ir.xilo.app.data.remote.dto.CreateCommentRequest
@@ -11,7 +12,6 @@ import ir.xilo.app.data.remote.dto.ToggleReactionRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -52,8 +52,7 @@ class CommentRepository @Inject constructor(
     suspend fun refreshComments(postId: String): Result<Unit> {
         return try {
             val responseMap = apiService.listComments(postId)
-            val dataElement = responseMap["data"] ?: throw Exception("Invalid response structure")
-            val commentsList = json.decodeFromJsonElement<List<CommentResponse>>(dataElement)
+            val commentsList = json.decodeListOrEmpty<CommentResponse>(responseMap["data"])
 
             val entities = flattenComments(commentsList).map { it.toEntity() }
             commentDao.replaceCommentsForPost(postId, entities)
