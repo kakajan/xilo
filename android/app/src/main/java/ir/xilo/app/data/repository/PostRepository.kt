@@ -170,6 +170,7 @@ class PostRepository @Inject constructor(
         postType: String? = null,
         linkUrl: String? = null,
         mediaIds: List<String>? = null,
+        tags: List<String>? = null,
         status: String? = null,
     ): Result<PostEntity> {
         return try {
@@ -178,7 +179,10 @@ class PostRepository @Inject constructor(
                 .trim('-')
                 .ifBlank { "quote" }
             val tiptapJson = buildTiptapDoc(content)
-            val tags = ir.xilo.app.core.util.HashtagParser.extract(content)
+            val mergedTags = ir.xilo.app.core.util.HashtagParser.merge(
+                ir.xilo.app.core.util.HashtagParser.extract(content),
+                tags ?: emptyList(),
+            )
             val quoteComment = quotedCommentId?.takeIf { it.isNotBlank() }
             val quotePost = quotedPostId?.takeIf { it.isNotBlank() }.takeIf { quoteComment == null }
             val scheduled = scheduledAt?.takeIf { it.isNotBlank() }
@@ -192,7 +196,7 @@ class PostRepository @Inject constructor(
                 excerpt = content.take(100),
                 audioUrl = audioUrl?.takeIf { it.isNotBlank() },
                 coverImageUrl = coverImageUrl?.takeIf { it.isNotBlank() },
-                tags = tags.takeIf { it.isNotEmpty() },
+                tags = mergedTags.takeIf { it.isNotEmpty() },
                 status = status?.takeIf { it.isNotBlank() }
                     ?: if (scheduled != null) "scheduled" else "published",
                 quotedPostId = quotePost,
@@ -491,10 +495,14 @@ class PostRepository @Inject constructor(
         mediaIds: List<String>? = null,
         quotedPostId: String? = null,
         quotedCommentId: String? = null,
+        tags: List<String>? = null,
     ): Result<PostEntity> {
         return try {
             val tiptapJson = buildTiptapDoc(content)
-            val tags = ir.xilo.app.core.util.HashtagParser.extract(content)
+            val mergedTags = ir.xilo.app.core.util.HashtagParser.merge(
+                ir.xilo.app.core.util.HashtagParser.extract(content),
+                tags ?: emptyList(),
+            )
 
             val remote = apiService.updatePost(
                 id = postId,
@@ -504,7 +512,7 @@ class PostRepository @Inject constructor(
                     contentMd = content,
                     excerpt = content.take(100),
                     audioUrl = audioUrl,
-                    tags = tags,
+                    tags = mergedTags,
                     coverImageUrl = coverImageUrl,
                     postType = postType,
                     linkUrl = linkUrl,

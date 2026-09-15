@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Music2, Pause, Play } from "lucide-react";
+import { useChromeVisibility } from "@/hooks/use-chrome-visibility";
+import { cn } from "@/lib/utils";
 
 /** Playback speed options for the sticky post audio player. */
 const RATES = [1, 1.25, 1.5] as const;
@@ -16,10 +18,15 @@ function formatTime(seconds: number): string {
 export function StickyAudioPlayer({
   src,
   title,
+  embedded = false,
+  className,
 }: {
   src: string;
   title?: string;
+  embedded?: boolean;
+  className?: string;
 }) {
+  const { visible } = useChromeVisibility();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -118,7 +125,15 @@ export function StickyAudioPlayer({
 
   return (
     <div
-      className="sticky bottom-[8.5rem] z-40 -mx-4 border-t bg-background/95 px-3 py-2 backdrop-blur md:bottom-16"
+      className={
+        embedded
+          ? cn("px-3 py-2", className)
+          : cn(
+              "sticky z-40 -mx-4 border-t bg-background/95 px-3 py-2 backdrop-blur transition-[bottom] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              visible ? "bottom-20 md:bottom-4" : "bottom-0 md:bottom-4",
+              className
+            )
+      }
       role="region"
       aria-label="پخش صوت پست"
     >

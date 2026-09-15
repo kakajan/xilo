@@ -74,6 +74,13 @@
     <string name="post_audio_load_error">پخش صوت ممکن نیست. فایل در دسترس نیست.</string>
     <string name="tag_feed_label">پست‌های این برچسب</string>
     <string name="tag_feed_empty">هنوز پستی با این هشتگ نیست</string>
+    <string name="post_hashtags_label">هشتگ‌ها</string>
+    <string name="post_hashtag_add">افزودن هشتگ</string>
+    <string name="post_hashtag_placeholder">هشتگ جدید (مثلاً: تکنولوژی)</string>
+    <string name="post_hashtag_remove">حذف هشتگ %1$s</string>
+    <string name="post_hashtag_limit">حداکثر ۱۰ هشتگ مجاز است</string>
+    <string name="post_hashtag_duplicate">این هشتگ قبلاً اضافه شده است</string>
+    <string name="post_hashtag_invalid">فرمت هشتگ نامعتبر است</string>
     <string name="post_edit_title">ویرایش پست</string>
     <string name="post_edit_save">ذخیره</string>
     <string name="error_logout">خطا در خروج از حساب. لطفاً دوباره تلاش کنید.</string>

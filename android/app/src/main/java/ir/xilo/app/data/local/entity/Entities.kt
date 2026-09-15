@@ -91,6 +91,8 @@ data class PostEntity(
     val linkUrl: String? = null,
     @ColumnInfo(defaultValue = "'[]'")
     val mediaJson: String = "[]",
+    @ColumnInfo(defaultValue = "'[]'")
+    val tagsJson: String = "[]",
 )
 
 @Entity(tableName = "comments")

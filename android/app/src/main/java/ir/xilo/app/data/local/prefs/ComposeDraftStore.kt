@@ -4,6 +4,10 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+private val draftJson = Json { ignoreUnknownKeys = true }
 
 /**
  * Local compose drafts so title/body survive process death and navigation.
@@ -20,10 +24,11 @@ class ComposeDraftStore @Inject constructor(
         val content: String,
         val audioUrl: String = "",
         val coverImageUrl: String = "",
+        val tags: List<String> = emptyList(),
         val updatedAtMs: Long,
     ) {
         val isEmpty: Boolean get() =
-            title.isBlank() && content.isBlank() && audioUrl.isBlank() && coverImageUrl.isBlank()
+            title.isBlank() && content.isBlank() && audioUrl.isBlank() && coverImageUrl.isBlank() && tags.isEmpty()
     }
 
     fun load(key: String = KEY_NEW): Draft? {
@@ -31,12 +36,15 @@ class ComposeDraftStore @Inject constructor(
         val content = prefs.getString(contentKey(key), null) ?: return null
         val audioUrl = prefs.getString(audioKey(key), "") ?: ""
         val coverImageUrl = prefs.getString(coverKey(key), "") ?: ""
+        val tagsRaw = prefs.getString(tagsKey(key), "[]") ?: "[]"
+        val tags = runCatching { draftJson.decodeFromString<List<String>>(tagsRaw) }.getOrDefault(emptyList())
         val updatedAt = prefs.getLong(updatedKey(key), 0L)
         val draft = Draft(
             title = title,
             content = content,
             audioUrl = audioUrl,
             coverImageUrl = coverImageUrl,
+            tags = tags,
             updatedAtMs = updatedAt,
         )
         return draft.takeUnless { it.isEmpty }
@@ -47,17 +55,20 @@ class ComposeDraftStore @Inject constructor(
         content: String,
         audioUrl: String = "",
         coverImageUrl: String = "",
+        tags: List<String> = emptyList(),
         key: String = KEY_NEW,
     ) {
-        if (title.isBlank() && content.isBlank() && audioUrl.isBlank() && coverImageUrl.isBlank()) {
+        if (title.isBlank() && content.isBlank() && audioUrl.isBlank() && coverImageUrl.isBlank() && tags.isEmpty()) {
             clear(key)
             return
         }
+        val tagsRaw = runCatching { draftJson.encodeToString(tags) }.getOrDefault("[]")
         prefs.edit()
             .putString(titleKey(key), title)
             .putString(contentKey(key), content)
             .putString(audioKey(key), audioUrl)
             .putString(coverKey(key), coverImageUrl)
+            .putString(tagsKey(key), tagsRaw)
             .putLong(updatedKey(key), System.currentTimeMillis())
             .apply()
     }
@@ -68,6 +79,7 @@ class ComposeDraftStore @Inject constructor(
             .remove(contentKey(key))
             .remove(audioKey(key))
             .remove(coverKey(key))
+            .remove(tagsKey(key))
             .remove(updatedKey(key))
             .apply()
     }
@@ -81,6 +93,7 @@ class ComposeDraftStore @Inject constructor(
     private fun contentKey(key: String) = "content_$key"
     private fun audioKey(key: String) = "audio_$key"
     private fun coverKey(key: String) = "cover_$key"
+    private fun tagsKey(key: String) = "tags_$key"
     private fun updatedKey(key: String) = "updated_$key"
 
     companion object {

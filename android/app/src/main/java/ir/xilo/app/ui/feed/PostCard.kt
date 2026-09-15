@@ -32,7 +32,9 @@ import ir.xilo.app.theme.ColorSuccess
 import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.theme.XiloMotion
 import ir.xilo.app.theme.XiloSpacing
+import ir.xilo.app.data.remote.dto.tags
 import ir.xilo.app.ui.components.HashtagAwareText
+import ir.xilo.app.ui.components.PostHashtagsFlow
 import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
@@ -174,6 +176,15 @@ fun PostCard(
                     maxLines = 3,
                     compact = post.postType == ComposeKind.MICRO,
                 )
+
+                val postTags = remember(post.tagsJson) { post.tags }
+                if (postTags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    PostHashtagsFlow(
+                        tags = postTags,
+                        onHashtagClick = { tag -> onHashtagClick?.invoke(tag) },
+                    )
+                }
             }
 
             DropdownMenu(
@@ -217,6 +228,8 @@ fun PostCard(
 
         val showTypeMedia = post.postType == ComposeKind.PHOTO ||
             post.postType == ComposeKind.VIDEO ||
+            post.postType == ComposeKind.AUDIO ||
+            !post.audioUrl.isNullOrBlank() ||
             (post.postType == ComposeKind.LINK && !post.linkUrl.isNullOrBlank()) ||
             !post.coverImageUrl.isNullOrBlank()
         if (showTypeMedia) {

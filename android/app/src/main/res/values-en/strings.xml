@@ -74,6 +74,13 @@
     <string name="post_audio_load_error">Unable to play audio. The file is unavailable.</string>
     <string name="tag_feed_label">Posts with this tag</string>
     <string name="tag_feed_empty">No posts with this hashtag yet</string>
+    <string name="post_hashtags_label">Hashtags</string>
+    <string name="post_hashtag_add">Add hashtag</string>
+    <string name="post_hashtag_placeholder">New hashtag (e.g. tech)</string>
+    <string name="post_hashtag_remove">Remove hashtag %1$s</string>
+    <string name="post_hashtag_limit">Maximum 10 hashtags allowed</string>
+    <string name="post_hashtag_duplicate">Hashtag already added</string>
+    <string name="post_hashtag_invalid">Invalid hashtag format</string>
     <string name="post_edit_title">Edit post</string>
     <string name="post_edit_save">Save</string>
     <string name="error_logout">Failed to log out. Please try again.</string>

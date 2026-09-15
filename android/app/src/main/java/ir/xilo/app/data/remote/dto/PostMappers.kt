@@ -58,7 +58,17 @@ fun PostResponse.toPostEntity(feedRank: Int = Int.MAX_VALUE): PostEntity = PostE
     postType = postType.ifBlank { "article" },
     linkUrl = linkUrl,
     mediaJson = encodePostMedia(media),
+    tagsJson = encodePostTags(tags),
 )
+
+val PostEntity.tags: List<String>
+    get() = decodePostTags(tagsJson)
+
+fun encodePostTags(tags: List<String>): String =
+    runCatching { postMediaJson.encodeToString(tags) }.getOrDefault("[]")
+
+fun decodePostTags(raw: String): List<String> =
+    runCatching { postMediaJson.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList())
 
 fun encodePostMedia(media: List<PostMediaDto>): String =
     runCatching { postMediaJson.encodeToString(media) }.getOrDefault("[]")

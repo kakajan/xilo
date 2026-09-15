@@ -34,6 +34,7 @@ import ir.xilo.app.core.util.EmojiReactions
 import ir.xilo.app.core.util.PublicWebUrls
 import ir.xilo.app.core.util.ShareActions
 import ir.xilo.app.data.local.entity.PostEntity
+import ir.xilo.app.data.remote.dto.tags
 import ir.xilo.app.theme.ColorError
 import ir.xilo.app.theme.ColorSuccess
 import ir.xilo.app.theme.XiloBlue
@@ -41,6 +42,7 @@ import ir.xilo.app.theme.XiloMotion
 import ir.xilo.app.theme.XiloSpacing
 import ir.xilo.app.ui.components.ContentAwareText
 import ir.xilo.app.ui.components.HashtagAwareText
+import ir.xilo.app.ui.components.PostHashtagsFlow
 import ir.xilo.app.ui.components.FeedSkeletonList
 import ir.xilo.app.ui.components.VerifiedBadge
 import ir.xilo.app.ui.components.XiloAvatar

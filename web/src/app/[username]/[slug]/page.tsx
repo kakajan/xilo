@@ -6,8 +6,7 @@ import { formatDate, readingTimeText, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "@/components/comment/comment-section";
-import { StickyReactionBar } from "@/components/post/sticky-reaction-bar";
-import { StickyAudioPlayer } from "@/components/post/sticky-audio-player";
+import { StickyPostFooter } from "@/components/post/sticky-post-footer";
 import { PostTypeContent } from "@/components/post/post-type-content";
 import { QuotedPostCard } from "@/components/post/quoted-post-card";
 import { QuotedCommentCard } from "@/components/post/quoted-comment-card";
@@ -185,12 +184,10 @@ export default async function PostPage({
         </div>
       ) : null}
 
-      {post.audio_url ? (
-        <StickyAudioPlayer src={post.audio_url} title={post.title} />
-      ) : null}
-
-      <StickyReactionBar
+      <StickyPostFooter
         postId={post.id}
+        audioUrl={post.audio_url}
+        title={post.title}
         reactions={post.reactions}
         viewerReactions={post.viewer_reactions}
       />

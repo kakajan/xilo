@@ -33,8 +33,20 @@ import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.remote.dto.decodePostMedia
 import ir.xilo.app.theme.XiloSpacing
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import ir.xilo.app.theme.XiloBlue
 import ir.xilo.app.ui.components.ContentAwareText
 import ir.xilo.app.ui.components.HashtagAwareText
+import ir.xilo.app.ui.components.XiloIcon
+import ir.xilo.app.ui.components.XiloIcons
 import ir.xilo.app.ui.postdetail.extractPlainText
 
 fun postShowsTitle(post: PostEntity): Boolean {
@@ -239,17 +251,146 @@ fun PostLinkCard(
 }
 
 @Composable
+fun PostAudioBlock(
+    post: PostEntity,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val hasCover = !post.coverImageUrl.isNullOrBlank()
+
+    if (hasCover) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(role = Role.Button, onClick = onClick)
+                    } else {
+                        Modifier
+                    }
+                ),
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(post.coverImageUrl)
+                    .size(1080, 720)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = stringResource(R.string.cd_post_image),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                XiloIcon(
+                    icon = XiloIcons.Music,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = stringResource(R.string.post_audio_title),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+    } else {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(XiloSpacing.mediaRadius))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                    shape = RoundedCornerShape(XiloSpacing.mediaRadius),
+                )
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(role = Role.Button, onClick = onClick)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(XiloBlue.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                XiloIcon(
+                    icon = XiloIcons.Music,
+                    contentDescription = null,
+                    tint = XiloBlue,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = post.title.ifBlank { stringResource(R.string.post_audio_title) },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.post_audio_attached),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(XiloBlue),
+                contentAlignment = Alignment.Center,
+            ) {
+                XiloIcon(
+                    icon = XiloIcons.Play,
+                    contentDescription = stringResource(R.string.post_audio_play),
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun PostTypeMediaBlock(
     post: PostEntity,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    when (post.postType) {
-        ComposeKind.PHOTO -> PostPhotoCarousel(post = post, onClick = onClick, modifier = modifier)
-        ComposeKind.VIDEO -> PostVideoBlock(post = post, modifier = modifier)
-        ComposeKind.LINK -> post.linkUrl?.takeIf { it.isNotBlank() }?.let { link ->
+    val isAudio = post.postType == ComposeKind.AUDIO || !post.audioUrl.isNullOrBlank()
+    when {
+        post.postType == ComposeKind.PHOTO -> PostPhotoCarousel(post = post, onClick = onClick, modifier = modifier)
+        post.postType == ComposeKind.VIDEO -> PostVideoBlock(post = post, modifier = modifier)
+        post.postType == ComposeKind.LINK -> post.linkUrl?.takeIf { it.isNotBlank() }?.let { link ->
             PostLinkCard(url = link, modifier = modifier)
         }
+        isAudio -> PostAudioBlock(post = post, onClick = onClick, modifier = modifier)
         else -> if (!post.coverImageUrl.isNullOrBlank()) {
             val context = LocalContext.current
             AsyncImage(

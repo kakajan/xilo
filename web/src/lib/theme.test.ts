@@ -15,7 +15,7 @@ describe("theme helpers", () => {
   it("mergeTheme fills missing chat bubble keys", () => {
     const merged = mergeTheme({
       light: { primary: "#112233" } as never,
-      dark: {},
+      dark: {} as never,
     });
     expect(merged.light.primary).toBe("#112233");
     expect(merged.light.chat_bubble_own).toMatch(/^#/);
