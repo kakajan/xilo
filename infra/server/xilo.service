@@ -9,7 +9,8 @@ Wants=network-online.target
 Type=oneshot
 RemainAfterExit=yes
 Environment=REMOTE_DIR=/opt/xilo
-ExecStart=/opt/xilo/infra/server/xilo-boot.sh
+ExecStartPre=/bin/chmod +x /opt/xilo/infra/server/xilo-boot.sh
+ExecStart=/bin/bash /opt/xilo/infra/server/xilo-boot.sh
 # Clean stop so Postgres/Redis flush before host reboot/shutdown.
 ExecStop=/bin/bash -c 'cd /opt/xilo/infra && set -a && . ./.compose.secrets.env && set +a && docker compose -f docker-compose.prod.yml --env-file .compose.secrets.env stop'
 TimeoutStartSec=300

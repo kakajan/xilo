@@ -44,6 +44,7 @@ journalctl --vacuum-size=200M || true
 
 cat >/etc/logrotate.d/xilo <<'EOF'
 /opt/xilo/logs/*.log
+/var/log/xilo-watchdog.log
 /var/log/virtualmin/aile.ir_*.log
 /var/log/virtualmin/brain.aile.ir_*.log {
   daily

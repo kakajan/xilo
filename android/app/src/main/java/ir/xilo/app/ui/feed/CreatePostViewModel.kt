@@ -16,6 +16,7 @@ import ir.xilo.app.data.remote.api.XiloApiService
 import ir.xilo.app.data.remote.dto.PostSearchHit
 import ir.xilo.app.data.remote.dto.TagSuggestion
 import ir.xilo.app.data.remote.dto.decodePostMedia
+import ir.xilo.app.data.remote.dto.tags
 import ir.xilo.app.data.repository.AuthRepository
 import ir.xilo.app.data.repository.CommentRepository
 import ir.xilo.app.data.repository.PostRepository
@@ -106,6 +107,15 @@ class CreatePostViewModel @Inject constructor(
     private val _tagSuggestions = MutableStateFlow<List<TagSuggestion>>(emptyList())
     val tagSuggestions: StateFlow<List<TagSuggestion>> = _tagSuggestions.asStateFlow()
 
+    private val _tags = MutableStateFlow<List<String>>(emptyList())
+    val tags: StateFlow<List<String>> = _tags.asStateFlow()
+
+    private val _tagInput = MutableStateFlow("")
+    val tagInput: StateFlow<String> = _tagInput.asStateFlow()
+
+    private val _tagInputSuggestions = MutableStateFlow<List<TagSuggestion>>(emptyList())
+    val tagInputSuggestions: StateFlow<List<TagSuggestion>> = _tagInputSuggestions.asStateFlow()
+
     private val _quotedPost = MutableStateFlow<PostEntity?>(null)
     val quotedPost: StateFlow<PostEntity?> = _quotedPost.asStateFlow()
 
@@ -131,6 +141,7 @@ class CreatePostViewModel @Inject constructor(
     private var quotedCommentId: String? = null
     private var audioCleared: Boolean = false
     private var suggestJob: Job? = null
+    private var tagInputSuggestJob: Job? = null
     private var quoteSearchJob: Job? = null
     private var draftSaveJob: Job? = null
     private var draftKey: String = ComposeDraftStore.KEY_NEW
@@ -239,6 +250,9 @@ class CreatePostViewModel @Inject constructor(
             if (local != null) {
                 _title.value = local.title.ifBlank { _title.value }
                 _content.value = local.content.ifBlank { _content.value }
+                if (local.tags.isNotEmpty()) {
+                    _tags.value = local.tags
+                }
                 if (local.audioUrl.isNotBlank()) {
                     _audioUrl.value = local.audioUrl
                     audioCleared = false
@@ -262,6 +276,7 @@ class CreatePostViewModel @Inject constructor(
         _content.value = extractPlainText(post.content).ifBlank {
             post.excerpt.orEmpty()
         }
+        _tags.value = post.tags
         _audioUrl.value = post.audioUrl.orEmpty()
         audioCleared = false
         _coverImageUrl.value = post.coverImageUrl.orEmpty()
@@ -575,6 +590,52 @@ class CreatePostViewModel @Inject constructor(
         scheduleDraftSave()
     }
 
+    fun updateTagInput(value: String) {
+        _tagInput.value = value
+        tagInputSuggestJob?.cancel()
+        val query = value.trim().removePrefix("#")
+        if (query.isEmpty()) {
+            _tagInputSuggestions.value = emptyList()
+            return
+        }
+        tagInputSuggestJob = viewModelScope.launch {
+            delay(200)
+            try {
+                val res = apiService.suggestTags(query = query, limit = 8)
+                _tagInputSuggestions.value = res.data
+            } catch (_: Exception) {
+                _tagInputSuggestions.value = emptyList()
+            }
+        }
+    }
+
+    fun addTag(rawTag: String): Boolean {
+        val normalized = HashtagParser.normalize(rawTag)
+        if (normalized.isBlank()) {
+            _error.value = errorMessageResolver.string(R.string.post_hashtag_invalid)
+            return false
+        }
+        val current = _tags.value
+        if (current.any { it.equals(normalized, ignoreCase = true) }) {
+            _error.value = errorMessageResolver.string(R.string.post_hashtag_duplicate)
+            return false
+        }
+        if (current.size >= HashtagParser.MAX_TAGS) {
+            _error.value = errorMessageResolver.string(R.string.post_hashtag_limit)
+            return false
+        }
+        _tags.value = current + normalized
+        _tagInput.value = ""
+        _tagInputSuggestions.value = emptyList()
+        scheduleDraftSave()
+        return true
+    }
+
+    fun removeTag(tag: String) {
+        _tags.value = _tags.value.filterNot { it.equals(tag, ignoreCase = true) }
+        scheduleDraftSave()
+    }
+
     fun submit() {
         val editingId = _editPostId.value
         if (editingId != null) {
@@ -646,6 +707,7 @@ class CreatePostViewModel @Inject constructor(
                     kind == ComposeKind.LINK && it.isNotBlank()
                 },
                 mediaIds = mediaIds,
+                tags = _tags.value,
                 status = status,
             )
                 .onSuccess {
@@ -714,6 +776,7 @@ class CreatePostViewModel @Inject constructor(
                 mediaIds = mediaIds,
                 quotedPostId = if (clearQuote) "" else quotedPostId,
                 quotedCommentId = if (clearQuote) "" else quotedCommentId,
+                tags = _tags.value,
             )
                 .onSuccess {
                     clearLocalDraft()
@@ -825,6 +888,7 @@ class CreatePostViewModel @Inject constructor(
         _content.value = draft?.content.orEmpty()
         _audioUrl.value = draft?.audioUrl.orEmpty()
         _coverImageUrl.value = draft?.coverImageUrl.orEmpty()
+        _tags.value = draft?.tags.orEmpty()
         _linkUrl.value = ""
         _photoMedia.value = emptyList()
         _videoMedia.value = null
@@ -840,6 +904,7 @@ class CreatePostViewModel @Inject constructor(
                 content = _content.value,
                 audioUrl = _audioUrl.value,
                 coverImageUrl = _coverImageUrl.value,
+                tags = _tags.value,
                 key = draftKey,
             )
         }
@@ -852,6 +917,7 @@ class CreatePostViewModel @Inject constructor(
             content = _content.value,
             audioUrl = _audioUrl.value,
             coverImageUrl = _coverImageUrl.value,
+            tags = _tags.value,
             key = draftKey,
         )
     }
@@ -864,6 +930,7 @@ class CreatePostViewModel @Inject constructor(
         _content.value = ""
         _audioUrl.value = ""
         _coverImageUrl.value = ""
+        _tags.value = emptyList()
         _linkUrl.value = ""
         _photoMedia.value = emptyList()
         _videoMedia.value = null

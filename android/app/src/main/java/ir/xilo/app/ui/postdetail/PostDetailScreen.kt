@@ -641,6 +641,15 @@ fun PostDetailHeader(
             )
         }
 
+        val postTags = remember(post.tagsJson) { post.tags }
+        if (postTags.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            PostHashtagsFlow(
+                tags = postTags,
+                onHashtagClick = onHashtagClick,
+            )
+        }
+
         PostTypeMediaBlock(
             post = post,
             modifier = Modifier.padding(top = 12.dp),

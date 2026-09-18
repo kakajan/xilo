@@ -12,6 +12,7 @@ class DateFormatterTest {
 
     @Before
     fun setUp() {
+        DateFormatter.setAuthenticated(true)
         DateFormatter.setUserPreference(CalendarPreference.AUTO)
         DateFormatter.setPlatformDefaults(
             mapOf(
@@ -19,6 +20,13 @@ class DateFormatterTest {
                 "en" to "gregorian",
             )
         )
+    }
+
+    @Test
+    fun resolve_unauthenticatedAlwaysResolvesGregorian() {
+        DateFormatter.setAuthenticated(false)
+        assertEquals(CalendarSystem.GREGORIAN, DateFormatter.resolve("fa"))
+        assertEquals(CalendarSystem.GREGORIAN, DateFormatter.resolve("en"))
     }
 
     @Test
@@ -81,6 +89,18 @@ class DateFormatterTest {
         val formatted = DateFormatter.formatAbsolute(cal.timeInMillis, "d MMMM")
         assertFalse("unexpected Gregorian Persian May label: $formatted", formatted.contains("مه"))
         assertTrue("expected Jalali month in: $formatted", formatted.contains("اردیبهشت"))
+    }
+
+    @Test
+    fun formatAbsolute_unauthenticatedFormatsGregorian() {
+        DateFormatter.setAuthenticated(false)
+        DateFormatter.setUserPreference(CalendarPreference.JALALI)
+        val cal = Calendar.getInstance(TimeZone.getDefault()).apply {
+            set(2026, Calendar.MAY, 18, 12, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val formatted = DateFormatter.formatAbsolute(cal.timeInMillis, "d MMMM")
+        assertFalse("should not contain Jalali month when unauthenticated: $formatted", formatted.contains("اردیبهشت"))
     }
 
     @Test

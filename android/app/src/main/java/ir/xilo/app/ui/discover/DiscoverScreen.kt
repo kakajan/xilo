@@ -56,6 +56,7 @@ fun DiscoverScreen(
         authorAvatar: String?,
     ) -> Unit,
     onAuthorClick: (String) -> Unit = {},
+    onHashtagClick: (String) -> Unit = {},
     onEditPost: (String) -> Unit = {},
     onQuotePost: (String) -> Unit = {},
     onQuoteComment: (String) -> Unit = {},
@@ -300,6 +301,7 @@ fun DiscoverScreen(
                                         null
                                     },
                                     onAuthorClick = { onAuthorClick(post.authorUsername) },
+                                    onHashtagClick = onHashtagClick,
                                     isOwner = owner,
                                     onEditClick = if (owner) ({ onEditPost(post.id) }) else null,
                                     onArchiveClick = if (owner) ({ viewModel.archivePost(post.id) }) else null,

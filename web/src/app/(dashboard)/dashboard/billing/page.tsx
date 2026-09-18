@@ -6,7 +6,7 @@ import { Check, CreditCard, AlertCircle, Loader2, RefreshCw, XCircle } from "luc
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { TimeLabel } from "@/components/user/username-handle";
-import { formatDate } from "@/lib/utils";
+import { useFormatDate } from "@/hooks/use-format-date";
 
 interface Plan {
   id: string;
@@ -72,6 +72,7 @@ function parseFeatures(features: string): string[] {
 }
 
 export default function BillingPage() {
+  const formatDate = useFormatDate();
   const queryClient = useQueryClient();
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);

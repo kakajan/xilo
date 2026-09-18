@@ -25,6 +25,23 @@ class ComposeDraftStoreTest {
     }
 
     @Test
+    fun saveAndLoadRoundTripForNewDraftWithTags() {
+        val prefs = FakePreferences()
+        val store = ComposeDraftStore(contextWith(prefs))
+
+        store.save(
+            title = "عنوان",
+            content = "متن پیش‌نویس",
+            tags = listOf("فناوری", "هوش_مصنوعی"),
+        )
+
+        val draft = store.load()
+        assertEquals("عنوان", draft!!.title)
+        assertEquals("متن پیش‌نویس", draft.content)
+        assertEquals(listOf("فناوری", "هوش_مصنوعی"), draft.tags)
+    }
+
+    @Test
     fun editDraftUsesPostIdKey() {
         val prefs = FakePreferences()
         val store = ComposeDraftStore(contextWith(prefs))

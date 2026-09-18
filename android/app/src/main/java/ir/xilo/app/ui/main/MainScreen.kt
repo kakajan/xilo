@@ -351,6 +351,9 @@ fun MainScreen(
                                 onAuthorClick = { username ->
                                     if (username.isNotBlank()) onItemClick(ProfileKey(username))
                                 },
+                                onHashtagClick = { tag ->
+                                    onItemClick(TagFeedKey(tag))
+                                },
                                 onEditPost = { postId ->
                                     onItemClick(CreatePostKey(editPostId = postId))
                                 },

@@ -18,6 +18,10 @@ import ir.xilo.app.core.util.DateFormatter
 import ir.xilo.app.data.remote.dto.UpdateProfileRequest
 import ir.xilo.app.data.remote.dto.UserResponse
 import ir.xilo.app.data.remote.dto.VerifyOTPLoginRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,8 +46,22 @@ class AuthRepository @Inject constructor(
 ) {
     val isAuthenticatedFlow: StateFlow<Boolean> = tokenManager.isAuthenticatedFlow
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     init {
-        DateFormatter.setUserPreferenceFromApi(tokenManager.getPreferredCalendar())
+        val loggedIn = tokenManager.getTokens() != null
+        DateFormatter.setAuthenticated(loggedIn)
+        if (loggedIn) {
+            DateFormatter.setUserPreferenceFromApi(tokenManager.getPreferredCalendar())
+        }
+        scope.launch {
+            tokenManager.isAuthenticatedFlow.collect { auth ->
+                DateFormatter.setAuthenticated(auth)
+                if (auth) {
+                    DateFormatter.setUserPreferenceFromApi(tokenManager.getPreferredCalendar())
+                }
+            }
+        }
     }
 
     suspend fun register(
@@ -138,6 +156,7 @@ class AuthRepository @Inject constructor(
         tokenManager.clearTokens()
         tokenManager.clearUser()
         tokenManager.setPreferredCalendar("auto")
+        DateFormatter.setAuthenticated(false)
         DateFormatter.setUserPreference(CalendarPreference.AUTO)
         tokenManager.setOnboardingCompleted(false)
         _onboardingCompleted.value = false
@@ -331,6 +350,7 @@ class AuthRepository @Inject constructor(
         tokenManager.saveUser(user.id, user.username, user.role.ifBlank { "reader" })
         val calendar = user.preferredCalendar?.takeIf { it.isNotBlank() } ?: "auto"
         tokenManager.setPreferredCalendar(calendar)
+        DateFormatter.setAuthenticated(true)
         DateFormatter.setUserPreferenceFromApi(calendar)
         val pending = user.usernamePending || user.username.startsWith("tmp_")
         tokenManager.setUsernamePending(pending)

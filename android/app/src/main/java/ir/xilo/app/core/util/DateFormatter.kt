@@ -48,6 +48,9 @@ object DateFormatter {
     private var userPreference: CalendarPreference = CalendarPreference.AUTO
 
     @Volatile
+    private var isAuthenticated: Boolean = false
+
+    @Volatile
     private var platformDefaults: Map<String, CalendarSystem> = mapOf(
         "fa" to CalendarSystem.JALALI,
         "en" to CalendarSystem.GREGORIAN,
@@ -55,6 +58,10 @@ object DateFormatter {
         "ru" to CalendarSystem.GREGORIAN,
         "tr" to CalendarSystem.GREGORIAN,
     )
+
+    fun setAuthenticated(authenticated: Boolean) {
+        isAuthenticated = authenticated
+    }
 
     fun setUserPreference(pref: CalendarPreference) {
         userPreference = pref
@@ -78,6 +85,9 @@ object DateFormatter {
     }
 
     fun resolve(locale: String = UI_LOCALE): CalendarSystem {
+        if (!isAuthenticated) {
+            return CalendarSystem.GREGORIAN
+        }
         return when (userPreference) {
             CalendarPreference.JALALI -> CalendarSystem.JALALI
             CalendarPreference.GREGORIAN -> CalendarSystem.GREGORIAN

@@ -42,4 +42,12 @@ class HashtagParserTest {
         assertEquals("ne", active?.first)
         assertTrue(active != null)
     }
+
+    @Test
+    fun normalize_trimsHashAndNormalizes() {
+        assertEquals("فناوری", HashtagParser.normalize("#فناوری"))
+        assertEquals("android", HashtagParser.normalize("  #android  "))
+        assertEquals("", HashtagParser.normalize("###"))
+        assertEquals("", HashtagParser.normalize("12345"))
+    }
 }

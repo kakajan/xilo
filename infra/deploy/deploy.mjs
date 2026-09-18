@@ -694,6 +694,7 @@ async function syncCode() {
   ssh(`mkdir -p ${remoteDir}`);
   await rsyncToRemote(REPO_ROOT, remoteDir, "iran");
   ensureRemoteSecrets(remoteDir);
+  ssh(`chmod +x ${remoteDir}/infra/server/*.sh 2>/dev/null || true`);
 }
 
 function publicBuildArgs() {

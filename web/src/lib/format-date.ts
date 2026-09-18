@@ -17,8 +17,12 @@ export const DEFAULT_CALENDAR_DEFAULTS: Record<string, CalendarSystem> = {
 export function resolveCalendar(
   userPref: string | null | undefined,
   locale: string,
-  defaults: Record<string, string> = DEFAULT_CALENDAR_DEFAULTS
+  defaults: Record<string, string> = DEFAULT_CALENDAR_DEFAULTS,
+  isLoggedIn: boolean = true
 ): CalendarSystem {
+  if (!isLoggedIn) {
+    return "gregorian";
+  }
   if (userPref === "jalali" || userPref === "gregorian") {
     return userPref;
   }
@@ -84,7 +88,7 @@ export function formatDateString(date: string | Date | null | undefined, options
   const d = zonedWallClockDate(instant);
 
   const locale = options.locale ?? "fa";
-  const calendar = options.calendar ?? resolveCalendar("auto", locale);
+  const calendar = options.calendar ?? "gregorian";
   const pattern =
     options.pattern ??
     (options.withTime ? defaultDateTimePattern(calendar) : defaultDatePattern(calendar));

@@ -6,9 +6,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Sync formatter for server components; defaults to fa → jalali. */
+/** Sync formatter for server components; unauthenticated default is gregorian. */
 export function formatDate(date: string, preferredCalendar?: string) {
-  const calendar = resolveCalendar(preferredCalendar, "fa", DEFAULT_CALENDAR_DEFAULTS);
+  const calendar = preferredCalendar
+    ? resolveCalendar(preferredCalendar, "fa", DEFAULT_CALENDAR_DEFAULTS, true)
+    : "gregorian";
   return formatDateString(date, { calendar, locale: "fa" });
 }
 

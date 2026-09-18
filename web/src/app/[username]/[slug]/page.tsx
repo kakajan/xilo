@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { formatDate, readingTimeText, getInitials } from "@/lib/utils";
+import { readingTimeText, getInitials } from "@/lib/utils";
+import { PostTimeLabel } from "@/components/post/post-time-label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "@/components/comment/comment-section";
@@ -128,7 +129,11 @@ export default async function PostPage({
             <AuthorHandleMeta
               className="text-sm"
               username={post.author?.username || username}
-              timeLabel={post.published_at ? formatDate(post.published_at) : null}
+              timeLabel={
+                post.published_at ? (
+                  <PostTimeLabel publishedAt={post.published_at} />
+                ) : null
+              }
               trailing={
                 <>
                   {postType === "article" && post.reading_time ? (

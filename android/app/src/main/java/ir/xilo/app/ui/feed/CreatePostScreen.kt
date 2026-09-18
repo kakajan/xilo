@@ -62,8 +62,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import ir.xilo.app.R
 import ir.xilo.app.data.local.entity.PostEntity
 import ir.xilo.app.data.remote.dto.PostSearchHit
-import ir.xilo.app.theme.XiloBlue
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.text.input.ImeAction
+import ir.xilo.app.core.util.HashtagParser
+import ir.xilo.app.data.remote.dto.TagSuggestion
 import ir.xilo.app.ui.components.PostField
+import ir.xilo.app.theme.XiloBlue
+import ir.xilo.app.ui.components.RemovableHashtagChip
 import ir.xilo.app.ui.components.XiloAvatar
 import ir.xilo.app.ui.components.XiloIcon
 import ir.xilo.app.ui.components.XiloIcons
@@ -71,7 +81,7 @@ import ir.xilo.app.ui.components.XiloTextArea
 import ir.xilo.app.ui.components.XiloTextField
 import ir.xilo.app.ui.components.usernameHandle
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CreatePostScreen(
     onBackClick: () -> Unit,
@@ -104,6 +114,9 @@ fun CreatePostScreen(
     val success by viewModel.success.collectAsStateWithLifecycle()
     val allowed by viewModel.allowed.collectAsStateWithLifecycle()
     val tagSuggestions by viewModel.tagSuggestions.collectAsStateWithLifecycle()
+    val tags by viewModel.tags.collectAsStateWithLifecycle()
+    val tagInput by viewModel.tagInput.collectAsStateWithLifecycle()
+    val tagInputSuggestions by viewModel.tagInputSuggestions.collectAsStateWithLifecycle()
     val quotedPost by viewModel.quotedPost.collectAsStateWithLifecycle()
     val quotedComment by viewModel.quotedComment.collectAsStateWithLifecycle()
     val quotedCommentPostTitle by viewModel.quotedCommentPostTitle.collectAsStateWithLifecycle()
@@ -555,6 +568,18 @@ fun CreatePostScreen(
                 }
             }
 
+            HashtagManagementSection(
+                tags = tags,
+                tagInput = tagInput,
+                tagSuggestions = tagInputSuggestions,
+                onTagInputChange = viewModel::updateTagInput,
+                onAddTag = viewModel::addTag,
+                onRemoveTag = viewModel::removeTag,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            )
+
             if (tagSuggestions.isNotEmpty()) {
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -811,3 +836,111 @@ private fun QuoteSourceSection(
         }
     }
 }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HashtagManagementSection(
+    tags: List<String>,
+    tagInput: String,
+    tagSuggestions: List<TagSuggestion>,
+    onTagInputChange: (String) -> Unit,
+    onAddTag: (String) -> Boolean,
+    onRemoveTag: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        if (tags.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            ) {
+                tags.forEach { tag ->
+                    RemovableHashtagChip(
+                        tag = tag,
+                        onRemove = { onRemoveTag(tag) },
+                    )
+                }
+            }
+        }
+
+        if (tags.size < HashtagParser.MAX_TAGS) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                OutlinedTextField(
+                    value = tagInput,
+                    onValueChange = onTagInputChange,
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.post_hashtag_placeholder),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        )
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (tagInput.isNotBlank()) {
+                                onAddTag(tagInput)
+                            }
+                        },
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = XiloBlue,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    ),
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                Button(
+                    onClick = {
+                        if (tagInput.isNotBlank()) {
+                            onAddTag(tagInput)
+                        }
+                    },
+                    enabled = tagInput.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = XiloBlue),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text(text = stringResource(R.string.post_hashtag_add))
+                }
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.post_hashtag_limit),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+
+        if (tagSuggestions.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+            ) {
+                items(tagSuggestions, key = { it.tag }) { item ->
+                    AssistChip(
+                        onClick = { onAddTag(item.tag) },
+                        label = {
+                            Text(
+                                text = "#${item.tag}",
+                                color = XiloBlue,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+

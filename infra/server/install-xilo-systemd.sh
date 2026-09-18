@@ -11,8 +11,19 @@ if [[ ! -f "$UNIT_SRC" || ! -f "$BOOT_SRC" ]]; then
   exit 1
 fi
 
-chmod +x "$BOOT_SRC"
+chmod +x "$REMOTE_DIR"/infra/server/*.sh
 cp -f "$UNIT_SRC" /etc/systemd/system/xilo.service
+
+# Setup automatic self-healing watchdog cron (checks every 2 mins)
+WATCHDOG_SRC="$REMOTE_DIR/infra/server/xilo-watchdog.sh"
+if [[ -f "$WATCHDOG_SRC" ]]; then
+  chmod +x "$WATCHDOG_SRC"
+  cat > /etc/cron.d/xilo-watchdog <<'EOF'
+# Check Xilo stack every 2 minutes. Auto-heal if endpoints are down.
+*/2 * * * * root /bin/bash /opt/xilo/infra/server/xilo-watchdog.sh
+EOF
+  chmod 644 /etc/cron.d/xilo-watchdog
+fi
 
 # Harden Docker for cleaner restores (merge with existing log limits).
 mkdir -p /etc/docker
